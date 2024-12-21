@@ -62,9 +62,7 @@ void kmain() {
     const char *shell = "shell@os>";
 
     gdt_init();
-    printf("GDT started\n");
     idt_init();
-    printf("IDT started\n");
 
     console_init(COLOR_WHITE, COLOR_BLACK);
     keyboard_init();
