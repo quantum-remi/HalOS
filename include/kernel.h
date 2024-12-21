@@ -16,4 +16,3 @@ extern uint8 __kernel_bss_section_start;
 extern uint8 __kernel_bss_section_end;
 
 #endif
-

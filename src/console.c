@@ -6,10 +6,16 @@
 
 
 static uint16 *g_vga_buffer;
+//index for video buffer array
 static uint32 g_vga_index;
+// cursor positions
 static uint8 cursor_pos_x = 0, cursor_pos_y = 0;
+//fore & back color values
 uint8 g_fore_color = COLOR_WHITE, g_back_color = COLOR_BLACK;
+static uint16 g_temp_pages[MAXIMUM_PAGES][VGA_TOTAL_ITEMS];
+uint32 g_current_temp_page = 0;
 
+// clear video buffer array
 void console_clear(VGA_COLOR_TYPE fore_color, VGA_COLOR_TYPE back_color) {
     uint32 i;
 
@@ -22,6 +28,7 @@ void console_clear(VGA_COLOR_TYPE fore_color, VGA_COLOR_TYPE back_color) {
     vga_set_cursor_pos(cursor_pos_x, cursor_pos_y);
 }
 
+//initialize console
 void console_init(VGA_COLOR_TYPE fore_color, VGA_COLOR_TYPE back_color) {
     g_vga_buffer = (uint16 *)VGA_ADDRESS;
     g_fore_color = fore_color;
@@ -31,13 +38,43 @@ void console_init(VGA_COLOR_TYPE fore_color, VGA_COLOR_TYPE back_color) {
     console_clear(fore_color, back_color);
 }
 
+void console_scroll(int type) {
+    uint32 i;
+    if (type == SCROLL_UP) {
+        // scroll up
+        if (g_current_temp_page > 0)
+            g_current_temp_page--;
+        g_current_temp_page %= MAXIMUM_PAGES;
+        for (i = 0; i < VGA_TOTAL_ITEMS; i++) {
+            g_vga_buffer[i] = g_temp_pages[g_current_temp_page][i];
+        }
+    } else {
+        // scroll down
+        g_current_temp_page++;
+        g_current_temp_page %= MAXIMUM_PAGES;
+        for (i = 0; i < VGA_TOTAL_ITEMS; i++) {
+            g_vga_buffer[i] = g_temp_pages[g_current_temp_page][i];
+        }
+    }
+}
 
+/*
+increase vga_index by width of vga width
+*/
 static void console_newline() {
+    uint32 i;
+
     if (cursor_pos_y >= VGA_HEIGHT) {
+        for (i = 0; i < VGA_TOTAL_ITEMS; i++)
+            g_temp_pages[g_current_temp_page][i] = g_vga_buffer[i];
+        g_current_temp_page++;
         cursor_pos_x = 0;
         cursor_pos_y = 0;
         console_clear(g_fore_color, g_back_color);
     } else {
+        for (i = 0; i < VGA_TOTAL_ITEMS; i++)
+            g_temp_pages[g_current_temp_page][i] = g_vga_buffer[i];
+        
         g_vga_index += VGA_WIDTH - (g_vga_index % VGA_WIDTH);
         cursor_pos_x = 0;
         ++cursor_pos_y;
@@ -46,6 +83,7 @@ static void console_newline() {
 }
 
 
+//assign ascii character to video buffer
 void console_putchar(char ch) {
     if (ch == ' ') {
         g_vga_buffer[g_vga_index++] = vga_item_entry(' ', g_fore_color, g_back_color);
@@ -66,6 +104,7 @@ void console_putchar(char ch) {
     }
 }
 
+// revert back the printed character and add 0 to it
 void console_ungetchar() {
     if(g_vga_index > 0) {
         g_vga_buffer[g_vga_index--] = vga_item_entry(0, g_fore_color, g_back_color);
@@ -80,9 +119,11 @@ void console_ungetchar() {
         }
     }
 
+    // set last printed character to 0
     g_vga_buffer[g_vga_index] = vga_item_entry(0, g_fore_color, g_back_color);
 }
 
+// revert back the printed character until n characters
 void console_ungetchar_bound(uint8 n) {
     if(((g_vga_index % VGA_WIDTH) > n) && (n > 0)) {
         g_vga_buffer[g_vga_index--] = vga_item_entry(0, g_fore_color, g_back_color);
@@ -97,6 +138,7 @@ void console_ungetchar_bound(uint8 n) {
         }
     }
 
+    // set last printed character to 0
     g_vga_buffer[g_vga_index] = vga_item_entry(0, g_fore_color, g_back_color);
 }
 
@@ -107,6 +149,7 @@ void console_gotoxy(uint16 x, uint16 y) {
     vga_set_cursor_pos(cursor_pos_x, cursor_pos_y);
 }
 
+//print string by calling print_char
 void console_putstr(const char *str) {
     uint32 index = 0;
     while (str[index]) {
@@ -171,6 +214,40 @@ void printf(const char *format, ...) {
                     console_putchar(*((int *)arg++));
                     break;
             }
+        }
+    }
+}
+
+// read string from console, but no backing
+void getstr(char *buffer) {
+    if (!buffer) return;
+    while(1) {
+        char ch = kb_getchar();
+        if (ch == '\n') {
+            printf("\n");
+            return ;
+        } else {
+            *buffer++ = ch;
+            printf("%c", ch);
+        }
+    }
+}
+
+// read string from console, and erase or go back util bound occurs
+void getstr_bound(char *buffer, uint8 bound) {
+    if (!buffer) return;
+    while(1) {
+        char ch = kb_getchar();
+        if (ch == '\n') {
+            printf("\n");
+            return ;
+        } else if(ch == '\b') {
+            console_ungetchar_bound(bound);
+            buffer--;
+            *buffer = '\0';
+        } else {
+            *buffer++ = ch;
+            printf("%c", ch);
         }
     }
 }
