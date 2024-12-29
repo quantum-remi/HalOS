@@ -9,6 +9,7 @@
 #include "timer.h"
 #include "pmm.h"
 #include "paging.h"
+#include "snake.h"
 
 #define BRAND_QEMU 1
 #define BRAND_VBOX 2
@@ -238,6 +239,10 @@ void kmain(unsigned long magic, unsigned long addr)
             else if (strcmp(buffer, "memory") == 0)
             {
                 memory();
+            }
+            else if (strcmp(buffer, "snake") == 0)
+            {
+                snake_game();
             }
             else
             {

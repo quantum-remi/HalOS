@@ -42,7 +42,7 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o\
 		$(OBJ)/gdt.o $(OBJ)/idt.o $(OBJ)/isr.o $(OBJ)/8259_pic.o\
 		$(OBJ)/keyboard.o $(OBJ)/timer.o\
 		$(OBJ)/pmm.o $(OBJ)/kheap.o \
-		$(OBJ)/paging.o \
+		$(OBJ)/paging.o  $(OBJ)/snake.o \
 		$(OBJ)/kernel.o
 
 all: $(OBJECTS)
@@ -149,6 +149,11 @@ $(OBJ)/kheap.o : $(SRC)/kheap.c
 $(OBJ)/paging.o : $(SRC)/paging.c
 	@printf "[ $(SRC)/paging.c ]\n"
 	$(CC) $(CC_FLAGS) -c $(SRC)/paging.c -o $(OBJ)/paging.o
+	@printf "\n"
+
+$(OBJ)/snake.o : $(SRC)/snake.c
+	@printf "[ $(SRC)/snake.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/snake.c -o $(OBJ)/snake.o
 	@printf "\n"
 
 clean:
