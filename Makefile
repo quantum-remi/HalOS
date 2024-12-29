@@ -40,7 +40,7 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o\
 		$(OBJ)/io.o $(OBJ)/vga.o\
 		$(OBJ)/string.o $(OBJ)/console.o\
 		$(OBJ)/gdt.o $(OBJ)/idt.o $(OBJ)/isr.o $(OBJ)/8259_pic.o\
-		$(OBJ)/keyboard.o\
+		$(OBJ)/keyboard.o $(OBJ)/timer.o\
 		$(OBJ)/kernel.o
 
 all: $(OBJECTS)
@@ -123,6 +123,10 @@ $(OBJ)/8259_pic.o : $(SRC)/8259_pic.c
 $(OBJ)/keyboard.o : $(SRC)/keyboard.c
 	@printf "[ $(SRC)/keyboard.c ]\n"
 	$(CC) $(CC_FLAGS) -c $(SRC)/keyboard.c -o $(OBJ)/keyboard.o
+	@printf "\n"
+$(OBJ)/timer.o : $(SRC)/timer.c
+	@printf "[ $(SRC)/timer.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/timer.c -o $(OBJ)/timer.o
 	@printf "\n"
 
 $(OBJ)/kernel.o : $(SRC)/kernel.c
