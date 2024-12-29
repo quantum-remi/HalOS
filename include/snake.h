@@ -1,6 +1,6 @@
-// #ifndef SNAKE_H
-// #define SNAKE_H
+#ifndef SNAKE_H
+#define SNAKE_H
 
-// void snake_game();
+void snake_game();
 
-// #endif
+#endif

@@ -233,54 +233,104 @@ void kmain(unsigned long magic, unsigned long addr)
         void *end = start + (pmm_next_free_frame(1) * PMM_BLOCK_SIZE);
         kheap_init(start, end);
 
-        int ret = vesa_init(800, 600, 32);
-        if (ret < 0) {
-            printf("failed to init vesa graphics\n");
-            goto done;
-        }
-        if (ret == 1) {
-            // scroll to top
-            for(int i = 0; i < MAXIMUM_PAGES; i++)
-                console_scroll(SCROLL_UP);
 
-            while (1) {
-                // add scrolling to view all modes
-                char c = kb_get_scancode();
-                if (c == SCAN_CODE_KEY_UP)
-                    console_scroll(SCROLL_UP);
-                if (c == SCAN_CODE_KEY_DOWN)
-                    console_scroll(SCROLL_DOWN);
+        while (1)
+        {
+            printf(shell);
+            memset(buffer, 0, sizeof(buffer));
+            getstr_bound(buffer, strlen(shell));
+            if (strlen(buffer) == 0)
+                continue;
+            if (strcmp(buffer, "cpuid") == 0)
+            {
+                cpuid_info(1);
             }
-        } else {
-            // fill some colors
-            uint32 x = 0;
-            for (uint32 c = 0; c < 267; c++) {
-                for (uint32 i = 0; i < 600; i++) {
-                    vbe_putpixel(x, i, VBE_RGB(c % 255, 0, 0));
-                }
-                x++;
+            else if (strcmp(buffer, "help") == 0)
+            {
+                printf("Hal Terminal\n");
+                printf("Commands: help, cpuid, echo, clear, memory, timer, shutdown\n");
             }
-            for (uint32 c = 0; c < 267; c++) {
-                for (uint32 i = 0; i < 600; i++) {
-                    vbe_putpixel(x, i, VBE_RGB(0, c % 255, 0));
-                }
-                x++;
+            else if (is_echo(buffer))
+            {
+                printf("%s\n", buffer + 5);
             }
-            for (uint32 c = 0; c < 267; c++) {
-                for (uint32 i = 0; i < 600; i++) {
-                    vbe_putpixel(x, i, VBE_RGB(0, 0, c % 255));
-                }
-                x++;
+            else if (strcmp(buffer, "shutdown") == 0)
+            {
+                shutdown();
+            }
+            else if (strcmp(buffer, "clear") == 0)
+            {
+                console_clear(COLOR_WHITE, COLOR_BLACK);
+            }
+            else if (strcmp(buffer, "timer") == 0)
+            {
+                timer();
+            }
+            else if (strcmp(buffer, "memory") == 0)
+            {
+                memory();
+            }
+            else if (strcmp(buffer, "snake") == 0)
+            {
+                snake_game();
+            }
+            else
+            {
+                printf("invalid command: %s\n", buffer);
             }
         }
 
-done:
-        pmm_free_blocks(start, 256);
-        pmm_deinit_region(g_kmap.available.start_addr, PMM_BLOCK_SIZE * 256);
-    } else {
-        printf("error: invalid multiboot magic number\n");
+        printf("Terminal started\n");
     }
 }
+        // int ret = vesa_init(800, 600, 32);
+        // if (ret < 0) {
+        //     printf("failed to init vesa graphics\n");
+        //     goto done;
+        // }
+        // if (ret == 1) {
+        //     // scroll to top
+        //     for(int i = 0; i < MAXIMUM_PAGES; i++)
+        //         console_scroll(SCROLL_UP);
+
+        //     while (1) {
+        //         // add scrolling to view all modes
+        //         char c = kb_get_scancode();
+        //         if (c == SCAN_CODE_KEY_UP)
+        //             console_scroll(SCROLL_UP);
+        //         if (c == SCAN_CODE_KEY_DOWN)
+        //             console_scroll(SCROLL_DOWN);
+        //     }
+        // } else {
+        //     // fill some colors
+        //     uint32 x = 0;
+        //     for (uint32 c = 0; c < 267; c++) {
+        //         for (uint32 i = 0; i < 600; i++) {
+        //             vbe_putpixel(x, i, VBE_RGB(c % 255, 0, 0));
+        //         }
+        //         x++;
+        //     }
+        //     for (uint32 c = 0; c < 267; c++) {
+        //         for (uint32 i = 0; i < 600; i++) {
+        //             vbe_putpixel(x, i, VBE_RGB(0, c % 255, 0));
+        //         }
+        //         x++;
+        //     }
+        //     for (uint32 c = 0; c < 267; c++) {
+        //         for (uint32 i = 0; i < 600; i++) {
+        //             vbe_putpixel(x, i, VBE_RGB(0, 0, c % 255));
+        //         }
+        //         x++;
+        //     }
+        // }
+
+// done:
+//         pmm_free_blocks(start, 256);
+//         pmm_deinit_region(g_kmap.available.start_addr, PMM_BLOCK_SIZE * 256);
+//     } else {
+//         printf("error: invalid multiboot magic number\n");
+//     }
+// }
 
     //     while (1)
     //     {
