@@ -135,11 +135,6 @@ void shutdown()
         outports(0x4004, 0x3400);
 }
 
-/**
- * Function: timer
- * ----------------
- * Prints "Hello, World!" to the console every second for 10 seconds.
- */
 void timer()
 {
     int i;
