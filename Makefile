@@ -41,7 +41,8 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o\
 		$(OBJ)/string.o $(OBJ)/console.o\
 		$(OBJ)/gdt.o $(OBJ)/idt.o $(OBJ)/isr.o $(OBJ)/8259_pic.o\
 		$(OBJ)/keyboard.o $(OBJ)/timer.o\
-		$(OBJ)/pmm.o \
+		$(OBJ)/pmm.o $(OBJ)/kheap.o \
+		$(OBJ)/paging.o \
 		$(OBJ)/kernel.o
 
 all: $(OBJECTS)
@@ -138,6 +139,16 @@ $(OBJ)/pmm.o : $(SRC)/pmm.c
 $(OBJ)/kernel.o : $(SRC)/kernel.c
 	@printf "[ $(SRC)/kernel.c ]\n"
 	$(CC) $(CC_FLAGS) -c $(SRC)/kernel.c -o $(OBJ)/kernel.o
+	@printf "\n"
+
+$(OBJ)/kheap.o : $(SRC)/kheap.c
+	@printf "[ $(SRC)/kheap.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/kheap.c -o $(OBJ)/kheap.o
+	@printf "\n"
+
+$(OBJ)/paging.o : $(SRC)/paging.c
+	@printf "[ $(SRC)/paging.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/paging.c -o $(OBJ)/paging.o
 	@printf "\n"
 
 clean:
