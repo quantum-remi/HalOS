@@ -19,6 +19,7 @@ typedef struct {
 static Snake snake;
 static Point food;
 static int game_over;
+static int score;
 
 static unsigned int seed = 123456789;
 
@@ -40,6 +41,7 @@ void snake_init() {
     food.x = rand() % WIDTH;
     food.y = rand() % HEIGHT;
     game_over = 0;
+    score = 0;
 }
 
 void snake_draw() {
@@ -63,6 +65,7 @@ void snake_draw() {
         }
         console_putchar('\n');
     }
+    printf("Score: %d\n", score);
 }
 
 void snake_update() {
@@ -93,6 +96,7 @@ void snake_update() {
 
     if (new_head.x == food.x && new_head.y == food.y) {
         snake.length++;
+        score++;
         food.x = rand() % WIDTH;
         food.y = rand() % HEIGHT;
     }
@@ -127,15 +131,55 @@ void snake_handle_input(char key) {
     }
 }
 
+int snake_collision() {
+    Point head = snake.body[0];
+
+    // Check for collision with walls
+    if (head.x < 0 || head.x >= WIDTH || head.y < 0 || head.y >= HEIGHT) {
+        return 1;
+    }
+
+    // Check for collision with itself
+    for (int i = 1; i < snake.length; i++) {
+        if (snake.body[i].x == head.x && snake.body[i].y == head.y) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
 void snake_game() {
     snake_init();
+    int update_counter = 0;
+    const int update_threshold = 25; // Adjust this value to control the game speed
+    const int sleep_time = 10000; // Define a constant for the sleep time
+
     while (!game_over) {
-        snake_draw();
-        snake_update();
-        char key = kb_getchar();
-        snake_handle_input(key);
-        // sleep(0.1);
+        // Check for input more frequently
+        if (kbhit()) {
+            snake_handle_input(kb_getchar());
+        }
+
+        // Update the game state at a fixed interval
+        if (update_counter >= update_threshold) {
+            snake_update();
+            snake_draw(); // Draw the game state after updating
+            update_counter = 0;
+        }
+
+        // Increment the counter
+        update_counter++;
+
+        // Add a small delay to reduce CPU usage
+        usleep(sleep_time); // Use the defined constant for sleep time
+
+        // Check for game over conditions (e.g., snake collision with wall or itself)
+        if (snake_collision()) {
+            game_over = 1;
+        }
     }
+
     console_clear(COLOR_WHITE, COLOR_BLACK);
-    printf("Game Over!\n");
+    printf("Game Over! Final Score: %d\n", score);
 }

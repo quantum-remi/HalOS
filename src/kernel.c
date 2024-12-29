@@ -153,32 +153,6 @@ void memory()
     printf("total_memory: %d KB, %d Bytes\n", g_kmap.system.total_memory, g_kmap.available.size);
     printf("start_addr: 0x%x, end_addr: 0x%x\n", g_kmap.available.start_addr, g_kmap.available.end_addr);
     printf("kstart_addr: 0x%x, kend_addr: 0x%x\n", g_kmap.kernel.k_start_addr, g_kmap.kernel.data_end_addr);
-
-    // put the memory bitmap at the start of the available memory
-    pmm_init(g_kmap.available.start_addr, g_kmap.available.size);
-
-    printf("Max blocks: %d\n", pmm_get_max_blocks());
-    // initialize a region of memory of size (4096 * 10), 10 blocks memory
-    pmm_init_region(g_kmap.available.start_addr, PMM_BLOCK_SIZE * 10);
-    printf("PMM init\n");
-
-    printf("Initializing paging...\n");
-    paging_init();
-
-    paging_allocate_page((void *)0x8973456);
-    printf("physical address: 0x%x\n", paging_get_physical_address((void *)0x8973456));
-
-    int *x = (int *)paging_get_physical_address((void *)0x8973456);
-    x[0] = 123;
-
-    paging_free_page((void *)0x8973456);
-
-    printf("\nGenerating page fault:-\n");
-    x = (int *)0x8973456;
-    x[0] = 12345;
-
-    pmm_deinit_region(g_kmap.available.start_addr, PMM_BLOCK_SIZE * 10);
-    printf("PMM Deinit\n");
 }
 
 void kmain(unsigned long magic, unsigned long addr)

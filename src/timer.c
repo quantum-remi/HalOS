@@ -65,3 +65,8 @@ void sleep(int sec) {
     uint32 end = g_ticks + sec * g_freq_hz;
     while (g_ticks < end);
 }
+
+void usleep(int usec) {
+    uint32 end = g_ticks + (usec * g_freq_hz) / 1000000;
+    while (g_ticks < end);
+}

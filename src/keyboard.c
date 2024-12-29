@@ -112,6 +112,8 @@ void keyboard_handler(REGISTERS *r) {
     }
 }
 
+
+
 void keyboard_init() {
     isr_register_interrupt_handler(IRQ_BASE + 1, keyboard_handler);
 }
@@ -124,6 +126,12 @@ char kb_getchar() {
     g_ch = 0;
     g_scan_code = 0;
     return c;
+}
+
+int kbhit() {
+    if (g_ch == 0)
+        return 0;
+    return 1;
 }
 
 char kb_get_scancode() {
