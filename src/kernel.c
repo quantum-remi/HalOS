@@ -104,7 +104,7 @@ void kmain()
         }
         else if (strcmp(buffer, "help") == 0)
         {
-            printf("Tiny OS Terminal\n");
+            printf("Hal Terminal\n");
             printf("Commands: help, cpuid, echo, clear, timer, shutdown\n");
         }
         else if (is_echo(buffer))
