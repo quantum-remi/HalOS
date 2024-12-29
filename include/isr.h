@@ -1,5 +1,5 @@
 /**
- * Interrupt Service Routine(ISR)
+ * Interrupt Service Routine(ISR) setup
  */
 
 #ifndef ISR_H
@@ -15,6 +15,24 @@ typedef struct {
     uint32 int_no, err_code;                        // interrupt number and error code
     uint32 eip, cs, eflags, useresp, ss;            // pushed by the processor automatically
 } REGISTERS;
+
+typedef struct {
+    uint16 di;
+    uint16 si;
+    uint16 bp;
+    uint16 sp;
+    uint16 bx;
+    uint16 dx;
+    uint16 cx;
+    uint16 ax;
+    // segments
+    uint16 ds;
+    uint16 es;
+    uint16 fs;
+    uint16 gs;
+    uint16 ss;
+    uint16 eflags;
+} REGISTERS16;
 
 // ISR function prototype
 typedef void (*ISR)(REGISTERS *);

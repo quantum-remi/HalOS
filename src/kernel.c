@@ -9,7 +9,10 @@
 #include "timer.h"
 #include "pmm.h"
 #include "paging.h"
+#include "kheap.h"
 #include "snake.h"
+#include "fpu.h"
+#include "vesa.h"
 
 #define BRAND_QEMU 1
 #define BRAND_VBOX 2
@@ -63,7 +66,6 @@ int get_kernel_memory_map(KERNEL_MEMORY_MAP *kmap, MULTIBOOT_INFO *mboot_info)
 
     return -1;
 }
-
 void display_kernel_memory_map(KERNEL_MEMORY_MAP *kmap)
 {
     printf("kernel:\n");
@@ -155,6 +157,51 @@ void memory()
     printf("kstart_addr: 0x%x, kend_addr: 0x%x\n", g_kmap.kernel.k_start_addr, g_kmap.kernel.data_end_addr);
 }
 
+void ftoa(char *buf, float f)
+{
+    uint32 count = 1;
+    const uint32 DEFAULT_DECIMAL_COUNT = 8;
+    char int_part_buf[16];
+    char *p;
+
+    memset(int_part_buf, 0, sizeof(int_part_buf));
+    // add integer part
+    int x = (int)f;
+    itoa(int_part_buf, 'd', x);
+    p = int_part_buf;
+    while (*p != '\0')
+    {
+        *buf++ = *p++;
+    }
+    *buf++ = '.';
+
+    // example decimal = 3.14159 - 3 = 0.14159
+    float decimal = f - x;
+    if (decimal == 0)
+        *buf++ = '0';
+    else
+    {
+        while (decimal > 0)
+        {
+            uint32 y = decimal * 10; // y = 0.14159 * 10 = 1
+            *buf++ = y + '0';
+            decimal = (decimal * 10) - y; // decimal = (0.14159 * 10) - 1 = 0.4159
+            count++;
+            if (count == DEFAULT_DECIMAL_COUNT)
+                break;
+        }
+    }
+    *buf = '\0';
+}
+
+void float_print(const char *msg, float f, const char *end)
+{
+    char buf[32];
+    memset(buf, 0, sizeof(buf));
+    ftoa(buf, f);
+    printf("%s%s%s", msg, buf, end);
+}
+
 void kmain(unsigned long magic, unsigned long addr)
 {
     char buffer[255];
@@ -168,67 +215,118 @@ void kmain(unsigned long magic, unsigned long addr)
     console_init(COLOR_WHITE, COLOR_BLACK);
     keyboard_init();
 
-    if (magic == MULTIBOOT_BOOTLOADER_MAGIC)
-    {
+    fpu_enable();
+
+    if (magic == MULTIBOOT_BOOTLOADER_MAGIC) {
         mboot_info = (MULTIBOOT_INFO *)addr;
         memset(&g_kmap, 0, sizeof(KERNEL_MEMORY_MAP));
-        if (get_kernel_memory_map(&g_kmap, mboot_info) < 0)
-        {
+        if (get_kernel_memory_map(&g_kmap, mboot_info) < 0) {
             printf("error: failed to get kernel memory map\n");
             return;
         }
+        // put the memory bitmap at the start of the available memory
+        pmm_init(g_kmap.available.start_addr, g_kmap.available.size);
+        // initialize atleast 1MB blocks of memory for our heap
+        pmm_init_region(g_kmap.available.start_addr, PMM_BLOCK_SIZE * 256);
+        // initialize heap 256 blocks(1MB)
+        void *start = pmm_alloc_blocks(256);
+        void *end = start + (pmm_next_free_frame(1) * PMM_BLOCK_SIZE);
+        kheap_init(start, end);
 
-        while (1)
-        {
-            printf(shell);
-            memset(buffer, 0, sizeof(buffer));
-            getstr_bound(buffer, strlen(shell));
-            if (strlen(buffer) == 0)
-                continue;
-            if (strcmp(buffer, "cpuid") == 0)
-            {
-                cpuid_info(1);
+        int ret = vesa_init(800, 600, 32);
+        if (ret < 0) {
+            printf("failed to init vesa graphics\n");
+            goto done;
+        }
+        if (ret == 1) {
+            // scroll to top
+            for(int i = 0; i < MAXIMUM_PAGES; i++)
+                console_scroll(SCROLL_UP);
+
+            while (1) {
+                // add scrolling to view all modes
+                char c = kb_get_scancode();
+                if (c == SCAN_CODE_KEY_UP)
+                    console_scroll(SCROLL_UP);
+                if (c == SCAN_CODE_KEY_DOWN)
+                    console_scroll(SCROLL_DOWN);
             }
-            else if (strcmp(buffer, "help") == 0)
-            {
-                printf("Hal Terminal\n");
-                printf("Commands: help, cpuid, echo, clear, memory, timer, shutdown\n");
+        } else {
+            // fill some colors
+            uint32 x = 0;
+            for (uint32 c = 0; c < 267; c++) {
+                for (uint32 i = 0; i < 600; i++) {
+                    vbe_putpixel(x, i, VBE_RGB(c % 255, 0, 0));
+                }
+                x++;
             }
-            else if (is_echo(buffer))
-            {
-                printf("%s\n", buffer + 5);
+            for (uint32 c = 0; c < 267; c++) {
+                for (uint32 i = 0; i < 600; i++) {
+                    vbe_putpixel(x, i, VBE_RGB(0, c % 255, 0));
+                }
+                x++;
             }
-            else if (strcmp(buffer, "shutdown") == 0)
-            {
-                shutdown();
-            }
-            else if (strcmp(buffer, "clear") == 0)
-            {
-                console_clear(COLOR_WHITE, COLOR_BLACK);
-            }
-            else if (strcmp(buffer, "timer") == 0)
-            {
-                timer();
-            }
-            else if (strcmp(buffer, "memory") == 0)
-            {
-                memory();
-            }
-            else if (strcmp(buffer, "snake") == 0)
-            {
-                snake_game();
-            }
-            else
-            {
-                printf("invalid command: %s\n", buffer);
+            for (uint32 c = 0; c < 267; c++) {
+                for (uint32 i = 0; i < 600; i++) {
+                    vbe_putpixel(x, i, VBE_RGB(0, 0, c % 255));
+                }
+                x++;
             }
         }
-        pmm_deinit_region(g_kmap.available.start_addr, PMM_BLOCK_SIZE * 10);
-    }
-    else
-    {
+
+done:
+        pmm_free_blocks(start, 256);
+        pmm_deinit_region(g_kmap.available.start_addr, PMM_BLOCK_SIZE * 256);
+    } else {
         printf("error: invalid multiboot magic number\n");
     }
-
-    printf("Terminal started\n");
 }
+
+    //     while (1)
+    //     {
+    //         printf(shell);
+    //         memset(buffer, 0, sizeof(buffer));
+    //         getstr_bound(buffer, strlen(shell));
+    //         if (strlen(buffer) == 0)
+    //             continue;
+    //         if (strcmp(buffer, "cpuid") == 0)
+    //         {
+    //             cpuid_info(1);
+    //         }
+    //         else if (strcmp(buffer, "help") == 0)
+    //         {
+    //             printf("Hal Terminal\n");
+    //             printf("Commands: help, cpuid, echo, clear, memory, timer, shutdown\n");
+    //         }
+    //         else if (is_echo(buffer))
+    //         {
+    //             printf("%s\n", buffer + 5);
+    //         }
+    //         else if (strcmp(buffer, "shutdown") == 0)
+    //         {
+    //             shutdown();
+    //         }
+    //         else if (strcmp(buffer, "clear") == 0)
+    //         {
+    //             console_clear(COLOR_WHITE, COLOR_BLACK);
+    //         }
+    //         else if (strcmp(buffer, "timer") == 0)
+    //         {
+    //             timer();
+    //         }
+    //         else if (strcmp(buffer, "memory") == 0)
+    //         {
+    //             memory();
+    //         }
+    //         else if (strcmp(buffer, "snake") == 0)
+    //         {
+    //             // snake_game();
+    //         }
+    //         else
+    //         {
+    //             printf("invalid command: %s\n", buffer);
+    //         }
+    //     }
+
+    //     printf("Terminal started\n");
+    // }

@@ -36,13 +36,15 @@ TARGET_ISO=$(OUT)/os.iso
 ISO_DIR=$(OUT)/isodir
 
 OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o\
-		$(ASM_OBJ)/load_idt.o $(ASM_OBJ)/exception.o $(ASM_OBJ)/irq.o\
+		$(ASM_OBJ)/load_idt.o $(ASM_OBJ)/exception.o $(ASM_OBJ)/irq.o $(ASM_OBJ)/bios32_call.o\
 		$(OBJ)/io.o $(OBJ)/vga.o\
 		$(OBJ)/string.o $(OBJ)/console.o\
 		$(OBJ)/gdt.o $(OBJ)/idt.o $(OBJ)/isr.o $(OBJ)/8259_pic.o\
 		$(OBJ)/keyboard.o $(OBJ)/timer.o\
 		$(OBJ)/pmm.o $(OBJ)/kheap.o \
 		$(OBJ)/paging.o  $(OBJ)/snake.o \
+		$(OBJ)/vesa.o $(OBJ)/fpu.o \
+		$(OBJ)/bios32.o \
 		$(OBJ)/kernel.o
 
 all: $(OBJECTS)
@@ -80,6 +82,11 @@ $(ASM_OBJ)/exception.o : $(ASM_SRC)/exception.asm
 $(ASM_OBJ)/irq.o : $(ASM_SRC)/irq.asm
 	@printf "[ $(ASM_SRC)/irq.asm ]\n"
 	$(ASM) $(ASM_FLAGS) $(ASM_SRC)/irq.asm -o $(ASM_OBJ)/irq.o
+	@printf "\n"
+
+$(ASM_OBJ)/bios32_call.o : $(ASM_SRC)/bios32_call.asm
+	@printf "[ $(ASM_SRC)/bios32_call.asm ]\n"
+	$(ASM) $(ASM_FLAGS) $(ASM_SRC)/bios32_call.asm -o $(ASM_OBJ)/bios32_call.o
 	@printf "\n"
 
 $(OBJ)/io.o : $(SRC)/io.c
@@ -154,6 +161,21 @@ $(OBJ)/paging.o : $(SRC)/paging.c
 $(OBJ)/snake.o : $(SRC)/snake.c
 	@printf "[ $(SRC)/snake.c ]\n"
 	$(CC) $(CC_FLAGS) -c $(SRC)/snake.c -o $(OBJ)/snake.o
+	@printf "\n"
+
+$(OBJ)/bios32.o : $(SRC)/bios32.c
+	@printf "[ $(SRC)/bios32.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/bios32.c -o $(OBJ)/bios32.o
+	@printf "\n"
+
+$(OBJ)/vesa.o : $(SRC)/vesa.c
+	@printf "[ $(SRC)/vesa.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/vesa.c -o $(OBJ)/vesa.o
+	@printf "\n"
+
+$(OBJ)/fpu.o : $(SRC)/fpu.c
+	@printf "[ $(SRC)/fpu.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/fpu.c -o $(OBJ)/fpu.o
 	@printf "\n"
 
 clean:
