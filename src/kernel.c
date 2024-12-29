@@ -230,7 +230,7 @@ void kmain(unsigned long magic, unsigned long addr)
             else if (strcmp(buffer, "help") == 0)
             {
                 printf("Hal Terminal\n");
-                printf("Commands: help, cpuid, echo, clear, timer, shutdown\n");
+                printf("Commands: help, cpuid, echo, clear, memory, timer, shutdown\n");
             }
             else if (is_echo(buffer))
             {
