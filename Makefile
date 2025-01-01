@@ -53,14 +53,14 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o\
 
 all: $(OBJECTS)
 	@printf "[ linking... ]\n"
-	$(LD) $(LD_FLAGS) -o $(TARGET) $(OBJECTS) || { echo "Linking failed"; exit 1; }
-	grub2-file --is-x86-multiboot $(TARGET) || { echo "Grub file check failed"; exit 1; }
+	$(LD) $(LD_FLAGS) -o $(TARGET) $(OBJECTS)
+	grub2-file --is-x86-multiboot $(TARGET)
 	@printf "\n"
 	@printf "[ building ISO... ]\n"
-	$(MKDIR) $(ISO_DIR)/boot/grub || { echo "Failed to create ISO directory"; exit 1; }
-	$(CP) $(TARGET) $(ISO_DIR)/boot/ || { echo "Failed to copy kernel to ISO"; exit 1; }
-	$(CP) $(CONFIG)/grub.cfg $(ISO_DIR)/boot/grub/ || { echo "Failed to copy grub.cfg to ISO"; exit 1; }
-	$(GRUB) -o $(TARGET_ISO) $(ISO_DIR) || { echo "Failed to create ISO"; exit 1; }
+	$(MKDIR) $(ISO_DIR)/boot/grub
+	$(CP) $(TARGET) $(ISO_DIR)/boot/
+	$(CP) $(CONFIG)/grub.cfg $(ISO_DIR)/boot/grub/
+	$(GRUB) -o $(TARGET_ISO) $(ISO_DIR)
 	rm -f $(TARGET)
 
 $(ASM_OBJ)/entry.o : $(ASM_SRC)/entry.asm
