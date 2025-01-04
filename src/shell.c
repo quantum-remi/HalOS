@@ -5,6 +5,8 @@
 #include "io.h"
 #include "timer.h"
 #include "snake.h"
+#include "vesa.h"
+#include "keyboard.h"
 
 #define BRAND_QEMU 1
 #define BRAND_VBOX 2
@@ -126,6 +128,34 @@ void float_print(const char *msg, float f, const char *end)
     ftoa(buf, f);
     printf("%s%s%s", msg, buf, end);
 }
+
+static void test_vesa() {
+    // Try to init 800x600x32 mode
+    if (vbe_init(800, 600, 32) != 0) {
+        printf("Failed to initialize VESA mode\n");
+        return;
+    }
+
+    // Draw some test pixels
+    for (int i = 0; i < 100; i++) {
+        // Red diagonal line
+        vbe_draw_pixel(i, i, vbe_rgb(255, 0, 0));
+        
+        // Green diagonal line
+        vbe_draw_pixel(i+100, i, vbe_rgb(0, 255, 0));
+        
+        // Blue diagonal line  
+        vbe_draw_pixel(i+200, i, vbe_rgb(0, 0, 255));
+    }
+
+    // Wait for keypress
+    printf("Press any key to return to text mode...\n");
+    kbhit();
+
+    // Return to text mode by reinitializing console
+    console_init(COLOR_WHITE, COLOR_BLACK);
+}
+
 void shell()
 {
     char buffer[255];
@@ -170,6 +200,10 @@ void shell()
         else if (strcmp(buffer, "snake") == 0)
         {
             snake_game();
+        }
+        else if (strcmp(buffer, "vesa") == 0)
+        {
+            test_vesa();
         }
         else
         {

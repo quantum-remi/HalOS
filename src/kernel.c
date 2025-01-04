@@ -15,6 +15,8 @@
 #include "vesa.h"
 #include "shell.h"
 
+MULTIBOOT_INFO *g_mboot_ptr;
+
 int get_kernel_memory_map(KERNEL_MEMORY_MAP *kmap, MULTIBOOT_INFO *mboot_info)
 {
     uint32 i;
@@ -83,38 +85,69 @@ void display_kernel_memory_map(KERNEL_MEMORY_MAP *kmap)
 }
 
 
-void kmain(unsigned long magic, unsigned long addr)
-{
+void kmain(unsigned long magic, unsigned long addr) {
     MULTIBOOT_INFO *mboot_info;
 
+    g_mboot_ptr = (MULTIBOOT_INFO *)addr;
+
+    // Initialize core subsystems
     gdt_init();
     idt_init();
-    timer_init();
-
     console_init(COLOR_WHITE, COLOR_BLACK);
-    keyboard_init();
-
-    fpu_enable();
-
-    if (magic == MULTIBOOT_BOOTLOADER_MAGIC) {
-        mboot_info = (MULTIBOOT_INFO *)addr;
-        memset(&g_kmap, 0, sizeof(KERNEL_MEMORY_MAP));
-        if (get_kernel_memory_map(&g_kmap, mboot_info) < 0) {
-            printf("error: failed to get kernel memory map\n");
-            return;
-        }
-        // put the memory bitmap at the start of the available memory
-        pmm_init(g_kmap.available.start_addr, g_kmap.available.size);
-        // initialize atleast 1MB blocks of memory for our heap
-        pmm_init_region(g_kmap.available.start_addr, PMM_BLOCK_SIZE * 256);
-        // initialize heap 256 blocks(1MB)
-        void *start = pmm_alloc_blocks(256);
-        void *end = start + (pmm_next_free_frame(1) * PMM_BLOCK_SIZE);
-        kheap_init(start, end);
-
-
-        shell();
-
-        printf("Terminal started\n");
+    
+    if (magic != MULTIBOOT_BOOTLOADER_MAGIC) {
+        printf("Invalid multiboot magic number: 0x%x\n", magic);
+        return;
     }
+
+    // Get memory map first
+    mboot_info = (MULTIBOOT_INFO *)addr;
+    memset(&g_kmap, 0, sizeof(KERNEL_MEMORY_MAP));
+    if (get_kernel_memory_map(&g_kmap, mboot_info) < 0) {
+        printf("Error: Failed to get kernel memory map\n");
+        return;
+    }
+
+    printf("Memory info:\n");
+    printf("Available memory: start=0x%x end=0x%x size=%d bytes\n",
+           g_kmap.available.start_addr,
+           g_kmap.available.end_addr,
+           g_kmap.available.size);
+
+    bios32_init();
+    // Initialize PMM with proper addresses
+    pmm_init(g_kmap.available.start_addr, g_kmap.available.size);
+    if (pmm_get_max_blocks() == 0) {
+        printf("Error: PMM initialization failed - no blocks available\n");
+        printf("PMM info: start=0x%x size=%d\n", 
+               g_kmap.available.start_addr,
+               g_kmap.available.size);
+        return;
+    }
+
+    // Initialize required memory regions
+    pmm_init_region(g_kmap.available.start_addr, PMM_BLOCK_SIZE * 256);
+    
+    // Initialize remaining subsystems
+    timer_init();
+    keyboard_init();
+    fpu_enable();
+    
+    // Initialize heap
+    void *heap_start = pmm_alloc_blocks(256);
+    if (!heap_start) {
+        printf("Error: Failed to allocate heap blocks\n");
+        return;
+    }
+    void *heap_end = heap_start + (PMM_BLOCK_SIZE * 256);
+    if (kheap_init(heap_start, heap_end) != 0) {
+        printf("Error: Failed to initialize heap\n");
+        return;
+    }
+
+    // printf("Initializing VBE...\n");
+    // vbe_init();
+
+    printf("System initialized successfully\n");
+    shell();
 }

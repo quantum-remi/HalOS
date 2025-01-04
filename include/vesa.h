@@ -2,72 +2,86 @@
 #define VESA_H
 
 #include "types.h"
+#include "bios32.h"
 
-// refer to documents under ref directory
+// VBE BIOS location
+#define BIOS_CONVENTIONAL_MEMORY 0x7E00
 
+// VBE Return Status codes
+#define VBE_SUCCESS      0x004F
+#define VBE_FAILED      0x014F
+#define VBE_UNSUPPORTED 0x024F
+
+// VBE Mode attributes
+#define VBE_MODE_LINEAR_FB     0x4000  // Linear framebuffer available
+
+// VBE Controller Information structure
 typedef struct {
-    char VbeSignature[4];           /* VBE Signature */
-    uint16 VbeVersion;              /* VBE version number */
-    char *OEMStringPtr;             /* Pointer to OEM string */
-    uint32 Capabilities;            /* Capabilities of video card */
-    uint32 *VideoModePtr;           /* Pointer to supported modes */
-    uint16 TotalMemory;             /* Number of 64kb memory blocks */
-    uint16 OemSoftwareRev;          /* VBE implementation Software revision */
-    uint32 OemVendorNamePtr;        /* Pointer to Vendor Name String */
-    uint32 OemProductNamePtr;       /* Pointer to Product Name String */
-    uint32 OemProductRevPtr;        /* Pointer to Product Revision String */
-    char reserved[222];             /* Pad to 256 byte block size */
-    char OemData[256];              /* Data Area for OEM Strings */
-}__attribute__ ((packed)) VBE20_INFOBLOCK;
+    char     signature[4];     // Must be "VESA" 
+    uint16   version;          // VBE version number
+    uint32   oem_string_ptr;   // Pointer to OEM string
+    uint32   capabilities;     // Controller capabilities
+    uint32   video_modes_ptr;  // Pointer to video mode list
+    uint16   total_memory;     // Memory size in 64KB blocks
+    uint16   oem_software_rev;
+    uint32   oem_vendor_name_ptr;
+    uint32   oem_product_name_ptr;
+    uint32   oem_product_rev_ptr;
+    uint8    reserved[222];    // Reserved for future expansion
+    uint8    oem_data[256];    // OEM scratchpad
+} __attribute__((packed)) VBE_CONTROLLER_INFO;
 
+// VBE Mode Information structure
 typedef struct {
-    // Mandatory information for all VBE revisions
-    uint16 ModeAttributes;          /* Mode attributes */
-    uint8 WinAAttributes;           /* Window A attributes */
-    uint8 WinBAttributes;           /* Window B attributes */
-    uint16 WinGranularity;          /* Window granularity in k */
-    uint16 WinSize;                 /* Window size in k */
-    uint16 WinASegment;             /* Window A segment */
-    uint16 WinBSegment;             /* Window B segment */
-    void (*WinFuncPtr)(void);       /* Pointer to window function */
-    uint16 BytesPerScanLine;        /* Bytes per scanline */
+    uint16   mode_attributes;
+    uint8    window_a_attributes;
+    uint8    window_b_attributes; 
+    uint16   window_granularity;
+    uint16   window_size;
+    uint16   window_a_segment;
+    uint16   window_b_segment;
+    uint32   window_func_ptr;
+    uint16   bytes_per_scanline;
+    
+    // Resolution and color info
+    uint16   x_resolution;
+    uint16   y_resolution; 
+    uint8    x_char_size;
+    uint8    y_char_size;
+    uint8    number_of_planes;
+    uint8    bits_per_pixel;
+    uint8    number_of_banks;
+    uint8    memory_model;
+    uint8    bank_size;
+    
+    // Color masks for direct color modes
+    uint8    red_mask_size;
+    uint8    red_field_position;
+    uint8    green_mask_size;
+    uint8    green_field_position; 
+    uint8    blue_mask_size;
+    uint8    blue_field_position;
+    uint8    reserved_mask_size;
+    uint8    reserved_field_position;
+    
+    // Direct color mode info
+    uint8    direct_color_mode_info;
+    
+    // Linear framebuffer
+    uint32   phys_base_ptr;      // Physical address for flat frame buffer
+    uint32   reserved1;
+    uint16   reserved2;
+    
+    uint8    reserved3[206];
+} __attribute__((packed)) VBE_MODE_INFO;
 
-    // Mandatory information for VBE 1.2 and above
-    uint16 XResolution;             /* Horizontal resolution */
-    uint16 YResolution;             /* Vertical resolution */
-    uint8 XCharSize;                /* Character cell width */
-    uint8 YCharSize;                /* Character cell height */
-    uint8 NumberOfPlanes;           /* Number of memory planes */
-    uint8 BitsPerPixel;             /* Bits per pixel */
-    uint8 NumberOfBanks;            /* Number of CGA style banks */
-    uint8 MemoryModel;              /* Memory model type */
-    uint8 BankSize;                 /* Size of CGA style banks */
-    uint8 NumberOfImagePages;       /* Number of images pages */
-    uint8 Reserved;                 /* Reserved */
-
-    // Direct color fields
-    uint8 RedMaskSize;              /* Size of direct color red mask */
-    uint8 RedFieldPosition;         /* Bit posn of lsb of red mask */
-    uint8 GreenMaskSize;            /* Size of direct color green mask */
-    uint8 GreenFieldPosition;       /* Bit posn of lsb of green mask */
-    uint8 BlueMaskSize;             /* Size of direct color blue mask */
-    uint8 BlueFieldPosition;        /* Bit posn of lsb of blue mask */
-    uint8 RsvdMaskSize;             /* Size of direct color res mask */
-    uint8 RsvdFieldPosition;        /* Bit posn of lsb of res mask */
-    uint8 DirectColorModeInfo;      /* Direct color mode attributes */
-
-    // Mandatory information for VBE 2.0 and above
-    uint32 PhysBasePtr;             /* physical address for flat frame buffer */
-    uint32 OffScreenMemOffset;      /* pointer to start of off screen memory */
-    uint16 OffScreenMemSize;        /* amount of off screen memory in 1k units */
-    uint8 Reserved2[206];           /* remainder of ModeInfoBlock */
-} VBE20_MODEINFOBLOCK;
-
-
-int vesa_init(uint32 width, uint32 height, uint32 bpp);
+// Function prototypes
+uint16 vbe_get_controller_info(void);
+uint16 vbe_get_mode_info(uint16 mode);
+void vbe_set_mode(uint16 mode);
+uint16 vbe_find_mode(uint32 width, uint32 height, uint32 bpp);
+void vbe_draw_pixel(int x, int y, uint32 color);
 uint32 vbe_rgb(uint8 red, uint8 green, uint8 blue);
-void vbe_putpixel(int x, int y, int color);
+int vbe_init(uint32 width, uint32 height, uint32 bpp);
 
-#define VBE_RGB(r, g, b) vbe_rgb(r, g, b)
-
-#endif
+#endif // VESA_H

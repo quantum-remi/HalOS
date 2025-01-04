@@ -64,6 +64,15 @@ void bios32_service(uint8 interrupt, REGISTERS16 *in, REGISTERS16 *out) {
 }
 
 // bios interrupt call
+// void int86(uint8 interrupt, REGISTERS16 *in, REGISTERS16 *out) {
+//     bios32_service(interrupt, in, out);
+// }
 void int86(uint8 interrupt, REGISTERS16 *in, REGISTERS16 *out) {
+    printf("Debug: BIOS32 call int 0x%x\n", interrupt);
+    printf("Debug: Input registers: AX=0x%x ES=0x%x DI=0x%x\n", 
+           in->ax, in->es, in->di);
+    
     bios32_service(interrupt, in, out);
+    
+    printf("Debug: Output registers: AX=0x%x\n", out->ax);
 }
