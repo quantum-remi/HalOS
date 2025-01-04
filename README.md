@@ -1,10 +1,10 @@
-# µelektra Operating System
+# HAL Operating System
 
 A minimalist, experimental operating system project.
 
 ## Overview
 
-µelektra OS is a custom operating system built from scratch, focusing on simplicity and educational purposes.
+HAL OS is a custom operating system built from scratch, focusing on simplicity and educational purposes.
 
 ## Features
 
