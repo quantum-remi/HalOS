@@ -46,7 +46,7 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o\
 		$(OBJ)/pmm.o $(OBJ)/kheap.o \
 		$(OBJ)/paging.o  $(OBJ)/snake.o \
 		$(OBJ)/vesa.o $(OBJ)/fpu.o \
-		$(OBJ)/bios32.o \
+		$(OBJ)/bios32.o $(OBJ)/shell.o \
 		$(OBJ)/kernel.o
 
 .PHONY: all
@@ -180,6 +180,11 @@ $(OBJ)/vesa.o : $(SRC)/vesa.c
 $(OBJ)/fpu.o : $(SRC)/fpu.c
 	@printf "[ $(SRC)/fpu.c ]\n"
 	$(CC) $(CC_FLAGS) -c $(SRC)/fpu.c -o $(OBJ)/fpu.o
+	@printf "\n"
+
+$(OBJ)/shell.o : $(SRC)/shell.c
+	@printf "[ $(SRC)/shell.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/shell.c -o $(OBJ)/shell.o
 	@printf "\n"
 
 clean:
