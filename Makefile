@@ -50,7 +50,8 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o\
 		$(OBJ)/serial.o $(OBJ)/printf.o \
 		$(OBJ)/kernel.o
 
-.PHONY: all
+.PHONY: all	
+
 
 all: $(OBJECTS)
 	@printf "[ linking... ]\n"
@@ -197,6 +198,9 @@ $(OBJ)/printf.o : $(SRC)/printf.c
 	@printf "[ $(SRC)/printf.c ]\n"
 	$(CC) $(CC_FLAGS) -c $(SRC)/printf.c -o $(OBJ)/printf.o
 	@printf "\n"
+
+qemu:
+	qemu-system-i386 -m 64 -vga std -cdrom $(TARGET_ISO) -serial stdio
 
 clean:
 	rm -f $(OBJ)/*.o
