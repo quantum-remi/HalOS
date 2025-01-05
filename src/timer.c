@@ -71,3 +71,14 @@ void usleep(int usec) {
     uint32 end = g_ticks + (usec * g_freq_hz) / 1000000;
     while (g_ticks < end);
 }
+
+void uptime() {
+    console_printf("uptime: %d seconds\n", g_ticks / g_freq_hz);
+}
+
+unsigned int seed;
+
+int rand(void) {
+    seed = seed * 1103515245 + 12345 + g_ticks;
+    return (seed / 65536) % 32768;
+}

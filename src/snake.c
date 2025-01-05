@@ -2,7 +2,6 @@
 #include "timer.h"
 #include "keyboard.h"
 #include "vesa.h"
-#include "vga.h"
 
 static int g_start_x;
 static int g_start_y;
@@ -24,12 +23,6 @@ static int g_start_y;
 #define COLOR_BG        VBE_RGB(0, 0, 0)      
 #define COLOR_SCORE     VBE_RGB(255, 255, 255)
 
-// Random number generator
-static unsigned int seed = 123456789;
-static int rand() {
-    seed = seed * 1103515245 + 12345;
-    return (seed / 65536) % 32768;
-}
 
 typedef struct {
     int x, y;

@@ -68,12 +68,9 @@ void shutdown()
 
 void timer()
 {
-    int i;
-    for (i = 0; i < 10; i++)
-    {
-        console_printf("Hello, World!\n");
-        sleep(1);
-    }
+    uptime();
+    sleep(1);
+
 }
 
 void memory()
@@ -170,7 +167,53 @@ static void test_vesa() {
         }
     }
 }
+void yuri()
+{
+    while (1)
+    {
+        console_printf("Yuri is Peak!\n");
+        sleep(1);
+        if (kbhit())
+        {
+            char c = kb_getchar();
+            if (c == 'q')
+                break;
+        }
+    }
+    
+}
 
+void haiku()
+{
+    const char *five_syllable_lines[] = {
+        "An old silent pond",
+        "Autumn moonlight",
+        "In the cicada's cry",
+        "A world of dew",
+        "The light of a star"
+    };
+
+    const char *seven_syllable_lines[] = {
+        "A frog jumps into the pond",
+        "Shadows stretch across the lake",
+        "The summer grass whispers soft",
+        "Dew drops glisten in the sun",
+        "Waves crashing against the rocks"
+    };
+
+    size_t five_count = sizeof(five_syllable_lines) / sizeof(five_syllable_lines[0]);
+    size_t seven_count = sizeof(seven_syllable_lines) / sizeof(seven_syllable_lines[0]);
+
+    // Generate random indices
+    size_t index1 = rand() % five_count;
+    size_t index2 = rand() % seven_count;
+    size_t index3 = rand() % five_count;
+
+    console_printf("here is a haiku:\n");
+    console_printf("%s\n", five_syllable_lines[index1]);
+    console_printf("%s\n", seven_syllable_lines[index2]);
+    console_printf("%s\n", five_syllable_lines[index3]);
+}
 void shell()
 {
     char buffer[255];
@@ -187,10 +230,33 @@ void shell()
         {
             cpuid_info(1);
         }
+        else if (strcmp(buffer, "haiku") == 0)
+        {
+            haiku();
+        }
         else if (strcmp(buffer, "help") == 0)
         {
-            console_printf("Hal Terminal\n");
-            console_printf("Commands: help, cpuid, echo, clear, memory, timer, shutdown, snake, vesa\n");
+            console_printf("Hal OS Terminal\n");
+            console_printf("--------------------------------------------------------------\n");
+            console_printf("Available Commands:\n");
+            console_printf("--------------------------------------------------------------\n");
+            console_printf("  help      - Display this help message\n");
+            console_printf("  cpuid     - Display CPU information\n");
+            console_printf("  haiku     - Display a haiku\n");
+            console_printf("  echo      - Echo a message to the console\n");
+            console_printf("  clear     - Clear the console screen\n");
+            console_printf("  memory    - Display system memory information\n");
+            console_printf("  timer     - Display system timer information\n");
+            console_printf("  shutdown  - Shut down the system\n");
+            console_printf("  snake     - Play a game of Snake\n");
+            console_printf("  vesa      - Display VESA graphics information\n");
+            console_printf("  version   - Display Hal OS version information\n");
+            console_printf("  yuri      - Display Yuri is Peak!\n");
+            console_printf("--------------------------------------------------------------\n");
+        }
+        else if (strcmp(buffer, "help /f") == 0)
+        {
+            console_printf("help, cpuid, haiku, echo, clear, memory, timer, shutdown, snake, vesa, version, yuri\n");
         }
         else if (is_echo(buffer))
         {
@@ -219,6 +285,18 @@ void shell()
         else if (strcmp(buffer, "vesa") == 0)
         {
             test_vesa();
+        }
+        else if (strcmp(buffer, "version") == 0)
+        {
+            console_printf("--------------------------------------------------------------\n");
+            console_printf("Hal OS v0.5.0\n");
+            console_printf("Built on: %s %s\n", __DATE__, __TIME__);
+            console_printf("Built with: GCC %s\n", __VERSION__);
+            console_printf("--------------------------------------------------------------\n");
+        }
+        else if (strcmp(buffer, "yuri") == 0)
+        {
+            yuri();
         }
         else
         {
