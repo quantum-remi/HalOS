@@ -48,6 +48,7 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o\
 		$(OBJ)/vesa.o $(OBJ)/fpu.o \
 		$(OBJ)/bios32.o $(OBJ)/shell.o \
 		$(OBJ)/serial.o $(OBJ)/printf.o \
+		$(OBJ)/pci.o \
 		$(OBJ)/kernel.o
 
 .PHONY: all	
@@ -197,6 +198,11 @@ $(OBJ)/serial.o : $(SRC)/serial.c
 $(OBJ)/printf.o : $(SRC)/printf.c
 	@printf "[ $(SRC)/printf.c ]\n"
 	$(CC) $(CC_FLAGS) -c $(SRC)/printf.c -o $(OBJ)/printf.o
+	@printf "\n"
+
+$(OBJ)/pci.o : $(SRC)/pci.c
+	@printf "[ $(SRC)/pci.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/pci.c -o $(OBJ)/pci.o
 	@printf "\n"
 
 qemu:

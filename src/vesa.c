@@ -6,7 +6,6 @@
 #include "string.h"
 #include "types.h"
 #include "serial.h"
-
 // vbe information
 VBE20_INFOBLOCK g_vbe_infoblock;
 VBE20_MODEINFOBLOCK g_vbe_modeinfoblock;
