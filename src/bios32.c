@@ -40,7 +40,7 @@ void bios32_init() {
 */
 void bios32_service(uint8 interrupt, REGISTERS16 *in, REGISTERS16 *out) {
     void *new_code_base = (void *)0x7c00;
-
+    serial_printf("BIOS32: Calling interrupt 0x%x\n", interrupt);
     // copy our GDT entries g_gdt to bios32_gdt_entries(bios32_call.asm)
     memcpy(&bios32_gdt_entries, g_gdt, sizeof(g_gdt));
     // set base_address of bios32_gdt_entries(bios32_call.asm) starting from 0x7c00
@@ -55,7 +55,7 @@ void bios32_service(uint8 interrupt, REGISTERS16 *in, REGISTERS16 *out) {
     void *in_reg16_address = REBASE_ADDRESS(&bios32_in_reg16_ptr);
     // copy bios interrupt number to bios32_int_number_ptr(bios32_call.asm)
     memcpy(&bios32_int_number_ptr, &interrupt, sizeof(uint8));
-
+    serial_printf("BIOS32: Copying data to 0x%x\n", new_code_base);
     // copy bios32_call.asm code to new_code_base address
     uint32 size = (uint32)BIOS32_END - (uint32)BIOS32_START;
     memcpy(new_code_base, BIOS32_START, size);
@@ -65,6 +65,7 @@ void bios32_service(uint8 interrupt, REGISTERS16 *in, REGISTERS16 *out) {
     in_reg16_address = REBASE_ADDRESS(&bios32_out_reg16_ptr);
     memcpy(out, in_reg16_address, sizeof(REGISTERS16));
 
+    serial_printf("BIOS32: Output registers: AX=0x%x\n", out->ax);
     // re-initialize the gdt and idt
     gdt_init();
     idt_init();
@@ -74,11 +75,11 @@ void bios32_service(uint8 interrupt, REGISTERS16 *in, REGISTERS16 *out) {
 //     bios32_service(interrupt, in, out);
 // }
 void int86(uint8 interrupt, REGISTERS16 *in, REGISTERS16 *out) {
-    console_printf("Debug: BIOS32 call int 0x%x\n", interrupt);
-    console_printf("Debug: Input registers: AX=0x%x ES=0x%x DI=0x%x\n", 
-           in->ax, in->es, in->di);
+    // console_printf("Debug: BIOS32 call int 0x%x\n", interrupt);
+    // console_printf("Debug: Input registers: AX=0x%x ES=0x%x DI=0x%x\n", 
+    //        in->ax, in->es, in->di);
     
     bios32_service(interrupt, in, out);
     
-    console_printf("Debug: Output registers: AX=0x%x\n", out->ax);
+    // console_printf("Debug: Output registers: AX=0x%x\n", out->ax);
 }

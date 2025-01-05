@@ -102,39 +102,33 @@ int vesa_init(uint32 width, uint32 height, uint32 bpp) {
     bios32_init();
     serial_printf("VESA: BIOS32 initialized\n");
     
-    // Verify BIOS memory is accessible
-    serial_printf("VESA: Testing BIOS memory access...\n");
-    if ((void*)BIOS_CONVENTIONAL_MEMORY == NULL) {
-        serial_printf("VESA: Invalid BIOS memory address\n");
+    serial_printf("initializing vesa vbe 2.0\n");
+    if (!get_vbe_info()) {
+        serial_printf("No VESA VBE 2.0 detected\n");
         return -1;
     }
-
-    // Get VBE Info with more detailed debugging
-    serial_printf("VESA: Getting VBE info...\n");
-    REGISTERS16 in = {0}, out = {0};
-    in.ax = 0x4F00;
-    in.di = BIOS_CONVENTIONAL_MEMORY;
-    
-    serial_printf("VESA: Calling int 0x10...\n");
-    int86(0x10, &in, &out);
-    
-    if (out.ax != 0x4F) {
-        serial_printf("VESA: VBE call failed\n");
-        return -1;
-    }
-    
-    // Copy VBE info with validation
-    serial_printf("VESA: Copying VBE info...\n");
-    memcpy(&g_vbe_infoblock, (void *)BIOS_CONVENTIONAL_MEMORY, sizeof(VBE20_INFOBLOCK));
-    
-    // Validate VBE signature
-    if (g_vbe_infoblock.VbeSignature[0] != 'V' || 
-        g_vbe_infoblock.VbeSignature[1] != 'B' ||
-        g_vbe_infoblock.VbeSignature[2] != 'E' ||
-        g_vbe_infoblock.VbeSignature[3] != '2') {
-        serial_printf("VESA: Invalid VBE signature\n");
-        return -1;
-    }
+    // set this to 1 to print all available modes to console
+    #define PRINT_MODES 0
+    #if PRINT_MODES
+        serial_printf("Press UP and DOWN arrow keys to scroll\n");
+        serial_printf("Modes:\n");
+        vbe_print_available_modes();
+        return 1;
+    #else
+        g_selected_mode = vbe_find_mode(width, height, bpp);
+        if (g_selected_mode == -1) {
+            serial_printf("failed to find mode for %d-%d\n", width, height);
+            return -1;
+        }
+        serial_printf("\nselected mode: %d \n", g_selected_mode);
+        // set selection resolution to width & height
+        g_width = g_vbe_modeinfoblock.XResolution;
+        g_height = g_vbe_modeinfoblock.YResolution;
+        // set selected mode video physical address point to buffer for pixel plotting
+        g_vbe_buffer = (uint32 *)g_vbe_modeinfoblock.PhysBasePtr;
+        // set the mode to start graphics window
+        vbe_set_mode(g_selected_mode);
+    #endif
     
     serial_printf("VESA: VBE2 detected successfully\n");
     return 0;

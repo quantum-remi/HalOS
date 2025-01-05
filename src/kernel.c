@@ -31,21 +31,36 @@ int get_kernel_memory_map(KERNEL_MEMORY_MAP *kmap, MULTIBOOT_INFO *mboot_info)
     kmap->kernel.k_end_addr = (uint32)&__kernel_section_end;
     kmap->kernel.k_len = ((uint32)&__kernel_section_end - (uint32)&__kernel_section_start);
 
+    serial_printf("kernel-start: 0x%x, kernel-end: 0x%x, TOTAL: %d bytes\n",
+           kmap->kernel.k_start_addr, kmap->kernel.k_end_addr, kmap->kernel.k_len);
+
     kmap->kernel.text_start_addr = (uint32)&__kernel_text_section_start;
     kmap->kernel.text_end_addr = (uint32)&__kernel_text_section_end;
     kmap->kernel.text_len = ((uint32)&__kernel_text_section_end - (uint32)&__kernel_text_section_start);
+
+    serial_printf("text-start: 0x%x, text-end: 0x%x, TOTAL: %d bytes\n",
+           kmap->kernel.text_start_addr, kmap->kernel.text_end_addr, kmap->kernel.text_len);
 
     kmap->kernel.data_start_addr = (uint32)&__kernel_data_section_start;
     kmap->kernel.data_end_addr = (uint32)&__kernel_data_section_end;
     kmap->kernel.data_len = ((uint32)&__kernel_data_section_end - (uint32)&__kernel_data_section_start);
 
+    serial_printf("data-start: 0x%x, data-end: 0x%x, TOTAL: %d bytes\n",
+           kmap->kernel.data_start_addr, kmap->kernel.data_end_addr, kmap->kernel.data_len);
+
     kmap->kernel.rodata_start_addr = (uint32)&__kernel_rodata_section_start;
     kmap->kernel.rodata_end_addr = (uint32)&__kernel_rodata_section_end;
     kmap->kernel.rodata_len = ((uint32)&__kernel_rodata_section_end - (uint32)&__kernel_rodata_section_start);
 
+    serial_printf("rodata-start: 0x%x, rodata-end: 0x%x, TOTAL: %d bytes\n",
+           kmap->kernel.rodata_start_addr, kmap->kernel.rodata_end_addr, kmap->kernel.rodata_len);
+
     kmap->kernel.bss_start_addr = (uint32)&__kernel_bss_section_start;
     kmap->kernel.bss_end_addr = (uint32)&__kernel_bss_section_end;
     kmap->kernel.bss_len = ((uint32)&__kernel_bss_section_end - (uint32)&__kernel_bss_section_start);
+
+    serial_printf("bss-start: 0x%x, bss-end: 0x%x, TOTAL: %d bytes\n",
+           kmap->kernel.bss_start_addr, kmap->kernel.bss_end_addr, kmap->kernel.bss_len);
 
     kmap->system.total_memory = mboot_info->mem_low + mboot_info->mem_high;
 
@@ -54,12 +69,15 @@ int get_kernel_memory_map(KERNEL_MEMORY_MAP *kmap, MULTIBOOT_INFO *mboot_info)
         MULTIBOOT_MEMORY_MAP *mmap = (MULTIBOOT_MEMORY_MAP *)(mboot_info->mmap_addr + i);
         if (mmap->type != MULTIBOOT_MEMORY_AVAILABLE)
             continue;
+        serial_printf("Memory region: start=0x%x, len=%d\n", mmap->addr_low, mmap->len_low);
         // make sure kernel is loaded at 0x100000 by bootloader(see linker.ld)
         if (mmap->addr_low == kmap->kernel.text_start_addr)
         {
             // set available memory starting from end of our kernel, leaving 1MB size for functions exceution
             kmap->available.start_addr = kmap->kernel.k_end_addr + 1024 * 1024;
             kmap->available.end_addr = mmap->addr_low + mmap->len_low;
+
+            serial_printf("Available memory: start=0x%x, len=%d\n", kmap->available.start_addr, kmap->available.end_addr - kmap->available.start_addr);
             // get availabel memory in bytes
             kmap->available.size = kmap->available.end_addr - kmap->available.start_addr;
             return 0;
@@ -116,20 +134,60 @@ void kmain(unsigned long magic, unsigned long addr) {
         console_printf("Invalid multiboot magic number: 0x%x\n", magic);
         return;
     }
+    
+    REGISTERS16 in = {0}, out = {0};
+    in.ax = 0xE820;
+    in.cx = 0x14;
+    in.dx = 0x534D4150; // "SMAP"
+    in.es = 0x0;
+    in.di = 0x0;
+
+    // Try using a different function code
+    in.ax = 0xE801;
+
+    serial_printf("Calling int 0x15...\n");
+    int86(0x15, &in, &out);
+
+     // Print out the return values
+    serial_printf("AX: 0x%x\n", out.ax);
+    serial_printf("BX: 0x%x\n", out.bx);
+    serial_printf("CX: 0x%x\n", out.cx);
+    serial_printf("DX: 0x%x\n", out.dx);
+
+    // Check if the BIOS returned an error code
+    if (out.ax != 0x534D4150) { // "SMAP"
+        serial_printf("Error: BIOS returned error code 0x%x\n", out.ax);
+        // Handle the error here
+    }
+
+    // Parse the memory map data
+    uint32 base_address = out.bx;
+    uint32 size = out.cx;
+    uint32 type = out.dx;
+
+    serial_printf("Memory region: base=0x%x size=0x%x type=0x%x\n", base_address, size, type);
+
 
     // Get memory map first
     mboot_info = (MULTIBOOT_INFO *)addr;
     memset(&g_kmap, 0, sizeof(KERNEL_MEMORY_MAP));
     if (get_kernel_memory_map(&g_kmap, mboot_info) < 0) {
         console_printf("Error: Failed to get kernel memory map\n");
+        serial_printf("Error: Failed to get kernel memory map\n");
+        console_printf("System initialization failed\n");
+        serial_printf("Memory info:\n");
+        serial_printf("Available memory: start=0x%x end=0x%x size=%d bytes\n",
+            g_kmap.available.start_addr,
+            g_kmap.available.end_addr,
+            g_kmap.available.size);
+        serial_printf("MBoot info:\n");
+        serial_printf("  flags: 0x%x\n", mboot_info->flags);
+        serial_printf("  mem_lower: 0x%x\n", mboot_info->mem_low);
+        serial_printf("  mem_upper: 0x%x\n", mboot_info->mem_high);
+        serial_printf("  boot_device: 0x%x\n", mboot_info->boot_device);
+        serial_printf("  cmdline: %s\n", mboot_info->cmdline);
         return;
     }
-    serial_printf("Getting kernel memory map...\n");
-    console_printf("Memory info:\n");
-    console_printf("Available memory: start=0x%x end=0x%x size=%d bytes\n",
-           g_kmap.available.start_addr,
-           g_kmap.available.end_addr,
-           g_kmap.available.size);
     serial_printf("Kernel memory map initialized\n");
 
     serial_printf("Initializing BIOS32...\n");

@@ -4,6 +4,7 @@
 #include "io.h"
 #include "pmm.h"
 #include "string.h"
+#include "serial.h"
 
 BOOL g_is_paging_enabled = FALSE;
 
@@ -51,7 +52,7 @@ void page_fault_handler(REGISTERS *r) {
     uint32 faulting_address;
     asm volatile("mov %%cr2, %0"
                  : "=r"(faulting_address));
-    console_printf("Segmentation fault 0x%x\n", faulting_address);
+    serial_printf("Segmentation fault 0x%x\n", faulting_address);
     while (1)
         ;
 }
@@ -59,7 +60,7 @@ void page_fault_handler(REGISTERS *r) {
 void paging_init() {
     int i;
     uint32 cr0;
-
+    serial_printf("Initializing paging...\n");
     memset(g_page_directory, 0, sizeof(g_page_directory));
     memset(g_page_tables, 0, sizeof(g_page_tables));
 
@@ -67,6 +68,8 @@ void paging_init() {
         // set present and read/write bits
         g_page_directory[i] = 0x00000002;
     }
+
+    serial_printf("page directory: 0x%x\n", g_page_directory);
 
     for (i = 0; i < 1024; i++) {
         // set present, read/write, suprevisor and frame address starting from 4096
@@ -88,6 +91,8 @@ void paging_init() {
     asm volatile("mov %0, %%cr0" ::"r"(cr0));
 
     g_is_paging_enabled = TRUE;
+
+    serial_printf("Paging initialized\n");
 }
 
 

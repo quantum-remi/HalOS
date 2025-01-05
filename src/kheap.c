@@ -3,6 +3,7 @@
 #include "kernel.h"
 #include "pmm.h"
 #include "string.h"
+#include "serial.h"
 
 // start & end addresses pointing to memory
 void *g_kheap_start_addr = NULL, *g_kheap_end_addr = NULL;
@@ -24,6 +25,7 @@ int kheap_init(void *start_addr, void *end_addr) {
     g_total_size = end_addr - start_addr;
     g_total_used_size = 0;
     return 0;
+    serial_printf("kheap initialized\n");
 }
 
 /**
