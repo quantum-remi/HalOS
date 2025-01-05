@@ -1,7 +1,7 @@
 #include "vga.h"
 #include "io.h"
 #include "types.h"
-
+#include "serial.h"
 
 uint16 vga_item_entry(uint8 ch, VGA_COLOR_TYPE fore_color, VGA_COLOR_TYPE back_color) {
     uint16 ax = 0;

@@ -190,7 +190,7 @@ void shell()
         else if (strcmp(buffer, "help") == 0)
         {
             console_printf("Hal Terminal\n");
-            console_printf("Commands: help, cpuid, echo, clear, memory, timer, shutdown\n");
+            console_printf("Commands: help, cpuid, echo, clear, memory, timer, shutdown, snake, vesa\n");
         }
         else if (is_echo(buffer))
         {
