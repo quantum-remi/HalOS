@@ -7,6 +7,7 @@
 #include "snake.h"
 #include "vesa.h"
 #include "keyboard.h"
+#include "tss.h"
 
 #define BRAND_QEMU 1
 #define BRAND_VBOX 2
@@ -281,6 +282,10 @@ void shell()
         else if (strcmp(buffer, "snake") == 0)
         {
             snake_game();
+        }
+        else if (strcmp(buffer, "tss") == 0)
+        {
+            tss_print();
         }
         else if (strcmp(buffer, "vesa") == 0)
         {

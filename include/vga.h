@@ -39,18 +39,18 @@ typedef enum {
  * 
  * returns complete item with fore & back color to be placed at VGA address
 */
-uint16 vga_item_entry(uint8 ch, VGA_COLOR_TYPE fore_color, VGA_COLOR_TYPE back_color);
+// uint16 vga_item_entry(uint8 ch, VGA_COLOR_TYPE fore_color, VGA_COLOR_TYPE back_color);
 
 /**
  * set cursor position to given (x, y)
  * by writing to CRT controller registers
  */
-void vga_set_cursor_pos(uint8 x, uint8 y);
+// void vga_set_cursor_pos(uint8 x, uint8 y);
 
 /**
  * disable blinking top-left cursor
  * by writing to CRT controller registers
  */
-void vga_disable_cursor();
+// void vga_disable_cursor();
 
 #endif

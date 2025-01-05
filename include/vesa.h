@@ -64,6 +64,9 @@ typedef struct {
 } VBE20_MODEINFOBLOCK;
 
 
+uint32 vbe_get_width();
+uint32 vbe_get_height();
+
 int vesa_init(uint32 width, uint32 height, uint32 bpp);
 uint32 vbe_rgb(uint8 red, uint8 green, uint8 blue);
 void vbe_putpixel(int x, int y, int color);

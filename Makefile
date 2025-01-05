@@ -37,7 +37,7 @@ TARGET=$(OUT)/kernel.bin
 TARGET_ISO=$(OUT)/os.iso
 ISO_DIR=$(OUT)/isodir
 
-OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o\
+OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o $(ASM_OBJ)/load_tss.o \
 		$(ASM_OBJ)/load_idt.o $(ASM_OBJ)/exception.o $(ASM_OBJ)/irq.o $(ASM_OBJ)/bios32_call.o\
 		$(OBJ)/io.o $(OBJ)/vga.o\
 		$(OBJ)/string.o $(OBJ)/console.o\
@@ -48,7 +48,7 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o\
 		$(OBJ)/vesa.o $(OBJ)/fpu.o \
 		$(OBJ)/bios32.o $(OBJ)/shell.o \
 		$(OBJ)/serial.o $(OBJ)/printf.o \
-		$(OBJ)/pci.o \
+		$(OBJ)/tss.o \
 		$(OBJ)/kernel.o
 
 .PHONY: all	
@@ -79,6 +79,11 @@ $(ASM_OBJ)/load_gdt.o : $(ASM_SRC)/load_gdt.asm
 $(ASM_OBJ)/load_idt.o : $(ASM_SRC)/load_idt.asm
 	@printf "[ $(ASM_SRC)/load_idt.asm ]\n"
 	$(ASM) $(ASM_FLAGS) $(ASM_SRC)/load_idt.asm -o $(ASM_OBJ)/load_idt.o
+	@printf "\n"
+
+$(ASM_OBJ)/load_tss.o : $(ASM_SRC)/load_tss.asm
+	@printf "[ $(ASM_SRC)/load_tss.asm ]\n"
+	$(ASM) $(ASM_FLAGS) $(ASM_SRC)/load_tss.asm -o $(ASM_OBJ)/load_tss.o
 	@printf "\n"
 
 $(ASM_OBJ)/exception.o : $(ASM_SRC)/exception.asm
@@ -200,10 +205,15 @@ $(OBJ)/printf.o : $(SRC)/printf.c
 	$(CC) $(CC_FLAGS) -c $(SRC)/printf.c -o $(OBJ)/printf.o
 	@printf "\n"
 
-$(OBJ)/pci.o : $(SRC)/pci.c
-	@printf "[ $(SRC)/pci.c ]\n"
-	$(CC) $(CC_FLAGS) -c $(SRC)/pci.c -o $(OBJ)/pci.o
+$(OBJ)/tss.o : $(SRC)/tss.c
+	@printf "[ $(SRC)/tss.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/tss.c -o $(OBJ)/tss.o
 	@printf "\n"
+
+# $(OBJ)/pci.o : $(SRC)/pci.c
+# 	@printf "[ $(SRC)/pci.c ]\n"
+# 	$(CC) $(CC_FLAGS) -c $(SRC)/pci.c -o $(OBJ)/pci.o
+# 	@printf "\n"
 
 qemu:
 	qemu-system-i386 -m 64 -vga std -cdrom $(TARGET_ISO) -serial stdio

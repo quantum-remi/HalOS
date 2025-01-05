@@ -16,7 +16,7 @@
 #include "shell.h"
 #include "bios32.h"
 #include "serial.h"
-
+#include "tss.h"
 MULTIBOOT_INFO *g_mboot_ptr;
 
 int get_kernel_memory_map(KERNEL_MEMORY_MAP *kmap, MULTIBOOT_INFO *mboot_info) {
@@ -94,6 +94,8 @@ void kmain(unsigned long magic, unsigned long addr) {
     gdt_init();
     serial_printf("Initializing IDT...\n");
     idt_init();
+    serial_printf("Initializing TSS...\n");
+    tss_init();
     serial_printf("Initializing console...\n");
     if(vesa_init(800, 600, 32) != 0) {
         serial_printf("ERROR: VESA init failed\n");

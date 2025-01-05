@@ -16,6 +16,14 @@ uint32 g_width = 0, g_height = 0;
 // buffer pointer pointing to video memory
 uint32 *g_vbe_buffer = NULL;
 
+uint32 vbe_get_width() {
+    return g_width;
+}
+
+uint32 vbe_get_height() {
+    return g_height;
+}
+
 // get vbe info
 int get_vbe_info() {
     REGISTERS16 in = {0}, out = {0};
