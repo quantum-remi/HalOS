@@ -29,6 +29,7 @@ void timer_set_frequency(uint16 f) {
 
 
 void timer_handler(REGISTERS* r) {
+    (void)r;
     uint32 i;
     TIMER_FUNC_ARGS *args = NULL;
     g_ticks++;
@@ -46,7 +47,7 @@ void timer_handler(REGISTERS* r) {
 void timer_register_function(TIMER_FUNCTION function, TIMER_FUNC_ARGS *args) {
     uint32 index = 0;
     if (function == NULL || args == NULL) {
-        printf("ERROR: failed to register timer function %x\n", function);
+        console_printf("ERROR: failed to register timer function %x\n", function);
         return;
     }
     index = (++g_timer_function_manager.current_index) % MAXIMUM_TIMER_FUNCTIONS;

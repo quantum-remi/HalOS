@@ -3,6 +3,7 @@
 #include "gdt.h"
 #include "idt.h"
 #include "string.h"
+#include "serial.h"
 
 IDT_PTR g_real_mode_gdt;
 IDT_PTR g_real_mode_idt;
@@ -16,14 +17,20 @@ void (*exec_bios32_function)() = (void *)0x7c00;
  this data will be copied when bios32_service() is called
  */
 void bios32_init() {
-    // 16bit code segment
+    serial_printf("BIOS32: Initializing...\n");
+    
+    // Setup GDT entries for real mode transition
     gdt_set_entry(6, 0, 0xffffffff, 0x9A, 0x0f);
-    // 16bit data segment
     gdt_set_entry(7, 0, 0xffffffff, 0x92, 0x0f);
-    // real mode gdt ptr
+    
+    // Setup real mode environment
     g_real_mode_gdt.base_address = (uint32)g_gdt;
     g_real_mode_gdt.limit = sizeof(g_gdt) - 1;
-    // real mode idt ptr
+    g_real_mode_idt.base_address = 0;
+    g_real_mode_idt.limit = 0x3ff;
+    
+    serial_printf("BIOS32: GDT setup complete. Base=0x%x Limit=0x%x\n");
+    // copy output registers to out
     g_real_mode_idt.base_address = 0;
     g_real_mode_idt.limit = 0x3ff;
 }
@@ -62,17 +69,16 @@ void bios32_service(uint8 interrupt, REGISTERS16 *in, REGISTERS16 *out) {
     gdt_init();
     idt_init();
 }
-
 // bios interrupt call
 // void int86(uint8 interrupt, REGISTERS16 *in, REGISTERS16 *out) {
 //     bios32_service(interrupt, in, out);
 // }
 void int86(uint8 interrupt, REGISTERS16 *in, REGISTERS16 *out) {
-    printf("Debug: BIOS32 call int 0x%x\n", interrupt);
-    printf("Debug: Input registers: AX=0x%x ES=0x%x DI=0x%x\n", 
+    console_printf("Debug: BIOS32 call int 0x%x\n", interrupt);
+    console_printf("Debug: Input registers: AX=0x%x ES=0x%x DI=0x%x\n", 
            in->ax, in->es, in->di);
     
     bios32_service(interrupt, in, out);
     
-    printf("Debug: Output registers: AX=0x%x\n", out->ax);
+    console_printf("Debug: Output registers: AX=0x%x\n", out->ax);
 }

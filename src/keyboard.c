@@ -63,6 +63,7 @@ char alternate_chars(char ch) {
 }
 
 void keyboard_handler(REGISTERS *r) {
+    (void)r;
     int scancode;
 
     g_ch = 0;

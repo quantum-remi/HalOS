@@ -14,14 +14,18 @@
 #include "fpu.h"
 #include "vesa.h"
 #include "shell.h"
+#include "bios32.h"
+#include "serial.h"
 
 MULTIBOOT_INFO *g_mboot_ptr;
 
 int get_kernel_memory_map(KERNEL_MEMORY_MAP *kmap, MULTIBOOT_INFO *mboot_info)
 {
     uint32 i;
+    serial_printf("Initializing kernel memory map...\n");
 
     if (kmap == NULL)
+        serial_printf("ERROR: kmap is NULL!\n");
         return -1;
     kmap->kernel.k_start_addr = (uint32)&__kernel_section_start;
     kmap->kernel.k_end_addr = (uint32)&__kernel_section_end;
@@ -61,26 +65,26 @@ int get_kernel_memory_map(KERNEL_MEMORY_MAP *kmap, MULTIBOOT_INFO *mboot_info)
             return 0;
         }
     }
-
+    serial_printf("ERROR: Failed to find kernel memory region!\n");
     return -1;
 }
 void display_kernel_memory_map(KERNEL_MEMORY_MAP *kmap)
 {
-    printf("kernel:\n");
-    printf("  kernel-start: 0x%x, kernel-end: 0x%x, TOTAL: %d bytes\n",
+    console_printf("kernel:\n");
+    console_printf("  kernel-start: 0x%x, kernel-end: 0x%x, TOTAL: %d bytes\n",
            kmap->kernel.k_start_addr, kmap->kernel.k_end_addr, kmap->kernel.k_len);
-    printf("  text-start: 0x%x, text-end: 0x%x, TOTAL: %d bytes\n",
+    console_printf("  text-start: 0x%x, text-end: 0x%x, TOTAL: %d bytes\n",
            kmap->kernel.text_start_addr, kmap->kernel.text_end_addr, kmap->kernel.text_len);
-    printf("  data-start: 0x%x, data-end: 0x%x, TOTAL: %d bytes\n",
+    console_printf("  data-start: 0x%x, data-end: 0x%x, TOTAL: %d bytes\n",
            kmap->kernel.data_start_addr, kmap->kernel.data_end_addr, kmap->kernel.data_len);
-    printf("  rodata-start: 0x%x, rodata-end: 0x%x, TOTAL: %d\n",
+    console_printf("  rodata-start: 0x%x, rodata-end: 0x%x, TOTAL: %d\n",
            kmap->kernel.rodata_start_addr, kmap->kernel.rodata_end_addr, kmap->kernel.rodata_len);
-    printf("  bss-start: 0x%x, bss-end: 0x%x, TOTAL: %d\n",
+    console_printf("  bss-start: 0x%x, bss-end: 0x%x, TOTAL: %d\n",
            kmap->kernel.bss_start_addr, kmap->kernel.bss_end_addr, kmap->kernel.bss_len);
 
-    printf("total_memory: %d KB\n", kmap->system.total_memory);
-    printf("available:\n");
-    printf("  start_adddr: 0x%x\n  end_addr: 0x%x\n  size: %d\n",
+    console_printf("total_memory: %d KB\n", kmap->system.total_memory);
+    console_printf("available:\n");
+    console_printf("  start_adddr: 0x%x\n  end_addr: 0x%x\n  size: %d\n",
            kmap->available.start_addr, kmap->available.end_addr, kmap->available.size);
 }
 
@@ -89,14 +93,27 @@ void kmain(unsigned long magic, unsigned long addr) {
     MULTIBOOT_INFO *mboot_info;
 
     g_mboot_ptr = (MULTIBOOT_INFO *)addr;
-
+    // Initialize serial port
+    serial_init();
+    serial_printf("\n=== Boot Sequence Started ===\n");
     // Initialize core subsystems
+    serial_printf("Initializing GDT...\n");
     gdt_init();
+    serial_printf("Initializing IDT...\n");
     idt_init();
+    serial_printf("Initializing console...\n");
+    if(vesa_init(800, 600, 32) != 0) {
+        serial_printf("ERROR: VESA init failed\n");
+        return;
+    }
+    serial_printf("VESA initialized\n");
+    
     console_init(COLOR_WHITE, COLOR_BLACK);
+    serial_printf("Console initialized\n");
     
     if (magic != MULTIBOOT_BOOTLOADER_MAGIC) {
-        printf("Invalid multiboot magic number: 0x%x\n", magic);
+        serial_printf("ERROR: Invalid multiboot magic number!\n");
+        console_printf("Invalid multiboot magic number: 0x%x\n", magic);
         return;
     }
 
@@ -104,50 +121,58 @@ void kmain(unsigned long magic, unsigned long addr) {
     mboot_info = (MULTIBOOT_INFO *)addr;
     memset(&g_kmap, 0, sizeof(KERNEL_MEMORY_MAP));
     if (get_kernel_memory_map(&g_kmap, mboot_info) < 0) {
-        printf("Error: Failed to get kernel memory map\n");
+        console_printf("Error: Failed to get kernel memory map\n");
         return;
     }
-
-    printf("Memory info:\n");
-    printf("Available memory: start=0x%x end=0x%x size=%d bytes\n",
+    serial_printf("Getting kernel memory map...\n");
+    console_printf("Memory info:\n");
+    console_printf("Available memory: start=0x%x end=0x%x size=%d bytes\n",
            g_kmap.available.start_addr,
            g_kmap.available.end_addr,
            g_kmap.available.size);
+    serial_printf("Kernel memory map initialized\n");
 
+    serial_printf("Initializing BIOS32...\n");
     bios32_init();
     // Initialize PMM with proper addresses
     pmm_init(g_kmap.available.start_addr, g_kmap.available.size);
     if (pmm_get_max_blocks() == 0) {
-        printf("Error: PMM initialization failed - no blocks available\n");
-        printf("PMM info: start=0x%x size=%d\n", 
+        console_printf("Error: PMM initialization failed - no blocks available\n");
+        console_printf("PMM info: start=0x%x size=%d\n", 
                g_kmap.available.start_addr,
                g_kmap.available.size);
         return;
     }
-
+    serial_printf("PMM initialized successfully\n");
     // Initialize required memory regions
+    serial_printf("Initializing memory regions...\n");
     pmm_init_region(g_kmap.available.start_addr, PMM_BLOCK_SIZE * 256);
-    
+    serial_printf("Memory regions initialized\n");
+
     // Initialize remaining subsystems
+    serial_printf("Initializing timer...\n");    
     timer_init();
+    serial_printf("Initializing keyboard...\n");
     keyboard_init();
+    serial_printf("Initializing FPU...\n");
     fpu_enable();
     
+    serial_printf("Initializing paging...\n");
     // Initialize heap
     void *heap_start = pmm_alloc_blocks(256);
     if (!heap_start) {
-        printf("Error: Failed to allocate heap blocks\n");
+        console_printf("Error: Failed to allocate heap blocks\n");
         return;
     }
     void *heap_end = heap_start + (PMM_BLOCK_SIZE * 256);
     if (kheap_init(heap_start, heap_end) != 0) {
-        printf("Error: Failed to initialize heap\n");
+        console_printf("Error: Failed to initialize heap\n");
         return;
     }
 
     // printf("Initializing VBE...\n");
     // vbe_init();
-
-    printf("System initialized successfully\n");
+    serial_printf("System initialized successfully\n");
+    console_printf("System initialized successfully\n");
     shell();
 }

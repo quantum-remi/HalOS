@@ -1,94 +1,85 @@
 #include "vesa.h"
+#include "bios32.h"
 #include "console.h"
-#include "pmm.h"
-#include "string.h"
-#include "multiboot.h"
 #include "io.h"
+#include "isr.h"
+#include "string.h"
+#include "types.h"
+#include "serial.h"
 
-#define BIOS_CONVENTIONAL_MEMORY 0x7E00
+// vbe information
+VBE20_INFOBLOCK g_vbe_infoblock;
+VBE20_MODEINFOBLOCK g_vbe_modeinfoblock;
+// selected mode
+int g_selected_mode = -1;
+// selected mode width & height
+uint32 g_width = 0, g_height = 0;
+// buffer pointer pointing to video memory
+uint32 *g_vbe_buffer = NULL;
 
-// Global state
-static VBE_CONTROLLER_INFO g_vbe_info;
-static VBE_MODE_INFO g_mode_info; 
-static uint16 g_selected_mode = 0;
-static uint32 g_width = 0, g_height = 0;
-static uint32 *g_framebuffer = NULL;
-
-uint16 vbe_get_controller_info(void) {
-    REGISTERS16 regs = {0};
-    
-    // Set up VBE call using conventional memory
-    regs.ax = 0x4F00;
-    regs.di = BIOS_CONVENTIONAL_MEMORY;
-    
-    // Write VBE2 signature
-    char *sig = (char*)BIOS_CONVENTIONAL_MEMORY;
-    sig[0] = 'V'; sig[1] = 'B'; sig[2] = 'E'; sig[3] = '2';
-    
-    int86(0x10, &regs, &regs);
-    
-    if (regs.ax != 0x004F) {
-        return 0;
-    }
-
-    // Copy info from conventional memory
-    memcpy(&g_vbe_info, (void*)BIOS_CONVENTIONAL_MEMORY, 
-           sizeof(VBE_CONTROLLER_INFO));
-           
-    return 1;
+// get vbe info
+int get_vbe_info() {
+    REGISTERS16 in = {0}, out = {0};
+    // set specific value 0x4F00 in ax to get vbe info into bios memory area
+    in.ax = 0x4F00;
+    // set address pointer to BIOS_CONVENTIONAL_MEMORY where vbe info struct will be stored
+    in.di = BIOS_CONVENTIONAL_MEMORY;
+    int86(0x10, &in, &out);  // call video interrupt 0x10
+    // copy vbe info data to our global variable g_vbe_infoblock
+    memcpy(&g_vbe_infoblock, (void *)BIOS_CONVENTIONAL_MEMORY, sizeof(VBE20_INFOBLOCK));
+    return (out.ax == 0x4F);
 }
 
-uint16 vbe_get_mode_info(uint16 mode) {
-    REGISTERS16 regs = {0};
-    
-    regs.ax = 0x4F01;
-    regs.cx = mode;
-    regs.di = BIOS_CONVENTIONAL_MEMORY + 1024;
-    
-    int86(0x10, &regs, &regs);
-    
-    if (regs.ax != 0x004F) {
-        return 0;
-    }
-    
-    memcpy(&g_mode_info, (void*)(BIOS_CONVENTIONAL_MEMORY + 1024),
-           sizeof(VBE_MODE_INFO));
-           
-    return 1;
+void get_vbe_mode_info(uint16 mode, VBE20_MODEINFOBLOCK *mode_info) {
+    REGISTERS16 in = {0}, out = {0};
+    // set specific value 0x4F00 in ax to get vbe mode info into some other bios memory area
+    in.ax = 0x4F01;
+    in.cx = mode; // set mode info to get
+    in.di = BIOS_CONVENTIONAL_MEMORY + 1024;  // address pointer, different than used in get_vbe_info()
+    int86(0x10, &in, &out);  // call video interrupt 0x10
+    // copy vbe mode info data to parameter mode_info
+    memcpy(mode_info, (void *)BIOS_CONVENTIONAL_MEMORY + 1024, sizeof(VBE20_MODEINFOBLOCK));
 }
 
-void vbe_set_mode(uint16 mode) {
-    REGISTERS16 regs = {0};
-    regs.ax = 0x4F02;
-    regs.bx = mode | 0x4000; // Set LFB bit
-    int86(0x10, &regs, &regs);
+void vbe_set_mode(uint32 mode) {
+    REGISTERS16 in = {0}, out = {0};
+    // set any given mode, mode is to find by resolution X & Y
+    in.ax = 0x4F02;
+    in.bx = mode;
+    int86(0x10, &in, &out);  // call video interrupt 0x10 to set mode
 }
 
-uint16 vbe_find_mode(uint32 width, uint32 height, uint32 bpp) {
-    uint16 *mode_list = (uint16*)g_vbe_info.video_modes_ptr;
+// find the vbe mode by width & height & bits per pixel
+uint32 vbe_find_mode(uint32 width, uint32 height, uint32 bpp) {
+    // iterate through video modes list
+    uint16 *mode_list = (uint16 *)g_vbe_infoblock.VideoModePtr;
     uint16 mode = *mode_list++;
-    
-    while (mode != 0xFFFF) {
-        if (vbe_get_mode_info(mode)) {
-            if (g_mode_info.x_resolution == width &&
-                g_mode_info.y_resolution == height && 
-                g_mode_info.bits_per_pixel == bpp) {
-                return mode;
-            }
+    while (mode != 0xffff) {
+        // get each mode info
+        get_vbe_mode_info(mode, &g_vbe_modeinfoblock);
+        if (g_vbe_modeinfoblock.XResolution == width && g_vbe_modeinfoblock.YResolution == height && g_vbe_modeinfoblock.BitsPerPixel == bpp) {
+            return mode;
         }
         mode = *mode_list++;
     }
-    return 0;
+    return -1;
 }
 
-void vbe_draw_pixel(int x, int y, uint32 color) {
-    if (x < 0 || x >= g_width || y < 0 || y >= g_height) {
-        return;
+// print availabel modes to console
+void vbe_print_available_modes() {
+    VBE20_MODEINFOBLOCK modeinfoblock;
+
+    // iterate through video modes list
+    uint16 *mode_list = (uint16 *)g_vbe_infoblock.VideoModePtr;
+    uint16 mode = *mode_list++;
+    while (mode != 0xffff) {
+        get_vbe_mode_info(mode, &modeinfoblock);
+        console_printf("Mode: %d, X: %d, Y: %d\n", mode, modeinfoblock.XResolution, modeinfoblock.YResolution);
+        mode = *mode_list++;
     }
-    uint32 offset = y * g_width + x;
-    g_framebuffer[offset] = color;
 }
 
+// set rgb values in 32 bit number
 uint32 vbe_rgb(uint8 red, uint8 green, uint8 blue) {
     uint32 color = red;
     color <<= 16;
@@ -97,32 +88,54 @@ uint32 vbe_rgb(uint8 red, uint8 green, uint8 blue) {
     return color;
 }
 
-int vbe_init(uint32 width, uint32 height, uint32 bpp) {
-    printf("Initializing VESA VBE 2.0\n");
+// put the pixel on the given x,y point
+void vbe_putpixel(int x, int y, int color) {
+    uint32 i = y * g_width + x;
+    *(g_vbe_buffer + i) = color;
+}
+
+int vesa_init(uint32 width, uint32 height, uint32 bpp) {
+    serial_printf("VESA: Starting initialization...\n");
     
-    if (!vbe_get_controller_info()) {
-        printf("No VESA VBE 2.0 detected\n");
+    // Initialize BIOS32 interface
+    serial_printf("VESA: Initializing BIOS32...\n");
+    bios32_init();
+    serial_printf("VESA: BIOS32 initialized\n");
+    
+    // Verify BIOS memory is accessible
+    serial_printf("VESA: Testing BIOS memory access...\n");
+    if ((void*)BIOS_CONVENTIONAL_MEMORY == NULL) {
+        serial_printf("VESA: Invalid BIOS memory address\n");
         return -1;
     }
 
-    g_selected_mode = vbe_find_mode(width, height, bpp);
-    if (!g_selected_mode) {
-        printf("Failed to find mode %dx%dx%d\n", width, height, bpp);
+    // Get VBE Info with more detailed debugging
+    serial_printf("VESA: Getting VBE info...\n");
+    REGISTERS16 in = {0}, out = {0};
+    in.ax = 0x4F00;
+    in.di = BIOS_CONVENTIONAL_MEMORY;
+    
+    serial_printf("VESA: Calling int 0x10...\n");
+    int86(0x10, &in, &out);
+    
+    if (out.ax != 0x4F) {
+        serial_printf("VESA: VBE call failed\n");
         return -1;
     }
-
-    printf("Found compatible mode: 0x%x\n", g_selected_mode);
     
-    // Get final mode info
-    vbe_get_mode_info(g_selected_mode);
+    // Copy VBE info with validation
+    serial_printf("VESA: Copying VBE info...\n");
+    memcpy(&g_vbe_infoblock, (void *)BIOS_CONVENTIONAL_MEMORY, sizeof(VBE20_INFOBLOCK));
     
-    // Set global state
-    g_width = g_mode_info.x_resolution;
-    g_height = g_mode_info.y_resolution;
-    g_framebuffer = (uint32*)g_mode_info.phys_base_ptr;
+    // Validate VBE signature
+    if (g_vbe_infoblock.VbeSignature[0] != 'V' || 
+        g_vbe_infoblock.VbeSignature[1] != 'B' ||
+        g_vbe_infoblock.VbeSignature[2] != 'E' ||
+        g_vbe_infoblock.VbeSignature[3] != '2') {
+        serial_printf("VESA: Invalid VBE signature\n");
+        return -1;
+    }
     
-    // Set the mode
-    vbe_set_mode(g_selected_mode);
-    
+    serial_printf("VESA: VBE2 detected successfully\n");
     return 0;
 }

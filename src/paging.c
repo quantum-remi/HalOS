@@ -51,7 +51,7 @@ void page_fault_handler(REGISTERS *r) {
     uint32 faulting_address;
     asm volatile("mov %%cr2, %0"
                  : "=r"(faulting_address));
-    printf("Segmentation fault 0x%x\n", faulting_address);
+    console_printf("Segmentation fault 0x%x\n", faulting_address);
     while (1)
         ;
 }
@@ -107,11 +107,11 @@ void *paging_get_physical_address(void *virtual_addr) {
     uint32 page_table_index = (uint32)virtual_addr >> 12 & 0x03FF;
     uint32 page_frame_offset = (uint32)virtual_addr & 0xfff;
     if (!CHECK_BIT(g_page_directory[page_dir_index], 1)) {
-        printf("physical address: page directory entry does not exists\n");
+        console_printf("physical address: page directory entry does not exists\n");
         return NULL;
     }
     if (!CHECK_BIT(g_page_tables[page_table_index], 1)) {
-        printf("physical address: page table entry does not exist\n");
+        console_printf("physical address: page table entry does not exist\n");
         return NULL;
     }
     uint32 addr = g_page_tables[page_table_index] >> 11;
@@ -133,7 +133,7 @@ void paging_allocate_page(void *virtual_addr) {
 
     // if page directory is not currently present, then allocate a new one
     if (!CHECK_BIT(g_page_directory[page_dir_index], 1)) {
-        printf("alloc: page directory entry does not exists for 0x%x\n", virtual_addr);
+        console_printf("alloc: page directory entry does not exists for 0x%x\n", virtual_addr);
         // set present, read/write, user and cache accessed,
         g_page_directory[page_dir_index] = 27;
         uint32 addr = (uint32)pmm_alloc_block();
@@ -141,7 +141,7 @@ void paging_allocate_page(void *virtual_addr) {
         return;
     }
     if (!CHECK_BIT(g_page_tables[page_table_index], 1)) {
-        printf("alloc: page table entry does not exists for 0x%x\n", virtual_addr);
+        console_printf("alloc: page table entry does not exists for 0x%x\n", virtual_addr);
         return;
     }
 }
@@ -155,11 +155,11 @@ void paging_free_page(void *virtual_addr) {
     uint32 page_table_index = (uint32)virtual_addr >> 12 & 0x03FF;
 
     if (!CHECK_BIT(g_page_directory[page_dir_index], 1)) {
-        printf("free: page directory entry does not exists\n");
+        console_printf("free: page directory entry does not exists\n");
         return;
     }
     if (!CHECK_BIT(g_page_tables[page_table_index], 1)) {
-        printf("free: page table entry does not exists\n");
+        console_printf("free: page table entry does not exists\n");
         return;
     }
     // clear out from directory & table as we have allocated all the tables in paging_init()

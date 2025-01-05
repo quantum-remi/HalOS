@@ -142,3 +142,19 @@ char *strstr(const char *in, const char *str) {
 
     return (char *)(in - 1);
 }
+
+void *memmove(void *dest, const void *src, size_t n) {
+    uint8 *pdest = (uint8 *)dest;
+    const uint8 *psrc = (const uint8 *)src;
+
+    if (pdest < psrc) {
+        for (size_t i = 0; i < n; i++) {
+            pdest[i] = psrc[i];
+        }
+    } else {
+        for (size_t i = n; i > 0; i--) {
+            pdest[i-1] = psrc[i-1];
+        }
+    }
+    return dest;
+}

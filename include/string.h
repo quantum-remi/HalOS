@@ -2,6 +2,7 @@
 #define STRING_H
 
 #include "types.h"
+#include <stddef.h>
 
 void *memset(void *dst, char c, uint32 n);
 
@@ -27,5 +28,7 @@ char lower(char c);
 void itoa(char *buf, int base, int d);
 
 char *strstr(const char *in, const char *str);
+
+void *memmove(void *dest, const void *src, size_t n);
 
 #endif

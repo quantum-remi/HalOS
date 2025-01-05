@@ -16,7 +16,7 @@ KHEAP_BLOCK *g_head = NULL;
 */
 int kheap_init(void *start_addr, void *end_addr) {
     if (start_addr > end_addr) {
-        printf("failed to init kheap\n");
+        console_printf("failed to init kheap\n");
         return -1;
     }
     g_kheap_start_addr = start_addr;
@@ -47,9 +47,9 @@ void *kbrk(int size) {
 */
 void kheap_print_blocks() {
     KHEAP_BLOCK *temp = g_head;
-    printf("Block Size: %d\n", sizeof(KHEAP_BLOCK));
+    console_printf("Block Size: %d\n", sizeof(KHEAP_BLOCK));
     while (temp != NULL) {
-        printf("size:%d, free:%d, data: 0x%x, curr: 0x%x, next: 0x%x\n",
+        console_printf("size:%d, free:%d, data: 0x%x, curr: 0x%x, next: 0x%x\n",
                temp->metadata.size, temp->metadata.is_free, temp->data, temp, temp->next);
         temp = temp->next;
     }
