@@ -6,6 +6,7 @@
 #include "string.h"
 #include "types.h"
 #include "serial.h"
+
 // vbe information
 VBE20_INFOBLOCK g_vbe_infoblock;
 VBE20_MODEINFOBLOCK g_vbe_modeinfoblock;
@@ -34,7 +35,10 @@ int get_vbe_info() {
     int86(0x10, &in, &out);  // call video interrupt 0x10
     // copy vbe info data to our global variable g_vbe_infoblock
     memcpy(&g_vbe_infoblock, (void *)BIOS_CONVENTIONAL_MEMORY, sizeof(VBE20_INFOBLOCK));
-    return (out.ax == 0x4F);
+    if (out.ax != 0x4F) {
+        return 0;
+    }
+    return 1;
 }
 
 void get_vbe_mode_info(uint16 mode, VBE20_MODEINFOBLOCK *mode_info) {
