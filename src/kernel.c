@@ -84,20 +84,23 @@ void display_kernel_memory_map(KERNEL_MEMORY_MAP *kmap)
 
 void kmain(unsigned long magic, unsigned long addr) {
     MULTIBOOT_INFO *mboot_info;
-
     g_mboot_ptr = (MULTIBOOT_INFO *)addr;
     // Initialize serial port
     serial_init();
     serial_printf("\n=== Boot Sequence Started ===\n");
     // Initialize core subsystems
+    struct resolution resolution;
     serial_printf("Initializing GDT...\n");
     gdt_init();
     serial_printf("Initializing IDT...\n");
     idt_init();
     serial_printf("Initializing TSS...\n");
     tss_init();
+    resolution.x = 1024;
+    resolution.y = 768;
+    serial_printf("setting up resolution to %d x %d\n", resolution.x, resolution.y);
     serial_printf("Initializing console...\n");
-    if(vesa_init(800, 600, 32) != 0) {
+    if(vesa_init(resolution.x, resolution.y, 32) != 0) {
         serial_printf("ERROR: VESA init failed\n");
         return;
     }

@@ -2,6 +2,7 @@
 #include "timer.h"
 #include "keyboard.h"
 #include "vesa.h"
+#include "kernel.h"
 
 static int g_start_x;
 static int g_start_y;
@@ -9,12 +10,12 @@ static int g_start_y;
 // Game constants
 #define CELL_SIZE 16  
 #define BORDER_SIZE 2 
-#define BOARD_WIDTH 25  
-#define BOARD_HEIGHT 20 
+#define BOARD_WIDTH 30  
+#define BOARD_HEIGHT 40 
 #define SNAKE_MAX_LENGTH 100
 
-#define SCREEN_WIDTH 800
-#define SCREEN_HEIGHT 600
+#define SCREEN_WIDTH 1280
+#define SCREEN_HEIGHT 1024
 
 // Colors
 #define COLOR_BORDER    VBE_RGB(128, 128, 128)

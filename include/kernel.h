@@ -15,6 +15,12 @@ extern uint8 __kernel_rodata_section_end;
 extern uint8 __kernel_bss_section_start;
 extern uint8 __kernel_bss_section_end;
 
+struct resolution {
+    uint32 x;
+    uint32 y;
+    
+};
+
 typedef struct {
     struct {
         uint32 k_start_addr;
