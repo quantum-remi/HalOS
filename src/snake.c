@@ -224,7 +224,8 @@ void snake_game() {
     draw_border();
     
     int update_counter = 0;
-    const int update_threshold = 25;
+    int update_threshold = 25;
+    int length_threshold = 5;
     const int sleep_time = 10000;
 
     while(!game_over) {
@@ -237,7 +238,10 @@ void snake_game() {
             draw_game();
             update_counter = 0;
         }
-        
+        if (snake.length >= length_threshold) {
+            update_threshold -= 1;
+            length_threshold += 1;
+        }
         update_counter++;
         usleep(sleep_time);
     }
