@@ -177,7 +177,7 @@ void yuri()
     while (1)
     {
         console_printf("Yuri is Peak!\n");
-        sleep(1);
+        usleep(100000);
         if (kbhit())
         {
             char c = kb_getchar();

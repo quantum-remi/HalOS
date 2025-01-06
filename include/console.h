@@ -5,14 +5,14 @@
 #include "types.h"
 
 // Constants
-#define MAXIMUM_PAGES  16
+#define MAXIMUM_PAGES  32
 #define SCROLL_UP     1
 #define SCROLL_DOWN   2
 
 #define FONT_WIDTH 8
 #define FONT_HEIGHT 16
-#define CONSOLE_COLS 100
-#define CONSOLE_ROWS 37
+#define CONSOLE_COLS 128
+#define CONSOLE_ROWS 48
 
 // Function declarations
 void draw_char(int x, int y, char c, uint32 fg, uint32 bg);

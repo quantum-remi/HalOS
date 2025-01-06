@@ -11,11 +11,11 @@ static int g_start_y;
 #define CELL_SIZE 16  
 #define BORDER_SIZE 2 
 #define BOARD_WIDTH 30  
-#define BOARD_HEIGHT 40 
+#define BOARD_HEIGHT 25 
 #define SNAKE_MAX_LENGTH 100
 
-#define SCREEN_WIDTH 1280
-#define SCREEN_HEIGHT 1024
+#define SCREEN_WIDTH 1024
+#define SCREEN_HEIGHT 768
 
 // Colors
 #define COLOR_BORDER    VBE_RGB(128, 128, 128)
