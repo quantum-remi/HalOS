@@ -48,7 +48,7 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o $(ASM_OBJ)/load_tss.o \
 		$(OBJ)/vesa.o $(OBJ)/fpu.o \
 		$(OBJ)/bios32.o $(OBJ)/shell.o \
 		$(OBJ)/serial.o $(OBJ)/printf.o \
-		$(OBJ)/tss.o \
+		$(OBJ)/tss.o $(OBJ)/liballoc.o $(OBJ)/liballoc_hook.o \
 		$(OBJ)/kernel.o
 
 .PHONY: all	
@@ -204,6 +204,17 @@ $(OBJ)/tss.o : $(SRC)/mm/tss.c
 	@printf "[ $(SRC)/mm/tss.c ]\n"
 	$(CC) $(CC_FLAGS) -c $(SRC)/mm/tss.c -o $(OBJ)/tss.o
 	@printf "\n"
+
+$(OBJ)/liballoc.o : $(SRC)/mm/liballoc.c
+	@printf "[ $(SRC)/mm/liballoc.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/mm/liballoc.c -o $(OBJ)/liballoc.o
+	@printf "\n"
+
+$(OBJ)/liballoc_hook.o : $(SRC)/mm/liballoc_hook.c
+	@printf "[ $(SRC)/mm/liballoc_hook.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/mm/liballoc_hook.c -o $(OBJ)/liballoc_hook.o
+	@printf "\n"
+
 
 # $(OBJ)/pci.o : $(SRC)/pci.c
 # 	@printf "[ $(SRC)/pci.c ]\n"

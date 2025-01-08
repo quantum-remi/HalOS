@@ -9,7 +9,7 @@
 #include "timer.h"
 #include "pmm.h"
 #include "paging.h"
-#include "kheap.h"
+// #include "kheap.h"
 #include "snake.h"
 #include "fpu.h"
 #include "vesa.h"
@@ -17,6 +17,7 @@
 #include "bios32.h"
 #include "serial.h"
 #include "tss.h"
+#include "liballoc.h"
 MULTIBOOT_INFO *g_mboot_ptr;
 
 int get_kernel_memory_map(KERNEL_MEMORY_MAP *kmap, MULTIBOOT_INFO *mboot_info) {
@@ -81,6 +82,28 @@ void display_kernel_memory_map(KERNEL_MEMORY_MAP *kmap)
            kmap->available.start_addr, kmap->available.end_addr, kmap->available.size);
 }
 
+void test_memory_allocation()
+{
+    void* block = malloc(4096);  // Allocate 1 block (4 KB)
+    if (block) {
+        console_printf("Allocated 4 KB block at: %p\n", block);
+        memset(block, 0xAA, 4096);  // Fill it with test data
+        free(block);               // Free the block
+        console_printf("Freed 4 KB block at: %p\n", block);
+    } else {
+        console_printf("Failed to allocate 4 KB block\n");
+    }
+
+    void* blocks = malloc(8192);  // Allocate 2 blocks (8 KB)
+    if (blocks) {
+        console_printf("Allocated 8 KB block at: %p\n", blocks);
+        memset(blocks, 0xBB, 8192);  // Fill it with test data
+        free(blocks);                // Free the blocks
+        console_printf("Freed 8 KB block at: %p\n", blocks);
+    } else {
+        console_printf("Failed to allocate 8 KB block\n");
+    }
+}
 
 void kmain(unsigned long magic, unsigned long addr) {
     MULTIBOOT_INFO *mboot_info;
@@ -130,7 +153,7 @@ void kmain(unsigned long magic, unsigned long addr) {
         // initialize heap 256 blocks(1MB)
         void *start = pmm_alloc_blocks(256);
         void *end = start + (pmm_next_free_frame(1) * PMM_BLOCK_SIZE);
-        kheap_init(start, end);
+        // kheap_init(start, end);
 
         serial_printf("Kernel memory map initialized\n");
 
@@ -161,21 +184,24 @@ void kmain(unsigned long magic, unsigned long addr) {
         
         serial_printf("Initializing paging...\n");
         // Initialize heap
-        void *heap_start = pmm_alloc_blocks(256);
-        if (!heap_start) {
-            console_printf("Error: Failed to allocate heap blocks\n");
-            return;
-        }
-        void *heap_end = heap_start + (PMM_BLOCK_SIZE * 256);
-        if (kheap_init(heap_start, heap_end) != 0) {
-            console_printf("Error: Failed to initialize heap\n");
-            return;
-        }
+        // void *heap_start = pmm_alloc_blocks(256);
+        // if (!heap_start) {
+        //     console_printf("Error: Failed to allocate heap blocks\n");
+        //     return;
+        // }
+        // void *heap_end = heap_start + (PMM_BLOCK_SIZE * 256);
+        // if (kheap_init(heap_start, heap_end) != 0) {
+        //     console_printf("Error: Failed to initialize heap\n");
+        //     return;
+        // }
 
         // printf("Initializing VBE...\n");
         // vbe_init();
         serial_printf("System initialized successfully\n");
         console_printf("System initialized successfully\n");
+
+        test_memory_allocation();
+
         shell();
     }
     else {
