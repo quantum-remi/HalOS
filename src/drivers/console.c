@@ -50,15 +50,16 @@ void draw_char(int x, int y, char c, uint32 fg, uint32 bg) {
 }
 
 void console_clear(VGA_COLOR_TYPE fore_color, VGA_COLOR_TYPE back_color) {
-    (void)fore_color;
-    (void)back_color;
+    serial_printf("Console: Clearing screen with fore %u back %u...\n", fore_color, back_color);
     for(int y = 0; y < CONSOLE_ROWS * FONT_HEIGHT; y++) {
         for(int x = 0; x < CONSOLE_COLS * FONT_WIDTH; x++) {
             vbe_putpixel(x, y, console.back_color);
         }
     }
+    serial_printf("Console: Clearing buffer...\n");
     memset(console.text_buffer, 0, sizeof(console.text_buffer));
     console.cursor_x = console.cursor_y = 0;
+    serial_printf("Console: Clearing complete\n");
 }
 
 void console_scroll(int direction) {
