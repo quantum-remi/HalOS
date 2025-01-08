@@ -114,39 +114,6 @@ void kmain(unsigned long magic, unsigned long addr) {
         console_printf("Invalid multiboot magic number: 0x%x\n", magic);
         return;
     }
-    
-    REGISTERS16 in = {0}, out = {0};
-    in.ax = 0xE820;
-    in.cx = 0x14;
-    in.dx = 0x534D4150; // "SMAP"
-    in.es = 0x0;
-    in.di = 0x0;
-
-    // Try using a different function code
-    in.ax = 0xE801;
-
-    serial_printf("Calling int 0x15...\n");
-    int86(0x15, &in, &out);
-
-     // Print out the return values
-    serial_printf("AX: 0x%x\n", out.ax);
-    serial_printf("BX: 0x%x\n", out.bx);
-    serial_printf("CX: 0x%x\n", out.cx);
-    serial_printf("DX: 0x%x\n", out.dx);
-
-    // Check if the BIOS returned an error code
-    if (out.ax != 0x534D4150) { // "SMAP"
-        serial_printf("Error: BIOS returned error code 0x%x\n", out.ax);
-        // Handle the error here
-    }
-
-    // Parse the memory map data
-    uint32 base_address = out.bx;
-    uint32 size = out.cx;
-    uint32 type = out.dx;
-
-    serial_printf("Memory region: base=0x%x size=0x%x type=0x%x\n", base_address, size, type);
-
 
     // Get memory map first
     if (magic == MULTIBOOT_BOOTLOADER_MAGIC) {
