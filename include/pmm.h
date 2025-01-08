@@ -16,6 +16,8 @@ typedef struct {
 } PMM_INFO;
 
 
+extern PMM_INFO g_pmm_info;
+
 uint32 pmm_get_max_blocks();
 uint32 pmm_get_used_blocks();
 

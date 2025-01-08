@@ -6,6 +6,7 @@
 #include "string.h"
 #include "types.h"
 #include "serial.h"
+#include "liballoc.h"
 
 // vbe information
 VBE20_INFOBLOCK g_vbe_infoblock;
@@ -144,3 +145,4 @@ int vesa_init(uint32 width, uint32 height, uint32 bpp) {
     serial_printf("VESA: VBE2 detected successfully\n");
     return 0;
 }
+

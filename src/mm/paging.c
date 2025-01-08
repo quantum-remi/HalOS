@@ -60,7 +60,7 @@ void page_fault_handler(REGISTERS *r) {
 void paging_init() {
     int i;
     uint32 cr0;
-    serial_printf("Initializing paging...\n");
+
     memset(g_page_directory, 0, sizeof(g_page_directory));
     memset(g_page_tables, 0, sizeof(g_page_tables));
 
@@ -68,8 +68,6 @@ void paging_init() {
         // set present and read/write bits
         g_page_directory[i] = 0x00000002;
     }
-
-    serial_printf("page directory: 0x%x\n", g_page_directory);
 
     for (i = 0; i < 1024; i++) {
         // set present, read/write, suprevisor and frame address starting from 4096
@@ -91,8 +89,6 @@ void paging_init() {
     asm volatile("mov %0, %%cr0" ::"r"(cr0));
 
     g_is_paging_enabled = TRUE;
-
-    serial_printf("Paging initialized\n");
 }
 
 
@@ -112,11 +108,11 @@ void *paging_get_physical_address(void *virtual_addr) {
     uint32 page_table_index = (uint32)virtual_addr >> 12 & 0x03FF;
     uint32 page_frame_offset = (uint32)virtual_addr & 0xfff;
     if (!CHECK_BIT(g_page_directory[page_dir_index], 1)) {
-        console_printf("physical address: page directory entry does not exists\n");
+        serial_printf("physical address: page directory entry does not exists\n");
         return NULL;
     }
     if (!CHECK_BIT(g_page_tables[page_table_index], 1)) {
-        console_printf("physical address: page table entry does not exist\n");
+        serial_printf("physical address: page table entry does not exist\n");
         return NULL;
     }
     uint32 addr = g_page_tables[page_table_index] >> 11;
@@ -138,7 +134,7 @@ void paging_allocate_page(void *virtual_addr) {
 
     // if page directory is not currently present, then allocate a new one
     if (!CHECK_BIT(g_page_directory[page_dir_index], 1)) {
-        console_printf("alloc: page directory entry does not exists for 0x%x\n", virtual_addr);
+        serial_printf("alloc: page directory entry does not exists for 0x%x\n", virtual_addr);
         // set present, read/write, user and cache accessed,
         g_page_directory[page_dir_index] = 27;
         uint32 addr = (uint32)pmm_alloc_block();
@@ -146,7 +142,7 @@ void paging_allocate_page(void *virtual_addr) {
         return;
     }
     if (!CHECK_BIT(g_page_tables[page_table_index], 1)) {
-        console_printf("alloc: page table entry does not exists for 0x%x\n", virtual_addr);
+        serial_printf("alloc: page table entry does not exists for 0x%x\n", virtual_addr);
         return;
     }
 }
@@ -160,11 +156,11 @@ void paging_free_page(void *virtual_addr) {
     uint32 page_table_index = (uint32)virtual_addr >> 12 & 0x03FF;
 
     if (!CHECK_BIT(g_page_directory[page_dir_index], 1)) {
-        console_printf("free: page directory entry does not exists\n");
+        serial_printf("free: page directory entry does not exists\n");
         return;
     }
     if (!CHECK_BIT(g_page_tables[page_table_index], 1)) {
-        console_printf("free: page table entry does not exists\n");
+        serial_printf("free: page table entry does not exists\n");
         return;
     }
     // clear out from directory & table as we have allocated all the tables in paging_init()

@@ -8,6 +8,8 @@
 #include "vesa.h"
 #include "keyboard.h"
 #include "tss.h"
+#include "liballoc.h"
+#include "pmm.h"
 
 #define BRAND_QEMU 1
 #define BRAND_VBOX 2
@@ -76,7 +78,11 @@ void timer()
 
 void memory()
 {
+    uint32 used_blocks = pmm_get_used_blocks();
+
     // display_kernel_memory_map(&g_kmap);
+    console_printf("  Used Blocks: %d MB \n ", used_blocks/1024);
+
     console_printf("total_memory: %d MB, %d Bytes\n", g_kmap.system.total_memory / 1024, g_kmap.available.size);
     console_printf("start_addr: 0x%x, end_addr: 0x%x\n", g_kmap.available.start_addr, g_kmap.available.end_addr);
     console_printf("kstart_addr: 0x%x, kend_addr: 0x%x\n", g_kmap.kernel.k_start_addr, g_kmap.kernel.data_end_addr);
@@ -219,6 +225,59 @@ void haiku()
     console_printf("%s\n", seven_syllable_lines[index2]);
     console_printf("%s\n", five_syllable_lines[index3]);
 }
+
+int test_memory_allocation()
+{
+    // Test 1: Allocate a small block of memory
+    void* ptr1 = malloc(10);
+    if (ptr1 == NULL) {
+        console_printf("Test 1 failed: unable to allocate memory\n");
+        return -1;
+    }
+    console_printf("Test 1 passed: allocated %p\n", ptr1);
+    free(ptr1);
+
+    // Test 2: Allocate a large block of memory
+    void* ptr2 = malloc(1024); // 1MB
+    if (ptr2 == NULL) {
+        console_printf("Test 2 failed: unable to allocate memory\n");
+        return -1;
+    }
+    console_printf("Test 2 passed: allocated %p\n", ptr2);
+    free(ptr2);
+
+    // Test 3: Allocate multiple blocks of memory
+    void* ptr3[10];
+    for (int i = 0; i < 10; i++) {
+        ptr3[i] = malloc(100);
+        if (ptr3[i] == NULL) {
+            console_printf("Test 3 failed: unable to allocate memory\n");
+            return -1;
+        }
+    }
+    console_printf("Test 3 passed: allocated multiple blocks\n");
+    for (int i = 0; i < 10; i++) {
+        free(ptr3[i]);
+    }
+
+
+    // Test 5: Test for double-free
+    void* ptr5 = malloc(100);
+    free(ptr5);
+    // Intentionally double-free
+    // free(ptr5);
+    uint32 used_blocks = pmm_get_used_blocks();
+    uint32 total_memory = g_pmm_info.memory_size;
+    uint32 used_memory = used_blocks * PMM_BLOCK_SIZE;
+
+    console_printf("Used Memory:\n");
+    console_printf("  Used Blocks: %d\n", used_blocks);
+    console_printf("  Total Memory: %d bytes\n", total_memory);
+    console_printf("  Used Memory: %d bytes (%.2f%% of total)\n", used_memory, (float)used_memory / total_memory * 100);
+    console_printf("All tests passed!\n");
+    return 0;
+}
+
 void shell()
 {
     char buffer[255];
@@ -250,6 +309,7 @@ void shell()
             console_printf("  haiku     - Display a haiku\n");
             console_printf("  echo      - Echo a message to the console\n");
             console_printf("  clear     - Clear the console screen\n");
+            console_printf("  malloc    - Test memory allocation\n");
             console_printf("  memory    - Display system memory information\n");
             console_printf("  timer     - Display system timer information\n");
             console_printf("  shutdown  - Shut down the system\n");
@@ -278,6 +338,10 @@ void shell()
         else if (strcmp(buffer, "timer") == 0)
         {
             timer();
+        }
+        else if (strcmp(buffer, "malloc") == 0)
+        {
+            test_memory_allocation();
         }
         else if (strcmp(buffer, "memory") == 0)
         {

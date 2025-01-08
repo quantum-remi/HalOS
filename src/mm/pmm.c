@@ -2,7 +2,7 @@
 #include "string.h"
 #include "console.h"
 
-static PMM_INFO g_pmm_info;
+PMM_INFO g_pmm_info;
 
 // set bit in memory map array
 static inline void pmm_mmap_set(int bit) {
