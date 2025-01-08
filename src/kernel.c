@@ -154,13 +154,13 @@ void kmain(unsigned long magic, unsigned long addr) {
         
         serial_printf("VESA initialized\n");
         
-        console_init(COLOR_WHITE, COLOR_BLACK);
+        // console_init(COLOR_WHITE, COLOR_BLACK);
         serial_printf("Console initialized\n");
 
         serial_printf("System initialized successfully\n");
-        console_printf("System initialized successfully\n");
+        // console_printf("System initialized successfully\n");
 
-        shell();
+        // shell();
     }
     else {
         serial_printf("ERROR: Invalid multiboot magic number!\n");
