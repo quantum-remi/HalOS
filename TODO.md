@@ -1,4 +1,3 @@
-tss
 pci driver
 ata driver
 fat32

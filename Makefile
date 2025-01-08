@@ -39,7 +39,7 @@ ISO_DIR=$(OUT)/isodir
 
 OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o $(ASM_OBJ)/load_tss.o \
 		$(ASM_OBJ)/load_idt.o $(ASM_OBJ)/exception.o $(ASM_OBJ)/irq.o $(ASM_OBJ)/bios32_call.o\
-		$(OBJ)/io.o $(OBJ)/vga.o\
+		$(OBJ)/io.o \
 		$(OBJ)/string.o $(OBJ)/console.o\
 		$(OBJ)/gdt.o $(OBJ)/idt.o $(OBJ)/isr.o $(OBJ)/8259_pic.o\
 		$(OBJ)/keyboard.o $(OBJ)/timer.o\
@@ -101,58 +101,53 @@ $(ASM_OBJ)/bios32_call.o : $(ASM_SRC)/bios32_call.asm
 	$(ASM) $(ASM_FLAGS) $(ASM_SRC)/bios32_call.asm -o $(ASM_OBJ)/bios32_call.o
 	@printf "\n"
 
-$(OBJ)/io.o : $(SRC)/io.c
-	@printf "[ $(SRC)/io.c ]\n"
-	$(CC) $(CC_FLAGS) -c $(SRC)/io.c -o $(OBJ)/io.o
+$(OBJ)/io.o : $(SRC)/libs/io.c
+	@printf "[ $(SRC)/libs/io.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/libs/io.c -o $(OBJ)/io.o
 	@printf "\n"
 
-$(OBJ)/vga.o : $(SRC)/vga.c
-	@printf "[ $(SRC)/vga.c ]\n"
-	$(CC) $(CC_FLAGS) -c $(SRC)/vga.c -o $(OBJ)/vga.o
+$(OBJ)/string.o : $(SRC)/libs/string.c
+	@printf "[ $(SRC)/libs/string.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/libs/string.c -o $(OBJ)/string.o
 	@printf "\n"
 
-$(OBJ)/string.o : $(SRC)/string.c
-	@printf "[ $(SRC)/string.c ]\n"
-	$(CC) $(CC_FLAGS) -c $(SRC)/string.c -o $(OBJ)/string.o
+$(OBJ)/console.o : $(SRC)/drivers/console.c
+	@printf "[ $(SRC)/drivers/console.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/console.c -o $(OBJ)/console.o
 	@printf "\n"
 
-$(OBJ)/console.o : $(SRC)/console.c
-	@printf "[ $(SRC)/console.c ]\n"
-	$(CC) $(CC_FLAGS) -c $(SRC)/console.c -o $(OBJ)/console.o
+$(OBJ)/gdt.o : $(SRC)/cpu/gdt.c
+	@printf "[ $(SRC)/cpu/gdt.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/cpu/gdt.c -o $(OBJ)/gdt.o
 	@printf "\n"
 
-$(OBJ)/gdt.o : $(SRC)/gdt.c
-	@printf "[ $(SRC)/gdt.c ]\n"
-	$(CC) $(CC_FLAGS) -c $(SRC)/gdt.c -o $(OBJ)/gdt.o
+$(OBJ)/idt.o : $(SRC)/cpu/idt.c
+	@printf "[ $(SRC)/cpu/idt.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/cpu/idt.c -o $(OBJ)/idt.o
 	@printf "\n"
 
-$(OBJ)/idt.o : $(SRC)/idt.c
-	@printf "[ $(SRC)/idt.c ]\n"
-	$(CC) $(CC_FLAGS) -c $(SRC)/idt.c -o $(OBJ)/idt.o
+$(OBJ)/isr.o : $(SRC)/cpu/isr.c
+	@printf "[ $(SRC)/cpu/isr.c]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/cpu/isr.c -o $(OBJ)/isr.o
 	@printf "\n"
 
-$(OBJ)/isr.o : $(SRC)/isr.c
-	@printf "[ $(SRC)/isr.c ]\n"
-	$(CC) $(CC_FLAGS) -c $(SRC)/isr.c -o $(OBJ)/isr.o
+$(OBJ)/8259_pic.o : $(SRC)/drivers/8259_pic.c
+	@printf "[ $(SRC)/drivers/8259_pic.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/8259_pic.c -o $(OBJ)/8259_pic.o
 	@printf "\n"
 
-$(OBJ)/8259_pic.o : $(SRC)/8259_pic.c
-	@printf "[ $(SRC)/8259_pic.c ]\n"
-	$(CC) $(CC_FLAGS) -c $(SRC)/8259_pic.c -o $(OBJ)/8259_pic.o
+$(OBJ)/keyboard.o : $(SRC)/drivers/keyboard.c
+	@printf "[ $(SRC)/drivers/keyboard.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/keyboard.c -o $(OBJ)/keyboard.o
+	@printf "\n"
+$(OBJ)/timer.o : $(SRC)/drivers/timer.c
+	@printf "[ $(SRC)/drivers/timer.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/timer.c -o $(OBJ)/timer.o
 	@printf "\n"
 
-$(OBJ)/keyboard.o : $(SRC)/keyboard.c
-	@printf "[ $(SRC)/keyboard.c ]\n"
-	$(CC) $(CC_FLAGS) -c $(SRC)/keyboard.c -o $(OBJ)/keyboard.o
-	@printf "\n"
-$(OBJ)/timer.o : $(SRC)/timer.c
-	@printf "[ $(SRC)/timer.c ]\n"
-	$(CC) $(CC_FLAGS) -c $(SRC)/timer.c -o $(OBJ)/timer.o
-	@printf "\n"
-
-$(OBJ)/pmm.o : $(SRC)/pmm.c
-	@printf "[ $(SRC)/pmm.c ]\n"
-	$(CC) $(CC_FLAGS) -c $(SRC)/pmm.c -o $(OBJ)/pmm.o
+$(OBJ)/pmm.o : $(SRC)/mm/pmm.c
+	@printf "[ $(SRC)/mm/pmm.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/mm/pmm.c -o $(OBJ)/pmm.o
 	@printf "\n"
 
 $(OBJ)/kernel.o : $(SRC)/kernel.c
@@ -160,54 +155,54 @@ $(OBJ)/kernel.o : $(SRC)/kernel.c
 	$(CC) $(CC_FLAGS) -c $(SRC)/kernel.c -o $(OBJ)/kernel.o
 	@printf "\n"
 
-$(OBJ)/kheap.o : $(SRC)/kheap.c
-	@printf "[ $(SRC)/kheap.c ]\n"
-	$(CC) $(CC_FLAGS) -c $(SRC)/kheap.c -o $(OBJ)/kheap.o
+$(OBJ)/kheap.o : $(SRC)/mm/kheap.c
+	@printf "[ $(SRC)/mm/kheap.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/mm/kheap.c -o $(OBJ)/kheap.o
 	@printf "\n"
 
-$(OBJ)/paging.o : $(SRC)/paging.c
-	@printf "[ $(SRC)/paging.c ]\n"
-	$(CC) $(CC_FLAGS) -c $(SRC)/paging.c -o $(OBJ)/paging.o
+$(OBJ)/paging.o : $(SRC)/mm/paging.c
+	@printf "[ $(SRC)/mm/paging.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/mm/paging.c -o $(OBJ)/paging.o
 	@printf "\n"
 
-$(OBJ)/snake.o : $(SRC)/snake.c
-	@printf "[ $(SRC)/snake.c ]\n"
-	$(CC) $(CC_FLAGS) -c $(SRC)/snake.c -o $(OBJ)/snake.o
+$(OBJ)/snake.o : $(SRC)/shell/snake.c
+	@printf "[ $(SRC)/shell/snake.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/shell/snake.c -o $(OBJ)/snake.o
 	@printf "\n"
 
-$(OBJ)/bios32.o : $(SRC)/bios32.c
-	@printf "[ $(SRC)/bios32.c ]\n"
-	$(CC) $(CC_FLAGS) -c $(SRC)/bios32.c -o $(OBJ)/bios32.o
+$(OBJ)/bios32.o : $(SRC)/cpu/bios32.c
+	@printf "[ $(SRC)/cpu/bios32.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/cpu/bios32.c -o $(OBJ)/bios32.o
 	@printf "\n"
 
-$(OBJ)/vesa.o : $(SRC)/vesa.c
-	@printf "[ $(SRC)/vesa.c ]\n"
-	$(CC) $(CC_FLAGS) -c $(SRC)/vesa.c -o $(OBJ)/vesa.o
+$(OBJ)/vesa.o : $(SRC)/drivers/vesa.c
+	@printf "[ $(SRC)/drivers/vesa.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/vesa.c -o $(OBJ)/vesa.o
 	@printf "\n"
 
-$(OBJ)/fpu.o : $(SRC)/fpu.c
-	@printf "[ $(SRC)/fpu.c ]\n"
-	$(CC) $(CC_FLAGS) -c $(SRC)/fpu.c -o $(OBJ)/fpu.o
+$(OBJ)/fpu.o : $(SRC)/cpu/fpu.c
+	@printf "[ $(SRC)/cpu/fpu.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/cpu/fpu.c -o $(OBJ)/fpu.o
 	@printf "\n"
 
-$(OBJ)/shell.o : $(SRC)/shell.c
-	@printf "[ $(SRC)/shell.c ]\n"
-	$(CC) $(CC_FLAGS) -c $(SRC)/shell.c -o $(OBJ)/shell.o
+$(OBJ)/shell.o : $(SRC)/shell/shell.c
+	@printf "[ $(SRC)/shell/shell.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/shell/shell.c -o $(OBJ)/shell.o
 	@printf "\n"
 
-$(OBJ)/serial.o : $(SRC)/serial.c
-	@printf "[ $(SRC)/serial.c ]\n"
-	$(CC) $(CC_FLAGS) -c $(SRC)/serial.c -o $(OBJ)/serial.o
+$(OBJ)/serial.o : $(SRC)/drivers/serial.c
+	@printf "[ $(SRC)/drivers/serial.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/serial.c -o $(OBJ)/serial.o
 	@printf "\n"
 
-$(OBJ)/printf.o : $(SRC)/printf.c
-	@printf "[ $(SRC)/printf.c ]\n"
-	$(CC) $(CC_FLAGS) -c $(SRC)/printf.c -o $(OBJ)/printf.o
+$(OBJ)/printf.o : $(SRC)/libs/printf.c
+	@printf "[ $(SRC)/libs/printf.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/libs/printf.c -o $(OBJ)/printf.o
 	@printf "\n"
 
-$(OBJ)/tss.o : $(SRC)/tss.c
-	@printf "[ $(SRC)/tss.c ]\n"
-	$(CC) $(CC_FLAGS) -c $(SRC)/tss.c -o $(OBJ)/tss.o
+$(OBJ)/tss.o : $(SRC)/mm/tss.c
+	@printf "[ $(SRC)/mm/tss.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/mm/tss.c -o $(OBJ)/tss.o
 	@printf "\n"
 
 # $(OBJ)/pci.o : $(SRC)/pci.c
