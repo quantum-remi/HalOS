@@ -16,7 +16,17 @@ static struct {
     char text_buffer[CONSOLE_ROWS][CONSOLE_COLS];
 } console;
 
-void console_init(VGA_COLOR_TYPE fore_color, VGA_COLOR_TYPE back_color) {
+extern VBE20_MODEINFOBLOCK g_vbe_modeinfoblock;
+
+extern uint32 g_width;
+extern uint32 g_height;
+
+void init_resolution() {
+    g_width = g_vbe_modeinfoblock.XResolution;
+    g_height = g_vbe_modeinfoblock.YResolution;
+}
+
+void console_init(VESA_COLOR_TYPE fore_color, VESA_COLOR_TYPE back_color) {
     serial_printf("Console: Starting initialization...\n");
     
     // Clear console state
@@ -49,11 +59,13 @@ void draw_char(int x, int y, char c, uint32 fg, uint32 bg) {
     }
 }
 
-void console_clear(VGA_COLOR_TYPE fore_color, VGA_COLOR_TYPE back_color) {
+void console_clear(VESA_COLOR_TYPE fore_color, VESA_COLOR_TYPE back_color) {
     serial_printf("Console: Clearing screen with fore %u back %u...\n", fore_color, back_color);
     for(int y = 0; y < CONSOLE_ROWS * FONT_HEIGHT; y++) {
         for(int x = 0; x < CONSOLE_COLS * FONT_WIDTH; x++) {
-            vbe_putpixel(x, y, console.back_color);
+            if (x < g_width && y < g_height) {
+                vbe_putpixel(x, y, back_color);
+            }
         }
     }
     serial_printf("Console: Clearing buffer...\n");

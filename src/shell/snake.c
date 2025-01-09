@@ -217,7 +217,7 @@ static void init_graphics() {
 }
 
 void snake_game() {
-    console_clear(COLOR_WHITE, COLOR_BLACK);
+    console_clear(VESA_COLOR_WHITE, VESA_COLOR_BLACK);
     // Initialize graphics
     init_graphics();
     snake_init();
@@ -240,14 +240,14 @@ void snake_game() {
         }
         if (snake.length >= length_threshold) {
             update_threshold -= 1;
-            length_threshold += 1;
+            length_threshold += 5;
         }
         update_counter++;
         usleep(sleep_time);
     }
     
     // Clear screen again
-    console_clear(COLOR_WHITE, COLOR_BLACK);
+    console_clear(VESA_COLOR_WHITE, VESA_COLOR_BLACK);
     
     // Show game over
     console_printf("Game Over! Final Score: %d\n", score);
@@ -255,5 +255,5 @@ void snake_game() {
     
     // Wait for key and clear again
     kb_getchar();
-    console_clear(COLOR_WHITE, COLOR_BLACK);
+    console_clear(VESA_COLOR_WHITE, VESA_COLOR_BLACK);
 }

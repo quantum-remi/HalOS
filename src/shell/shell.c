@@ -333,7 +333,7 @@ void shell()
         }
         else if (strcmp(buffer, "clear") == 0)
         {
-            console_clear(COLOR_WHITE, COLOR_BLACK);
+            console_clear(VESA_COLOR_WHITE, VESA_COLOR_BLACK);
         }
         else if (strcmp(buffer, "timer") == 0)
         {

@@ -102,14 +102,12 @@ uint32 vbe_rgb(uint8 red, uint8 green, uint8 blue) {
 
 // put the pixel on the given x,y point
 void vbe_putpixel(int x, int y, int color) {
-    serial_printf("VBE: Putting pixel at (%d, %d) with color %d\n", x, y, color);
     if (x < 0 || x >= g_width || y < 0 || y >= g_height) {
         serial_printf("VBE: Error - (%d, %d) is out of bounds\n", x, y);
         return;
     }
     uint32 i = y * g_width + x;
     *(g_vbe_buffer + i) = color;
-    serial_printf("VBE: Pixel placed successfully\n");
 }
 
 int vesa_init(uint32 width, uint32 height, uint32 bpp) {

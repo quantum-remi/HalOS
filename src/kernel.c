@@ -5,7 +5,7 @@
 #include "keyboard.h"
 #include "multiboot.h"
 #include "timer.h"
-#include "paging.h"
+// #include "paging.h"
 #include "string.h"
 #include "pmm.h"
 #include "fpu.h"
@@ -119,27 +119,29 @@ void kmain(unsigned long magic, unsigned long addr) {
             return;
         }
 
-        pmm_init(g_kmap.available.start_addr, g_kmap.available.size);
+        // pmm_init(g_kmap.available.start_addr, g_kmap.available.size);
 
         serial_printf("Max blocks: %d\n", pmm_get_max_blocks());
+        pmm_init(g_kmap.available.start_addr, g_kmap.available.size);
+        pmm_init_region(g_kmap.available.start_addr, PMM_BLOCK_SIZE * 256);
         // initialize a region of memory of size (4096 * 10), 10 blocks memory
-        pmm_init_region(g_kmap.available.start_addr, PMM_BLOCK_SIZE * 10);
+        // pmm_init_region(g_kmap.available.start_addr, PMM_BLOCK_SIZE * 10);
         serial_printf("PMM init\n");
 
-        serial_printf("Initializing paging...\n");
-        paging_init();
+        // serial_printf("Initializing paging...\n");
+        // paging_init();
 
-        paging_allocate_page((void *)0x8973456);
-        serial_printf("physical address: 0x%x\n", paging_get_physical_address((void *)0x8973456));
+        // paging_allocate_page((void *)0x8973456);
+        // serial_printf("physical address: 0x%x\n", paging_get_physical_address((void *)0x8973456));
 
-        int *x = (int *)paging_get_physical_address((void *)0x8973456);
-        x[0] = 123;
+        // int *x = (int *)paging_get_physical_address((void *)0x8973456);
+        // x[0] = 123;
 
-        paging_free_page((void *)0x8973456);
+        // paging_free_page((void *)0x8973456);
 
 
-        pmm_deinit_region(g_kmap.available.start_addr, PMM_BLOCK_SIZE * 10);
-        serial_printf("PMM Deinit\n");
+        // pmm_deinit_region(g_kmap.available.start_addr, PMM_BLOCK_SIZE * 10);
+        // serial_printf("PMM Deinit\n");
 
         serial_printf("Initializing BIOS32...\n");
         bios32_init();
@@ -154,13 +156,13 @@ void kmain(unsigned long magic, unsigned long addr) {
         
         serial_printf("VESA initialized\n");
         
-        // console_init(COLOR_WHITE, COLOR_BLACK);
+        console_init(VESA_COLOR_WHITE, VESA_COLOR_BLACK);
         serial_printf("Console initialized\n");
 
         serial_printf("System initialized successfully\n");
-        // console_printf("System initialized successfully\n");
+        console_printf("System initialized successfully\n");
 
-        // shell();
+        shell();
     }
     else {
         serial_printf("ERROR: Invalid multiboot magic number!\n");
