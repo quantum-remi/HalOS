@@ -98,12 +98,11 @@ void kmain(unsigned long magic, unsigned long addr) {
     
     resolution.x = 1024;
     resolution.y = 768;
-    serial_printf("setting up resolution to %d x %d\n", resolution.x, resolution.y);
-    serial_printf("Initializing console...\n");
     if(vesa_init(resolution.x, resolution.y, 32) != 0) {
-        serial_printf("ERROR: VESA init failed\n");
+        serial_printf("ERROR: Resolution init failed\n");
         return;
     }
+    serial_printf("setting up resolution to %d x %d\n", resolution.x, resolution.y);
     if (magic != MULTIBOOT_BOOTLOADER_MAGIC) {
         serial_printf("ERROR: Invalid multiboot magic number!\n");
         console_printf("Invalid multiboot magic number: 0x%x\n", magic);
@@ -121,9 +120,9 @@ void kmain(unsigned long magic, unsigned long addr) {
 
         // pmm_init(g_kmap.available.start_addr, g_kmap.available.size);
 
-        serial_printf("Max blocks: %d\n", pmm_get_max_blocks());
         pmm_init(g_kmap.available.start_addr, g_kmap.available.size);
         pmm_init_region(g_kmap.available.start_addr, PMM_BLOCK_SIZE * 256);
+        serial_printf("Max blocks: %d\n", pmm_get_max_blocks());
         // initialize a region of memory of size (4096 * 10), 10 blocks memory
         // pmm_init_region(g_kmap.available.start_addr, PMM_BLOCK_SIZE * 10);
         serial_printf("PMM init\n");
