@@ -49,6 +49,7 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o $(ASM_OBJ)/load_tss.o \
 		$(OBJ)/bios32.o $(OBJ)/shell.o \
 		$(OBJ)/serial.o $(OBJ)/printf.o \
 		$(OBJ)/tss.o $(OBJ)/liballoc.o $(OBJ)/liballoc_hook.o \
+		$(OBJ)/pci.o \
 		$(OBJ)/kernel.o
 
 .PHONY: all	
@@ -211,10 +212,10 @@ $(OBJ)/liballoc_hook.o : $(SRC)/mm/liballoc_hook.c
 	@printf "\n"
 
 
-# $(OBJ)/pci.o : $(SRC)/pci.c
-# 	@printf "[ $(SRC)/pci.c ]\n"
-# 	$(CC) $(CC_FLAGS) -c $(SRC)/pci.c -o $(OBJ)/pci.o
-# 	@printf "\n"
+$(OBJ)/pci.o : $(SRC)/drivers/pci.c
+	@printf "[ $(SRC)/drivers/pci.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/pci.c -o $(OBJ)/pci.o
+	@printf "\n"
 
 qemu:
 	qemu-system-i386 -m 64 -vga std -cdrom $(TARGET_ISO) -serial stdio

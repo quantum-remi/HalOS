@@ -10,6 +10,7 @@
 #include "tss.h"
 #include "liballoc.h"
 #include "pmm.h"
+#include "pci.h"
 
 #define BRAND_QEMU 1
 #define BRAND_VBOX 2
@@ -281,7 +282,7 @@ int test_memory_allocation()
 void shell()
 {
     char buffer[255];
-    const char *shell = "$ ";
+    const char *shell = "kernel> ";
 
     while (1)
     {
@@ -311,6 +312,7 @@ void shell()
             console_printf("  clear     - Clear the console screen\n");
             console_printf("  malloc    - Test memory allocation\n");
             console_printf("  memory    - Display system memory information\n");
+            console_printf("  lspci     - Display PCI devices information\n");
             console_printf("  timer     - Display system timer information\n");
             console_printf("  shutdown  - Shut down the system\n");
             console_printf("  snake     - Play a game of Snake\n");
@@ -321,7 +323,7 @@ void shell()
         }
         else if (strcmp(buffer, "help /f") == 0)
         {
-            console_printf("help, cpuid, haiku, echo, clear, memory, timer, shutdown, snake, vesa, version, yuri\n");
+            console_printf("help, cpuid, haiku, echo, clear, malloc, memory, lspci, timer, shutdown, snake, vesa, version, yuri\n");
         }
         else if (is_echo(buffer))
         {
@@ -346,6 +348,10 @@ void shell()
         else if (strcmp(buffer, "memory") == 0)
         {
             memory();
+        }
+        else if (strcmp(buffer, "lspci") == 0)
+        {
+            pci_show();
         }
         else if (strcmp(buffer, "snake") == 0)
         {
