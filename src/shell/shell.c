@@ -312,7 +312,7 @@ void shell()
             console_printf("  clear     - Clear the console screen\n");
             console_printf("  malloc    - Test memory allocation\n");
             console_printf("  memory    - Display system memory information\n");
-            console_printf("  lspci     - Display PCI devices information\n");
+            console_printf("  lspci     - Display PCI information\n");
             console_printf("  timer     - Display system timer information\n");
             console_printf("  shutdown  - Shut down the system\n");
             console_printf("  snake     - Play a game of Snake\n");
@@ -351,7 +351,7 @@ void shell()
         }
         else if (strcmp(buffer, "lspci") == 0)
         {
-            pci_show();
+            pci_print_devices();
         }
         else if (strcmp(buffer, "snake") == 0)
         {
