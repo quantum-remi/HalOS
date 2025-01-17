@@ -35,7 +35,11 @@ int serial_is_transmit_empty() {
 }
 
 void serial_putchar(char c) {
-    while (serial_is_transmit_empty() == 0);
+    if (serial_is_transmit_empty() == 0) {
+        // Handle buffer overflow error
+        serial_printf("Serial buffer overflow!\n");
+        return;
+    }
     outportb(COM1, c);
 }
 

@@ -4,6 +4,82 @@ uint32 pci_size_map[100];
 pci_dev_t dev_zero= {0};
 
 
+pci_class_subclass_t pci_class_subclass_table[] = {
+    {0x01, 0x01, "IDE Controller"},
+    {0x01, 0x02, "Floppy Disk Controller"},
+    {0x01, 0x03, "IPI Bus Controller"},
+    {0x01, 0x04, "RAID Controller"},
+    {0x01, 0x05, "ATA Controller"},
+    {0x01, 0x06, "Serial ATA Controller"},
+    {0x01, 0x07, "Serial Attached SCSI Controller"},
+    {0x01, 0x08, "NVMe Controller"},
+    {0x02, 0x00, "Ethernet Controller"},
+    {0x02, 0x01, "Token Ring Controller"},
+    {0x02, 0x02, "FDDI Controller"},
+    {0x02, 0x03, "ATM Controller"},
+    {0x02, 0x04, "ISDN Controller"},
+    {0x02, 0x05, "WorldFip Controller"},
+    {0x02, 0x06, "PICMG 2.14 Multi Computing"},
+    {0x03, 0x00, "VGA Compatible Controller"},
+    {0x03, 0x01, "XGA Controller"},
+    {0x03, 0x02, "3D Controller"},
+    {0x04, 0x00, "Multimedia Video Controller"},
+    {0x04, 0x01, "Multimedia Audio Controller"},
+    {0x04, 0x02, "Computer Telephony Device"},
+    {0x04, 0x03, "Audio Device"},
+    {0x05, 0x00, "RAM Controller"},
+    {0x05, 0x01, "Flash Controller"},
+    {0x06, 0x00, "Host Bridge"},
+    {0x06, 0x01, "ISA Bridge"},
+    {0x06, 0x02, "EISA Bridge"},
+    {0x06, 0x03, "MCA Bridge"},
+    {0x06, 0x04, "PCI-to-PCI Bridge"},
+    {0x06, 0x05, "PCMCIA Bridge"},
+    {0x06, 0x06, "NuBus Bridge"},
+    {0x06, 0x07, "Cardbus Bridge"},
+    {0x06, 0x08, "RACEway Bridge"},
+    {0x06, 0x09, "PCI-to-PCI Bridge "},
+    {0x06, 0x0A, "InfiniBand-to-PCI Host Bridge"},
+    {0x07, 0x00, "Serial Controller"},
+    {0x07, 0x01, "Parallel Controller"},
+    {0x07, 0x02, "Multiport Serial Controller"},
+    {0x07, 0x03, "Modem"},
+    {0x07, 0x04, "IEEE 488.1/2 (GPIB) Controller"},
+    {0x07, 0x05, "Smart card"},
+    {0x08, 0x00, "PIC"},
+    {0x08, 0x01, "DMA Controller"},
+    {0x08, 0x02, "Timer"},
+    {0x08, 0x03, "RTC Controller"},
+    {0x08, 0x04, "PCI Hot-Plug Controller"},
+    {0x08, 0x05, "SD Host controller"},
+    {0x08, 0x06, "IOMMU"},
+    {0x09, 0x00, "Keyboard Controller"},
+    {0x09, 0x01, "Digitizer Pen"},
+    {0x09, 0x02, "Mouse Controller"},
+    {0x09, 0x03, "Scanner Controller"},
+    {0x09, 0x04, "Game Port Controller"},
+    {0x0A, 0x00, "Docking Station Generic"},
+    {0x0B, 0x00, "386"},
+    {0x0B, 0x01, "486"},
+    {0x0B, 0x02, "Pentium"},
+    {0x0B, 0x03, "Pentium Pro"},
+    {0x0B, 0x10, "Alpha"},
+    {0x0B, 0x20, "PowerPC"},
+    {0x0B, 0x30, "MIPS"},
+    {0x0B, 0x40, "Co-Processor"},
+    {0x0C, 0x00, "FireWire (IEEE 1394) Controller "},
+    {0x0C, 0x01, "ACCESS Bus Controller"},
+    {0x0C, 0x02, "SSA"},
+    {0x0C, 0x03, "USB Controller"},
+    {0x0C, 0x04, "Fibre Channel"},
+    {0x0C, 0x05, "SMBus Controller"},
+    {0x0C, 0x06, "Infiniband Controller"},
+    {0x0C, 0x07, "IPMI Controller"},
+    {0x0C, 0x08, "SERCOS Interface (IEC 61491)"},
+    {0x0C, 0x09, "CANbus Controller"},
+    // Add more entries for other class and subclass codes as needed
+};
+
 uint32 pci_read(pci_dev_t dev, uint32 field) 
 {
     dev.field_num = (field & 0xFC) >> 2;
@@ -180,7 +256,8 @@ void pci_init() {
 	pci_size_map[PCI_INTERRUPT_LINE]	= 1;
 	pci_size_map[PCI_SECONDARY_BUS]		= 1;
 }
-void pci_print_devices() {
+void pci_print_devices()
+{
     pci_dev_t dev = {0};
     for (int bus = 0; bus < 256; bus++)
     {
@@ -193,10 +270,22 @@ void pci_print_devices() {
                 dev.function_num = function;
                 if (pci_read(dev, PCI_VENDOR_ID) != PCI_NONE)
                 {
-                    serial_printf("PCI Device: %x:%x:%x\n", dev.bus_num, dev.device_num, dev.function_num);
+                    uint32 class_code = get_device_type(dev);
+                    uint32 subclass_code = pci_read(dev, PCI_SUBCLASS);
+                    console_printf("PCI Device: %x:%x:%x, Class: %x, Subclass: %x (%s)\n",
+                        dev.bus_num, dev.device_num, dev.function_num, class_code, subclass_code,
+                        get_subclass_name(class_code, subclass_code));
                 }
             }
         }
     }
 }
 
+const char* get_subclass_name(uint32 class_code, uint32 subclass_code) {
+    for (int i = 0; i < sizeof(pci_class_subclass_table) / sizeof(pci_class_subclass_table[0]); i++) {
+        if (pci_class_subclass_table[i].class_code == (class_code >> 8) && pci_class_subclass_table[i].subclass_code == (subclass_code & 0xFF)) {
+            return pci_class_subclass_table[i].name;
+        }
+    }
+    return "Unknown";
+}
