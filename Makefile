@@ -218,7 +218,7 @@ $(OBJ)/pci.o : $(SRC)/drivers/pci.c
 	@printf "\n"
 
 qemu:
-	qemu-system-i386 -m 64 -vga std -cdrom $(TARGET_ISO) -serial stdio
+	qemu-system-i386 -m 1G -vga virtio -cdrom $(TARGET_ISO) -serial stdio
 
 clean:
 	rm -f $(OBJ)/*.o

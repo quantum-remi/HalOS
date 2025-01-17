@@ -17,6 +17,9 @@
 
 KERNEL_MEMORY_MAP g_kmap;
 
+extern uint32 g_width;
+extern uint32 g_height;
+
 void __cpuid(uint32 type, uint32 *eax, uint32 *ebx, uint32 *ecx, uint32 *edx)
 {
     asm volatile("cpuid"
@@ -139,7 +142,7 @@ void float_print(const char *msg, float f, const char *end)
 }
 
 static void test_vesa() {
-    int ret = vesa_init(800, 600, 32);
+    int ret = vesa_init(g_width, g_height, 32);
     if (ret < 0) {
         console_printf("failed to init vesa graphics\n");
     }
