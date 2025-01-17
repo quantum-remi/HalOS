@@ -79,19 +79,19 @@ uint32 vbe_find_mode(uint32 width, uint32 height, uint32 bpp) {
 }
 
 void wait_for_vblank() {
-    serial_printf("wait_for_vblank: waiting for vblank to end\n");
+    // serial_printf("wait_for_vblank: waiting for vblank to end\n");
     // Wait for the current VBLANK period to end
     while ((inportb(0x03DA) & 0x08)) 
     {
         swap_buffers();
-        serial_printf("wait_for_vblank: vblank did not end, swapping buffers\n");
+        // serial_printf("wait_for_vblank: vblank did not end, swapping buffers\n");
     }
-    serial_printf("wait_for_vblank: vblank ended\n");
+    // serial_printf("wait_for_vblank: vblank ended\n");
 
-    serial_printf("wait_for_vblank: waiting for vblank to begin\n");
+    // serial_printf("wait_for_vblank: waiting for vblank to begin\n");
     // Wait for the next VBLANK period to begin
     while (!(inportb(0x03DA) & 0x08)) {}
-    serial_printf("wait_for_vblank: vblank began\n");
+    // serial_printf("wait_for_vblank: vblank began\n");
 }
 
 void swap_buffers()
@@ -99,7 +99,7 @@ void swap_buffers()
     uint32 *temp = g_vbe_buffer;
     g_vbe_buffer = back_buffer;
     back_buffer = temp;
-    serial_printf("swap buffers\n");
+    // serial_printf("swap buffers\n");
 }
 // print availabel modes to console
 void vbe_print_available_modes() {

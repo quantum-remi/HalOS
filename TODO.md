@@ -1,4 +1,3 @@
-pci driver
 ata driver
 fat32
 ext2
@@ -10,6 +9,3 @@ vfs
 smp
 sound
 usb
-
-
-- [ ] FIX FUCKING CONSOLE FULL REWRITE 
