@@ -78,4 +78,5 @@ pci_dev_t pci_get_device(uint16 vendor_id, uint16 device_id, int device_type);
 void pci_init();
 void pci_print_devices();
 const char* get_subclass_name(uint32 class_code, uint32 subclass_code);
+const char* get_device_name(uint32 vendor_id, uint32 device_id);
 #endif // PCI_H

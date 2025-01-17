@@ -53,13 +53,19 @@ int cpuid_info(int print)
 
     return BRAND_VBOX;
 }
-
-BOOL is_echo(char *b)
+void echo()
 {
-    if ((b[0] == 'e') && (b[1] == 'c') && (b[2] == 'h') && (b[3] == 'o'))
-        if (b[4] == ' ' || b[4] == '\0')
-            return TRUE;
-    return FALSE;
+    console_printf("echo> ");
+
+    // Declare and clear the input buffer
+    char buffer[255];
+    memset(buffer, 0, sizeof(buffer));
+
+    // Get input from the user
+    getstr(buffer, sizeof(buffer)); // Use the buffer size directly
+
+    // Print the input back to the console
+    console_printf("%s\n", buffer);
 }
 
 void shutdown()
@@ -291,7 +297,7 @@ void shell()
     {
         console_printf(shell);
         memset(buffer, 0, sizeof(buffer));
-        getstr_bound(buffer, strlen(shell));
+        getstr(buffer, sizeof(buffer));
         if (strlen(buffer) == 0)
             continue;
         if (strcmp(buffer, "cpuid") == 0)
@@ -328,9 +334,9 @@ void shell()
         {
             console_printf("help, cpuid, haiku, echo, clear, malloc, memory, lspci, timer, shutdown, snake, vesa, version, yuri\n");
         }
-        else if (is_echo(buffer))
+        else if (strcmp(buffer, "echo") == 0)
         {
-            console_printf("%s\n", buffer + 5);
+            echo();
         }
         else if (strcmp(buffer, "shutdown") == 0)
         {

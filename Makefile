@@ -49,7 +49,7 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o $(ASM_OBJ)/load_tss.o \
 		$(OBJ)/bios32.o $(OBJ)/shell.o \
 		$(OBJ)/serial.o $(OBJ)/printf.o \
 		$(OBJ)/tss.o $(OBJ)/liballoc.o $(OBJ)/liballoc_hook.o \
-		$(OBJ)/pci.o \
+		$(OBJ)/pci.o $(OBJ)/ide.o\
 		$(OBJ)/kernel.o
 
 .PHONY: all	
@@ -211,15 +211,23 @@ $(OBJ)/liballoc_hook.o : $(SRC)/mm/liballoc_hook.c
 	$(CC) $(CC_FLAGS) -c $(SRC)/mm/liballoc_hook.c -o $(OBJ)/liballoc_hook.o
 	@printf "\n"
 
-
 $(OBJ)/pci.o : $(SRC)/drivers/pci.c
 	@printf "[ $(SRC)/drivers/pci.c ]\n"
 	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/pci.c -o $(OBJ)/pci.o
 	@printf "\n"
 
+$(OBJ)/ide.o : $(SRC)/drivers/ide.c
+	@printf "[ $(SRC)/drivers/ide.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/ide.c -o $(OBJ)/ide.o
+	@printf "\n"
+
 qemu:
 	qemu-system-i386 -m 1G -vga virtio -cdrom $(TARGET_ISO) -serial stdio
 
+dev: 
+	make clean
+	make
+	make qemu
 clean:
 	rm -f $(OBJ)/*.o
 	rm -f $(ASM_OBJ)/*.o

@@ -40,6 +40,7 @@ pci_class_subclass_t pci_class_subclass_table[] = {
     {0x06, 0x08, "RACEway Bridge"},
     {0x06, 0x09, "PCI-to-PCI Bridge "},
     {0x06, 0x0A, "InfiniBand-to-PCI Host Bridge"},
+    {0x06, 0x80, "Other Bridge"},
     {0x07, 0x00, "Serial Controller"},
     {0x07, 0x01, "Parallel Controller"},
     {0x07, 0x02, "Multiport Serial Controller"},

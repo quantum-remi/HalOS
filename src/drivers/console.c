@@ -88,28 +88,49 @@ void console_scroll(int direction)
 {
     if (direction == SCROLL_UP)
     {
-        memmove(&console.text_buffer[0], &console.text_buffer[1],
-                (CONSOLE_ROWS - 1) * CONSOLE_COLS);
-        memset(&console.text_buffer[CONSOLE_ROWS - 1], 0, CONSOLE_COLS);
+        // Scroll up: Move rows 1 to (CONSOLE_ROWS - 1) to rows 0 to (CONSOLE_ROWS - 2)
+        memmove(console.text_buffer[0], 
+                console.text_buffer[1], 
+                (CONSOLE_ROWS - 1) * CONSOLE_COLS * sizeof(char));
+
+        // Clear the last row (row CONSOLE_ROWS - 1)
+        memset(console.text_buffer[CONSOLE_ROWS - 1], 0, CONSOLE_COLS * sizeof(char));
+    }
+    else if (direction == SCROLL_DOWN)
+    {
+        // Scroll down: Move rows 0 to (CONSOLE_ROWS - 2) to rows 1 to (CONSOLE_ROWS - 1)
+        memmove(console.text_buffer[1], 
+                console.text_buffer[0], 
+                (CONSOLE_ROWS - 1) * CONSOLE_COLS * sizeof(char));
+
+        // Clear the first row (row 0)
+        memset(console.text_buffer[0], 0, CONSOLE_COLS * sizeof(char));
     }
     else
     {
-        memmove(&console.text_buffer[1], &console.text_buffer[0],
-                (CONSOLE_ROWS - 1) * CONSOLE_COLS);
-        memset(&console.text_buffer[0], 0, CONSOLE_COLS);
+        serial_printf("Error: Invalid scroll direction!\n");
+        return;
     }
+
+    // Refresh the console display to reflect changes
     console_refresh();
 }
 
+
 void console_putchar(char c)
 {
-    if (c == '\n')
+    if (c == '\n') // Handle newline
     {
         console.cursor_x = 0;
         console.cursor_y++;
     }
+    else if (c == '\r') // Handle carriage return
+    {
+        console.cursor_x = 0;
+    }
     else
     {
+        // Write character to buffer and render it
         if (console.cursor_x < CONSOLE_COLS && console.cursor_y < CONSOLE_ROWS)
         {
             console.text_buffer[console.cursor_y][console.cursor_x] = c;
@@ -119,12 +140,14 @@ void console_putchar(char c)
         }
     }
 
+    // Move to the next line if end of row is reached
     if (console.cursor_x >= CONSOLE_COLS)
     {
         console.cursor_x = 0;
         console.cursor_y++;
     }
 
+    // Scroll if the cursor moves beyond the last row
     if (console.cursor_y >= CONSOLE_ROWS)
     {
         console_scroll(SCROLL_UP);
@@ -175,33 +198,40 @@ void console_refresh()
         for (int x = 0; x < CONSOLE_COLS; x++)
         {
             char c = console.text_buffer[y][x];
-            if (c)
-            {
-                draw_char(x, y, c, console.fore_color, console.back_color);
-            }
+
+            // Always draw characters, including spaces
+            draw_char(x, y, c ? c : ' ', console.fore_color, console.back_color);
         }
     }
 }
 
 void getstr(char *buffer, uint32 max_size)
 {
-    if (!buffer || max_size == 0)
-        return;
-    uint32 idx = 0;
-
-    while (idx < max_size - 1)
+    uint32 i = 0;
+    while (i < max_size - 1) // leave space for null terminator
     {
         char c = kb_getchar();
-        if (c == '\n')
+        if (c == '\b') // backspace
         {
-            console_putchar('\n');
-            buffer[idx] = 0;
+            if (i > 0)
+            {
+                i--;
+                console_ungetchar();
+            }
+        }
+        else if (c == '\n') // enter key
+        {
+            console_putchar('\n'); // print the newline character
+            buffer[i] = '\0'; // null terminate the string
             return;
         }
-        buffer[idx++] = c;
-        console_putchar(c);
+        else
+        {
+            buffer[i++] = c;
+            console_putchar(c);
+        }
     }
-    buffer[idx] = 0;
+    buffer[i] = '\0'; // null terminate the string
 }
 
 void getstr_bound(char *buffer, uint8 bound)
