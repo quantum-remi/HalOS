@@ -244,6 +244,7 @@ void snake_game() {
         }
         update_counter++;
         usleep(sleep_time);
+        swap_buffers();
     }
     
     // Clear screen again

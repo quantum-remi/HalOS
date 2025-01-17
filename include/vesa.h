@@ -70,7 +70,8 @@ uint32 vbe_get_height();
 int vesa_init(uint32 width, uint32 height, uint32 bpp);
 uint32 vbe_rgb(uint8 red, uint8 green, uint8 blue);
 void vbe_putpixel(int x, int y, int color);
-
+void wait_for_vblank();
+void swap_buffers();
 #define VBE_RGB(r, g, b) vbe_rgb(r, g, b)
 
 #endif

@@ -203,6 +203,7 @@ void console_refresh()
             draw_char(x, y, c ? c : ' ', console.fore_color, console.back_color);
         }
     }
+    swap_buffers();
 }
 
 void getstr(char *buffer, uint32 max_size)

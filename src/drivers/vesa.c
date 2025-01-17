@@ -17,6 +17,7 @@ int g_selected_mode = -1;
 uint32 g_width = 0, g_height = 0;
 // buffer pointer pointing to video memory
 uint32 *g_vbe_buffer = NULL;
+uint32 *back_buffer = NULL;
 
 uint32 vbe_get_width() {
     return g_width;
@@ -77,6 +78,29 @@ uint32 vbe_find_mode(uint32 width, uint32 height, uint32 bpp) {
     return -1;
 }
 
+void wait_for_vblank() {
+    serial_printf("wait_for_vblank: waiting for vblank to end\n");
+    // Wait for the current VBLANK period to end
+    while ((inportb(0x03DA) & 0x08)) 
+    {
+        swap_buffers();
+        serial_printf("wait_for_vblank: vblank did not end, swapping buffers\n");
+    }
+    serial_printf("wait_for_vblank: vblank ended\n");
+
+    serial_printf("wait_for_vblank: waiting for vblank to begin\n");
+    // Wait for the next VBLANK period to begin
+    while (!(inportb(0x03DA) & 0x08)) {}
+    serial_printf("wait_for_vblank: vblank began\n");
+}
+
+void swap_buffers()
+{
+    uint32 *temp = g_vbe_buffer;
+    g_vbe_buffer = back_buffer;
+    back_buffer = temp;
+    serial_printf("swap buffers\n");
+}
 // print availabel modes to console
 void vbe_print_available_modes() {
     VBE20_MODEINFOBLOCK modeinfoblock;
@@ -107,7 +131,7 @@ void vbe_putpixel(int x, int y, int color) {
         return;
     }
     uint32 i = y * g_width + x;
-    *(g_vbe_buffer + i) = color;
+    *(back_buffer + i) = color;
 }
 
 int vesa_init(uint32 width, uint32 height, uint32 bpp) {
@@ -144,6 +168,7 @@ int vesa_init(uint32 width, uint32 height, uint32 bpp) {
         g_vbe_buffer = (uint32 *)g_vbe_modeinfoblock.PhysBasePtr;
         // set the mode to start graphics window
         vbe_set_mode(g_selected_mode);
+        swap_buffers();
     #endif
     
     serial_printf("VESA: VBE2 detected successfully\n");

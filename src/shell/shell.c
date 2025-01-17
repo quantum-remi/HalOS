@@ -290,6 +290,7 @@ int test_memory_allocation()
 
 void shell()
 {
+    console_clear(VESA_COLOR_WHITE, VESA_COLOR_BLACK);
     char buffer[255];
     const char *shell = "kernel> ";
 
@@ -377,7 +378,7 @@ void shell()
         else if (strcmp(buffer, "version") == 0)
         {
             console_printf("--------------------------------------------------------------\n");
-            console_printf("Hal OS v0.9.0\n");
+            console_printf("Hal OS v0.10.0\n");
             console_printf("Built on: %s %s\n", __DATE__, __TIME__);
             console_printf("Built with: GCC %s\n", __VERSION__);
             console_printf("--------------------------------------------------------------\n");
