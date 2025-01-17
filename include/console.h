@@ -43,7 +43,7 @@ void console_ungetchar(void);
 void console_gotoxy(uint16 x, uint16 y);
 void console_putstr(const char *str);
 void console_refresh(void);
-void getstr(char *buffer);
+void getstr(char *buffer, uint32 max_size);
 void getstr_bound(char *buffer, uint8 bound);
 
 #endif
