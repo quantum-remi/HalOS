@@ -9,8 +9,8 @@
 IDT g_idt[NO_IDT_DESCRIPTORS];
 IDT_PTR g_idt_ptr;
 
-
-void idt_set_entry(int index, uint32 base, uint16 seg_sel, uint8 flags) {
+void idt_set_entry(int index, uint32 base, uint16 seg_sel, uint8 flags)
+{
     IDT *this = &g_idt[index];
 
     this->base_low = base & 0xFFFF;
@@ -20,7 +20,8 @@ void idt_set_entry(int index, uint32 base, uint16 seg_sel, uint8 flags) {
     this->base_high = (base >> 16) & 0xFFFF;
 }
 
-void idt_init() {
+void idt_init()
+{
     g_idt_ptr.base_address = (uint32)g_idt;
     g_idt_ptr.limit = sizeof(g_idt) - 1;
     pic8259_init();

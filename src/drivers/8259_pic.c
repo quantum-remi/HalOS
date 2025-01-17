@@ -3,7 +3,7 @@
 #include "io.h"
 #include "8259_pic.h"
 
-void pic8259_init() 
+void pic8259_init()
 {
     uint8 a1, a2;
 
@@ -26,9 +26,9 @@ void pic8259_init()
     outportb(PIC2_DATA, a2);
 }
 
-void pic8259_eoi(uint8 irq) 
+void pic8259_eoi(uint8 irq)
 {
-    if(irq >= 0x28)
+    if (irq >= 0x28)
         outportb(PIC2, PIC_EOI);
     outportb(PIC1, PIC_EOI);
 }

@@ -89,8 +89,8 @@ void console_scroll(int direction)
     if (direction == SCROLL_UP)
     {
         // Scroll up: Move rows 1 to (CONSOLE_ROWS - 1) to rows 0 to (CONSOLE_ROWS - 2)
-        memmove(console.text_buffer[0], 
-                console.text_buffer[1], 
+        memmove(console.text_buffer[0],
+                console.text_buffer[1],
                 (CONSOLE_ROWS - 1) * CONSOLE_COLS * sizeof(char));
 
         // Clear the last row (row CONSOLE_ROWS - 1)
@@ -99,8 +99,8 @@ void console_scroll(int direction)
     else if (direction == SCROLL_DOWN)
     {
         // Scroll down: Move rows 0 to (CONSOLE_ROWS - 2) to rows 1 to (CONSOLE_ROWS - 1)
-        memmove(console.text_buffer[1], 
-                console.text_buffer[0], 
+        memmove(console.text_buffer[1],
+                console.text_buffer[0],
                 (CONSOLE_ROWS - 1) * CONSOLE_COLS * sizeof(char));
 
         // Clear the first row (row 0)
@@ -115,7 +115,6 @@ void console_scroll(int direction)
     // Refresh the console display to reflect changes
     console_refresh();
 }
-
 
 void console_putchar(char c)
 {
@@ -223,7 +222,7 @@ void getstr(char *buffer, uint32 max_size)
         else if (c == '\n') // enter key
         {
             console_putchar('\n'); // print the newline character
-            buffer[i] = '\0'; // null terminate the string
+            buffer[i] = '\0';      // null terminate the string
             return;
         }
         else

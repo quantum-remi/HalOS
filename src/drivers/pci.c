@@ -1,8 +1,7 @@
 #include "pci.h"
 
 uint32 pci_size_map[100];
-pci_dev_t dev_zero= {0};
-
+pci_dev_t dev_zero = {0};
 
 pci_class_subclass_t pci_class_subclass_table[] = {
     {0x01, 0x01, "IDE Controller"},
@@ -81,7 +80,7 @@ pci_class_subclass_t pci_class_subclass_table[] = {
     // Add more entries for other class and subclass codes as needed
 };
 
-uint32 pci_read(pci_dev_t dev, uint32 field) 
+uint32 pci_read(pci_dev_t dev, uint32 field)
 {
     dev.field_num = (field & 0xFC) >> 2;
     dev.enable = 1;
@@ -235,27 +234,27 @@ pci_dev_t pci_get_device(uint16 vendor_id, uint16 device_id, int device_type)
     return dev_zero;
 }
 
-
-void pci_init() {
-	// Init size map
-	pci_size_map[PCI_VENDOR_ID] =	2;
-	pci_size_map[PCI_DEVICE_ID] =	2;
-	pci_size_map[PCI_COMMAND]	=	2;
-	pci_size_map[PCI_STATUS]	=	2;
-	pci_size_map[PCI_SUBCLASS]	=	1;
-	pci_size_map[PCI_CLASS]		=	1;
-	pci_size_map[PCI_CACHE_LINE_SIZE]	= 1;
-	pci_size_map[PCI_LATENCY_TIMER]		= 1;
-	pci_size_map[PCI_HEADER_TYPE] = 1;
-	pci_size_map[PCI_BIST] = 1;
-	pci_size_map[PCI_BAR0] = 4;
-	pci_size_map[PCI_BAR1] = 4;
-	pci_size_map[PCI_BAR2] = 4;
-	pci_size_map[PCI_BAR3] = 4;
-	pci_size_map[PCI_BAR4] = 4;
-	pci_size_map[PCI_BAR5] = 4;
-	pci_size_map[PCI_INTERRUPT_LINE]	= 1;
-	pci_size_map[PCI_SECONDARY_BUS]		= 1;
+void pci_init()
+{
+    // Init size map
+    pci_size_map[PCI_VENDOR_ID] = 2;
+    pci_size_map[PCI_DEVICE_ID] = 2;
+    pci_size_map[PCI_COMMAND] = 2;
+    pci_size_map[PCI_STATUS] = 2;
+    pci_size_map[PCI_SUBCLASS] = 1;
+    pci_size_map[PCI_CLASS] = 1;
+    pci_size_map[PCI_CACHE_LINE_SIZE] = 1;
+    pci_size_map[PCI_LATENCY_TIMER] = 1;
+    pci_size_map[PCI_HEADER_TYPE] = 1;
+    pci_size_map[PCI_BIST] = 1;
+    pci_size_map[PCI_BAR0] = 4;
+    pci_size_map[PCI_BAR1] = 4;
+    pci_size_map[PCI_BAR2] = 4;
+    pci_size_map[PCI_BAR3] = 4;
+    pci_size_map[PCI_BAR4] = 4;
+    pci_size_map[PCI_BAR5] = 4;
+    pci_size_map[PCI_INTERRUPT_LINE] = 1;
+    pci_size_map[PCI_SECONDARY_BUS] = 1;
 }
 void pci_print_devices()
 {
@@ -274,17 +273,20 @@ void pci_print_devices()
                     uint32 class_code = get_device_type(dev);
                     uint32 subclass_code = pci_read(dev, PCI_SUBCLASS);
                     console_printf("PCI Device: %x:%x:%x, Class: %x, Subclass: %x (%s)\n",
-                        dev.bus_num, dev.device_num, dev.function_num, class_code, subclass_code,
-                        get_subclass_name(class_code, subclass_code));
+                                   dev.bus_num, dev.device_num, dev.function_num, class_code, subclass_code,
+                                   get_subclass_name(class_code, subclass_code));
                 }
             }
         }
     }
 }
 
-const char* get_subclass_name(uint32 class_code, uint32 subclass_code) {
-    for (int i = 0; i < sizeof(pci_class_subclass_table) / sizeof(pci_class_subclass_table[0]); i++) {
-        if (pci_class_subclass_table[i].class_code == (class_code >> 8) && pci_class_subclass_table[i].subclass_code == (subclass_code & 0xFF)) {
+const char *get_subclass_name(uint32 class_code, uint32 subclass_code)
+{
+    for (int i = 0; i < sizeof(pci_class_subclass_table) / sizeof(pci_class_subclass_table[0]); i++)
+    {
+        if (pci_class_subclass_table[i].class_code == (class_code >> 8) && pci_class_subclass_table[i].subclass_code == (subclass_code & 0xFF))
+        {
             return pci_class_subclass_table[i].name;
         }
     }

@@ -16,19 +16,20 @@ void (*exec_bios32_function)() = (void *)0x7c00;
  init bios32 routine by setting 6 & 7 the entries
  this data will be copied when bios32_service() is called
  */
-void bios32_init() {
+void bios32_init()
+{
     serial_printf("BIOS32: Initializing...\n");
-    
+
     // Setup GDT entries for real mode transition
     gdt_set_entry(6, 0, 0xffffffff, 0x9A, 0x0f);
     gdt_set_entry(7, 0, 0xffffffff, 0x92, 0x0f);
-    
+
     // Setup real mode environment
     g_real_mode_gdt.base_address = (uint32)g_gdt;
     g_real_mode_gdt.limit = sizeof(g_gdt) - 1;
     g_real_mode_idt.base_address = 0;
     g_real_mode_idt.limit = 0x3ff;
-    
+
     serial_printf("BIOS32: GDT setup complete. Base=0x%x Limit=0x%x\n");
     // copy output registers to out
     g_real_mode_idt.base_address = 0;
@@ -38,7 +39,8 @@ void bios32_init() {
 /**
  copy data to assembly bios32_call.asm and execute code from 0x7c00 address
 */
-void bios32_service(uint8 interrupt, REGISTERS16 *in, REGISTERS16 *out) {
+void bios32_service(uint8 interrupt, REGISTERS16 *in, REGISTERS16 *out)
+{
     void *new_code_base = (void *)0x7c00;
     // serial_printf("BIOS32: Calling interrupt 0x%x\n", interrupt);
     // copy our GDT entries g_gdt to bios32_gdt_entries(bios32_call.asm)
@@ -74,12 +76,13 @@ void bios32_service(uint8 interrupt, REGISTERS16 *in, REGISTERS16 *out) {
 // void int86(uint8 interrupt, REGISTERS16 *in, REGISTERS16 *out) {
 //     bios32_service(interrupt, in, out);
 // }
-void int86(uint8 interrupt, REGISTERS16 *in, REGISTERS16 *out) {
+void int86(uint8 interrupt, REGISTERS16 *in, REGISTERS16 *out)
+{
     // console_printf("Debug: BIOS32 call int 0x%x\n", interrupt);
-    // console_printf("Debug: Input registers: AX=0x%x ES=0x%x DI=0x%x\n", 
+    // console_printf("Debug: Input registers: AX=0x%x ES=0x%x DI=0x%x\n",
     //        in->ax, in->es, in->di);
-    
+
     bios32_service(interrupt, in, out);
-    
+
     // console_printf("Debug: Output registers: AX=0x%x\n", out->ax);
 }

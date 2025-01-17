@@ -7,7 +7,8 @@ TSS g_tss;
 
 extern uint32 get_eip();
 
-static void set_tss_entry(int index, uint16 ss0, uint32 esp0) {
+static void set_tss_entry(int index, uint16 ss0, uint32 esp0)
+{
     uint32 eip = get_eip();
     uint32 base = (uint32)&g_tss;
     uint32 limit = base + sizeof(g_tss);
@@ -27,16 +28,19 @@ static void set_tss_entry(int index, uint16 ss0, uint32 esp0) {
     g_tss.iomap_base = sizeof(TSS);
 }
 
-void tss_init() {
+void tss_init()
+{
     set_tss_entry(5, 0x10, 0x0100000);
     load_tss();
 }
 
-void tss_set_stack(uint32 esp0) {
+void tss_set_stack(uint32 esp0)
+{
     g_tss.esp0 = esp0;
 }
 
-void tss_print() {
+void tss_print()
+{
     console_printf("previous: 0x%x\n", g_tss.previous);
     console_printf("esp0: 0x%x, ss0: 0x%x\n", g_tss.esp0, g_tss.ss0);
     console_printf("esp1: 0x%x, ss1: 0x%x\n", g_tss.esp1, g_tss.ss1);
