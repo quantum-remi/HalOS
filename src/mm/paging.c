@@ -50,7 +50,7 @@ uint32 g_page_tables[1024] __attribute__((aligned(4096)));
 void page_fault_handler(REGISTERS *r)
 {
     uint32 faulting_address;
-    asm volatile("mov %%cr2, %0"
+    __asm__ volatile("mov %%cr2, %0"
                  : "=r"(faulting_address));
     serial_printf("Segmentation fault 0x%x\n", faulting_address);
     while (1)
@@ -84,12 +84,12 @@ void paging_init()
     isr_register_interrupt_handler(14, page_fault_handler);
 
     // set cr3 point to page directory
-    asm volatile("mov %0, %%cr3" ::"r"(g_page_directory));
+    __asm__ volatile("mov %0, %%cr3" ::"r"(g_page_directory));
 
     // set bit in cr0 to enable paging
-    asm volatile("mov %%cr0, %0" : "=r"(cr0));
+    __asm__ volatile("mov %%cr0, %0" : "=r"(cr0));
     cr0 = cr0 | 0x80000000;
-    asm volatile("mov %0, %%cr0" ::"r"(cr0));
+    __asm__ volatile("mov %0, %%cr0" ::"r"(cr0));
 
     g_is_paging_enabled = TRUE;
 }

@@ -22,7 +22,7 @@ extern uint32 g_height;
 
 void __cpuid(uint32 type, uint32 *eax, uint32 *ebx, uint32 *ecx, uint32 *edx)
 {
-    asm volatile("cpuid"
+    __asm__ volatile("cpuid"
                  : "=a"(*eax), "=b"(*ebx), "=c"(*ecx), "=d"(*edx)
                  : "0"(type)); // put the type into eax
 }

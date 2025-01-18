@@ -2,13 +2,13 @@
 
 int liballoc_lock()
 {
-    asm("cli");
+    __asm__("cli");
     return 0;
 }
 
 int liballoc_unlock()
 {
-    asm("sti");
+    __asm__("sti");
     return 0;
 }
 
