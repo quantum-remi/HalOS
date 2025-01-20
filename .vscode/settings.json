@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "paging.h": "c",
+        "console.h": "c",
+        "vesa.h": "c",
+        "string.h": "c"
+    }
+}

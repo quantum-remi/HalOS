@@ -222,7 +222,7 @@ $(OBJ)/ide.o : $(SRC)/drivers/ide.c
 	@printf "\n"
 
 qemu:
-	qemu-system-i386 -m 1G -vga virtio -cdrom $(TARGET_ISO) -serial stdio
+	qemu-system-i386 -m 1G -vga qxl -cdrom $(TARGET_ISO) -serial file:log.txt
 
 dev: 
 	make clean
