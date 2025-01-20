@@ -26,8 +26,8 @@ extern IDE_DEVICE g_ide_devices[MAXIMUM_IDE_DEVICES];
 void __cpuid(uint32 type, uint32 *eax, uint32 *ebx, uint32 *ecx, uint32 *edx)
 {
     __asm__ volatile("cpuid"
-                 : "=a"(*eax), "=b"(*ebx), "=c"(*ecx), "=d"(*edx)
-                 : "0"(type)); // put the type into eax
+                     : "=a"(*eax), "=b"(*ebx), "=c"(*ecx), "=d"(*edx)
+                     : "0"(type)); // put the type into eax
 }
 
 int cpuid_info(int print)
@@ -303,16 +303,16 @@ int test_memory_allocation()
     return 0;
 }
 
-void drive_read(int drive, uint32 num_sectors, uint8 lba, char buffer) 
+void drive_read(int drive, uint32 num_sectors, uint32 lba, char *buffer)
 {
     ide_read_sectors(drive, num_sectors, lba, (uint32)buffer);
-    console_printf("reading finished\n");
+    console_printf("Reading %d sectors from drive %d at LBA %d\n", num_sectors, drive, lba);
 }
 
-void drive_write(int drive, uint32 num_sectors, uint8 lba, char buffer) 
+void drive_write(int drive, uint32 num_sectors, uint8 lba, char *buffer)
 {
     ide_write_sectors(drive, num_sectors, lba, (uint32)buffer);
-    console_printf("Writing %s sectors to drive %s at LBA %s from buffer %s\n", num_sectors, drive, lba, buffer);
+    console_printf("Writing %d sectors to drive %d at LBA %d from buffer %s\n", num_sectors, drive, lba, buffer);
 }
 void drive_list()
 {
@@ -341,7 +341,7 @@ void drive()
     int drive = -1;
     uint32 lba = 0;
     uint8 no_of_sectors = 1;
-    
+
     console_printf("Drive Menu\n");
     console_printf("Type help for help\n");
     const char *shell = "drive> ";
@@ -371,39 +371,54 @@ void drive()
             console_printf("|  - exit   : Exit from Drive Menu  |\n");
             console_printf("=====================================\n");
         }
-        else if (strcmp(buffer, "read") == 0 && drive != -1)
+        else if (strcmp(buffer, "read") == 0)
         {
+            if (drive == -1)
+            {
+                console_printf("Please select a drive first\n");
+                continue;
+            }
             while (1)
             {
                 console_printf(read);
-                memset(buffer, 0, sizeof(buffer));
-                getstr(buffer, sizeof(buffer));
+                memset(buf, 0, sizeof(buf));
+                getstr(buffer, sizeof(buffer)); // Get the read command input
                 if (strcmp(buffer, "exit") == 0)
                     break;
-                else
-                {
-                    drive_read(drive, lba, no_of_sectors, (uint32)buf);
-                    console_printf("%s\n", buf);
-                    break;
-                }
+
+                // Perform the read operation
+                drive_read(drive, no_of_sectors, lba, buf);
+
+                // Display the read contents
+                console_printf("Data read: %s\n", buf);
+                break;
             }
         }
-        else if (strcmp(buffer, "write") == 0 && drive != -1)
+        else if (strcmp(buffer, "write") == 0)
         {
+            if (drive == -1)
+            {
+                console_printf("Please select a drive first\n");
+                continue;
+            }
             while (1)
             {
                 console_printf(write);
-                memset(buffer, 0, sizeof(buffer));
-                getstr(buf, sizeof(buffer));
-                if (strlen(buf) == 0)
-                    continue;
+                memset(buf, 0, sizeof(buf));
+                getstr(buf, sizeof(buf)); // Get the string input into buf
                 if (strcmp(buf, "exit") == 0)
                     break;
-                else
+
+                if (strlen(buf) > ATA_SECTOR_SIZE)
                 {
-                    drive_write(drive, lba, no_of_sectors, (uint32)buf);
-                    break;
+                    console_printf("Error: Input exceeds sector size (%d bytes)\n", ATA_SECTOR_SIZE);
+                    continue;
                 }
+
+                // Write the contents of buf to the drive
+                drive_write(drive, no_of_sectors, lba, buf);
+                console_printf("Data written successfully: %s\n", buf);
+                break;
             }
         }
         else if (strcmp(buffer, "clear") == 0)
@@ -421,21 +436,30 @@ void drive()
                 }
             }
             console_printf("List of all Drives:\n");
-            for (int i = 0; i < MAXIMUM_IDE_DEVICES; i++)
+            for (int i = 0; i < 4; i++)
             {
-                if (g_ide_devices[i].reserved)
+                if (g_ide_devices[i].reserved == 1)
                 {
-                    console_printf("  %s\n", g_ide_devices[i].model);
-                    console_printf("    Type: %s\n", g_ide_devices[i].type ? "ATA" : "ATAPI");
-                    console_printf("    Size: %d bytes\n", g_ide_devices[i].size);
+                    console_printf("%d:-\n", i);
+                    console_printf("  model: %s\n", g_ide_devices[i].model);
+                    console_printf("  type: %s\n", (const char *[]){"ATA", "ATAPI"}[g_ide_devices[i].type]);
+                    console_printf("  drive: %d, channel: %d\n", g_ide_devices[i].drive, g_ide_devices[i].channel);
+                    console_printf("  base: 0x%x, control: 0x%x\n", g_ide_channels[i].base, g_ide_channels[i].control);
+                    console_printf("  size: %d sectors, %d bytes\n", g_ide_devices[i].size, g_ide_devices[i].size * ATA_SECTOR_SIZE);
+                    console_printf("  signature: 0x%x, features: %d\n", g_ide_devices[i].signature, g_ide_devices[i].features);
                 }
             }
         }
         else if (strcmp(buffer, "info") == 0)
         {
+            if (drive == -1)
+            {
+                console_printf("Please select a drive first\n");
+                continue;
+            }
             console_printf("Drive %d:\n", drive);
             console_printf("  Model: %s\n", g_ide_devices[drive].model);
-            console_printf("  Type: %s\n", g_ide_devices[drive].type ? "ATA" : "ATAPI");
+            console_printf("  Type: %s\n", g_ide_devices[drive].type ? "ATAPI" : "ATA");
             console_printf("  Size: %d bytes\n", g_ide_devices[drive].size);
         }
         else if (strcmp(buffer, "select") == 0)
@@ -461,6 +485,18 @@ void drive()
     }
 }
 
+
+void drive_test()
+{
+    const int DRIVE = ata_get_drive_by_model("QEMU HARDDISK");
+    const uint32 LBA = 0;
+    const uint8 NO_OF_SECTORS = 1;
+    char buf[ATA_SECTOR_SIZE] = {0};
+
+    // write message to drive
+    strcpy(buf, "Hello World");
+    ide_write_sectors(DRIVE, NO_OF_SECTORS, LBA, (uint32)buf);
+}
 void shell()
 {
     console_clear(VESA_COLOR_WHITE, VESA_COLOR_BLACK);

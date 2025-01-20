@@ -114,6 +114,8 @@ typedef struct {
 #define LBA_MODE_28   0x01
 #define LBA_MODE_CHS  0x00
 
+extern IDE_CHANNELS g_ide_channels[MAXIMUM_CHANNELS];
+
 /*
 prim_channel_base_addr: Primary channel base address(0x1F0-0x1F7)
 prim_channel_control_base_addr: Primary channel control base address(0x3F6)
