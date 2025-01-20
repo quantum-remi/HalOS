@@ -49,8 +49,6 @@ void console_init(VESA_COLOR_TYPE fore_color, VESA_COLOR_TYPE back_color)
 
 void draw_char(int x, int y, char c, uint32 fg, uint32 bg)
 {
-    if ((unsigned char)c >= 128)
-        return;
 
     for (int font_y = 0; font_y < FONT_HEIGHT; font_y++)
     {
@@ -87,7 +85,7 @@ void console_clear(VESA_COLOR_TYPE fore_color, VESA_COLOR_TYPE back_color)
 }
 
 void console_scroll(int direction) {
-    // serial_printf("Console: Scrolling %s...\n", direction == SCROLL_UP ? "up" : "down");
+    serial_printf("Console: Scrolling %s...\n", direction == SCROLL_UP ? "up" : "down");
 
     if (console_scrolling) {
         return;
@@ -119,7 +117,7 @@ void console_scroll(int direction) {
         console.cursor_y++;
     }
 
-    // serial_printf("Console: Scrolling complete\n");
+    serial_printf("Console: Scrolling complete\n");
     console_scrolling = 0;
     // Refresh the console display
     console_refresh();
@@ -210,17 +208,21 @@ void console_putstr(const char *str)
 
 void console_refresh()
 {
+    // serial_printf("Console: Refreshing...\n");
     for (int y = 0; y < CONSOLE_ROWS; y++)
     {
+        // serial_printf("Console: Refreshing row %d...\n", y);
         for (int x = 0; x < CONSOLE_COLS; x++)
         {
             char c = console.text_buffer[y][x];
 
             // Always draw characters, including spaces
+            // serial_printf("Console: Drawing character at (%d, %d)...\n", x, y);
             draw_char(x, y, c ? c : ' ', console.fore_color, console.back_color);
         }
     }
-    swap_buffers();
+    // serial_printf("Console: Refresh complete\n");
+    // swap_buffers();
 }
 
 void getstr(char *buffer, uint32 max_size)
@@ -285,47 +287,56 @@ void getstr_bound(char *buffer, uint8 bound)
 
 #include <stdarg.h>
 
-void console_printf(const char *format, ...)
+void console_vprintf(const char *format, va_list args)
 {
-    va_list args;
-    va_start(args, format);
-
-    char c;
     char buf[32];
+    int i, n;
 
-    while ((c = *format++) != 0)
+    while ((n = *format++) != 0)
     {
-        if (c != '%')
+        if (n != '%')
         {
-            console_putchar(c);
+            console_putchar(n);
+            continue;
         }
-        else
+
+        n = *format++;
+        switch (n)
         {
-            char *p;
-            c = *format++;
-            switch (c)
+        case 'c':
+            console_putchar(va_arg(args, int));
+            break;
+        case 's':
             {
-            case 'd':
-            case 'x':
-                itoa(buf, c, va_arg(args, int));
-                p = buf;
-                while (*p)
-                    console_putchar(*p++);
-                break;
-            case 's':
-                p = va_arg(args, char *);
+                char *p = va_arg(args, char *);
                 if (!p)
                     p = "(null)";
                 while (*p)
                     console_putchar(*p++);
-                break;
-            default:
-                console_putchar('%');
-                console_putchar(c);
-                break;
             }
+            break;
+        case 'd':
+        case 'x':
+            {
+                char *p;
+                int val = va_arg(args, int);
+                itoa(buf, n == 'x' ? 16 : 10, val);
+                for (p = buf; *p; p++)
+                    console_putchar(*p);
+            }
+            break;
+        default:
+            console_putchar('%');
+            console_putchar(n);
+            break;
         }
     }
+}
 
+void console_printf(const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    console_vprintf(format, args);
     va_end(args);
 }

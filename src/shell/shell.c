@@ -326,14 +326,6 @@ void drive_list()
     }
 }
 
-void drive_info(int drive)
-{
-    console_printf("Drive %d:\n", drive);
-    console_printf("  Model: %s\n", g_ide_devices[drive].model);
-    console_printf("  Type: %s\n", g_ide_devices[drive].type ? "ATA" : "ATAPI");
-    console_printf("  Size: %d bytes\n", g_ide_devices[drive].size);
-}
-
 void drive()
 {
     char buffer[255];

@@ -1,4 +1,3 @@
-ata driver
 fat32
 ext2
 networking
@@ -9,3 +8,5 @@ vfs
 smp
 sound
 usb
+
+FIX DOUBLE BUFFERING
