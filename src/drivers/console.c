@@ -21,6 +21,8 @@ extern VBE20_MODEINFOBLOCK g_vbe_modeinfoblock;
 extern uint32 g_width;
 extern uint32 g_height;
 
+int console_scrolling = 0;
+
 void init_resolution()
 {
     g_width = g_vbe_modeinfoblock.XResolution;
@@ -85,42 +87,55 @@ void console_clear(VESA_COLOR_TYPE fore_color, VESA_COLOR_TYPE back_color)
 }
 
 void console_scroll(int direction) {
+    // serial_printf("Console: Scrolling %s...\n", direction == SCROLL_UP ? "up" : "down");
+
+    if (console_scrolling) {
+        return;
+    }
+    console_scrolling = 1;
+
     if (direction == SCROLL_UP) {
-        // Scroll up: Move rows 1 to (CONSOLE_ROWS - 1) to rows 0 to (CONSOLE_ROWS - 2)
+        // Move rows up
         memmove(console.text_buffer[0],
                 console.text_buffer[1],
                 (CONSOLE_ROWS - 1) * CONSOLE_COLS * sizeof(char));
 
-        // Clear the last row (row CONSOLE_ROWS - 1)
+        // Clear the last row
         memset(console.text_buffer[CONSOLE_ROWS - 1], 0, CONSOLE_COLS * sizeof(char));
-
-        // Update cursor position
-        console.cursor_y--;
-        if (console.cursor_y < 0) {
-            console.cursor_y = 0;
-        }
     } else if (direction == SCROLL_DOWN) {
-        // Scroll down: Move rows 0 to (CONSOLE_ROWS - 2) to rows 1 to (CONSOLE_ROWS - 1)
+        // Move rows down
         memmove(console.text_buffer[1],
                 console.text_buffer[0],
                 (CONSOLE_ROWS - 1) * CONSOLE_COLS * sizeof(char));
 
-        // Clear the first row (row 0)
+        // Clear the first row
         memset(console.text_buffer[0], 0, CONSOLE_COLS * sizeof(char));
+    }
 
-        // Update cursor position
+    // Clamp cursor position (if needed)
+    if (direction == SCROLL_UP && console.cursor_y > 0) {
+        console.cursor_y--;
+    } else if (direction == SCROLL_DOWN && console.cursor_y < CONSOLE_ROWS - 1) {
+        console.cursor_y++;
+    }
+
+    // serial_printf("Console: Scrolling complete\n");
+    console_scrolling = 0;
+    // Refresh the console display
+    console_refresh();
+}
+
+void console_putchar(char c)
+{
+
+    if (console.cursor_x >= CONSOLE_COLS) {
+        console.cursor_x = 0;
         console.cursor_y++;
         if (console.cursor_y >= CONSOLE_ROWS) {
             console.cursor_y = CONSOLE_ROWS - 1;
         }
     }
 
-    // Refresh console display
-    console_refresh();
-}
-
-void console_putchar(char c)
-{
     if (c == '\n') // Handle newline
     {
         console.cursor_x = 0;
