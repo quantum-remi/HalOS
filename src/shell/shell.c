@@ -21,6 +21,8 @@ KERNEL_MEMORY_MAP g_kmap;
 extern uint32 g_width;
 extern uint32 g_height;
 
+extern IDE_DEVICE g_ide_devices[MAXIMUM_IDE_DEVICES];
+
 void __cpuid(uint32 type, uint32 *eax, uint32 *ebx, uint32 *ecx, uint32 *edx)
 {
     __asm__ volatile("cpuid"
@@ -312,25 +314,41 @@ void drive_write(int drive, uint32 num_sectors, uint8 lba, char buffer)
     ide_write_sectors(drive, num_sectors, lba, (uint32)buffer);
     console_printf("Writing %s sectors to drive %s at LBA %s from buffer %s\n", num_sectors, drive, lba, buffer);
 }
+void drive_list()
+{
+    console_printf("List of Drives:\n");
+    for (int i = 0; i < MAXIMUM_IDE_DEVICES; i++)
+    {
+        if (g_ide_devices[i].reserved)
+        {
+            console_printf("  %s\n", g_ide_devices[i].model);
+        }
+    }
+}
+
+void drive_info(int drive)
+{
+    console_printf("Drive %d:\n", drive);
+    console_printf("  Model: %s\n", g_ide_devices[drive].model);
+    console_printf("  Type: %s\n", g_ide_devices[drive].type ? "ATA" : "ATAPI");
+    console_printf("  Size: %d bytes\n", g_ide_devices[drive].size);
+}
+
 void drive()
 {
     char buffer[255];
-    const int DRIVE = ata_get_drive_by_model("QEMU HARDDISK");
-    const uint32 LBA = 0;
-    const uint8 NO_OF_SECTORS = 1;
     char buf[ATA_SECTOR_SIZE] = {0};
-    if (DRIVE == -1)
-    {
-        console_printf("Drive not found\n");
-        return;
-    }
-    ata_get_drive_by_model("VBOX HARDDISK");
-    console_printf("Read. Read from Drive\n");
-    console_printf("Write. Write to Drive\n");
-    // console_printf("Enter your choice: ");
+    int drive = -1;
+    uint32 lba = 0;
+    uint8 no_of_sectors = 1;
+    
+    console_printf("Drive Menu\n");
+    console_printf("Type help for help\n");
     const char *shell = "drive> ";
     const char *read = "read> ";
     const char *write = "write> ";
+    const char *select = "select> ";
+
     while (1)
     {
         console_printf(shell);
@@ -344,13 +362,16 @@ void drive()
             console_printf("|        Drive Menu Help Guide      |\n");
             console_printf("=====================================\n");
             console_printf("|  Commands:                        |\n");
-            console_printf("|  - read  : Read from Drive        |\n");
-            console_printf("|  - write : Write to Drive         |\n");
-            console_printf("|  - clear : Clear Screen           |\n");
-            console_printf("|  - exit  : Exit from Drive Menu   |\n");
+            console_printf("|  - read   : Read from Drive       |\n");
+            console_printf("|  - write  : Write to Drive        |\n");
+            console_printf("|  - list   : List of Drives        |\n");
+            console_printf("|  - select : Select a Drive        |\n");
+            console_printf("|  - info   : Get Info of Drive     |\n");
+            console_printf("|  - clear  : Clear Screen          |\n");
+            console_printf("|  - exit   : Exit from Drive Menu  |\n");
             console_printf("=====================================\n");
         }
-        else if (strcmp(buffer, "read") == 0)
+        else if (strcmp(buffer, "read") == 0 && drive != -1)
         {
             while (1)
             {
@@ -361,19 +382,13 @@ void drive()
                     break;
                 else
                 {
-                    if (strlen(buffer) == 0)
-                        continue;
-                    drive_read(DRIVE, LBA, NO_OF_SECTORS, (uint32)buf);
+                    drive_read(drive, lba, no_of_sectors, (uint32)buf);
                     console_printf("%s\n", buf);
                     break;
                 }
             }
         }
-        else if (strcmp(buffer, "clear") == 0)
-        {
-            console_clear(VESA_COLOR_WHITE, VESA_COLOR_BLACK);
-        }
-        else if (strcmp(buffer, "write") == 0)
+        else if (strcmp(buffer, "write") == 0 && drive != -1)
         {
             while (1)
             {
@@ -386,14 +401,62 @@ void drive()
                     break;
                 else
                 {
-                    drive_write(DRIVE, LBA, NO_OF_SECTORS, (uint32)buf);
+                    drive_write(drive, lba, no_of_sectors, (uint32)buf);
                     break;
                 }
             }
         }
+        else if (strcmp(buffer, "clear") == 0)
+        {
+            console_clear(VESA_COLOR_WHITE, VESA_COLOR_BLACK);
+        }
+        else if (strcmp(buffer, "list") == 0)
+        {
+            console_printf("List of Drives:\n");
+            for (int i = 0; i < MAXIMUM_IDE_DEVICES; i++)
+            {
+                if (g_ide_devices[i].reserved)
+                {
+                    console_printf("  %s\n", g_ide_devices[i].model);
+                }
+            }
+            console_printf("List of all Drives:\n");
+            for (int i = 0; i < MAXIMUM_IDE_DEVICES; i++)
+            {
+                if (g_ide_devices[i].reserved)
+                {
+                    console_printf("  %s\n", g_ide_devices[i].model);
+                    console_printf("    Type: %s\n", g_ide_devices[i].type ? "ATA" : "ATAPI");
+                    console_printf("    Size: %d bytes\n", g_ide_devices[i].size);
+                }
+            }
+        }
+        else if (strcmp(buffer, "info") == 0)
+        {
+            console_printf("Drive %d:\n", drive);
+            console_printf("  Model: %s\n", g_ide_devices[drive].model);
+            console_printf("  Type: %s\n", g_ide_devices[drive].type ? "ATA" : "ATAPI");
+            console_printf("  Size: %d bytes\n", g_ide_devices[drive].size);
+        }
+        else if (strcmp(buffer, "select") == 0)
+        {
+            console_printf(select);
+            memset(buffer, 0, sizeof(buffer));
+            getstr(buffer, sizeof(buffer));
+            int selected_drive = atoi(buffer);
+            if (selected_drive >= 0 && selected_drive < MAXIMUM_IDE_DEVICES && g_ide_devices[selected_drive].reserved)
+            {
+                drive = selected_drive;
+                console_printf("Drive %d selected\n", drive);
+            }
+            else
+            {
+                console_printf("Invalid drive selection\n");
+            }
+        }
         else
         {
-            console_printf("invalid command: %s\n", buffer);
+            console_printf("Invalid command: %s\n", buffer);
         }
     }
 }

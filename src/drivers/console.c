@@ -84,10 +84,8 @@ void console_clear(VESA_COLOR_TYPE fore_color, VESA_COLOR_TYPE back_color)
     serial_printf("Console: Clearing complete\n");
 }
 
-void console_scroll(int direction)
-{
-    if (direction == SCROLL_UP)
-    {
+void console_scroll(int direction) {
+    if (direction == SCROLL_UP) {
         // Scroll up: Move rows 1 to (CONSOLE_ROWS - 1) to rows 0 to (CONSOLE_ROWS - 2)
         memmove(console.text_buffer[0],
                 console.text_buffer[1],
@@ -95,9 +93,13 @@ void console_scroll(int direction)
 
         // Clear the last row (row CONSOLE_ROWS - 1)
         memset(console.text_buffer[CONSOLE_ROWS - 1], 0, CONSOLE_COLS * sizeof(char));
-    }
-    else if (direction == SCROLL_DOWN)
-    {
+
+        // Update cursor position
+        console.cursor_y--;
+        if (console.cursor_y < 0) {
+            console.cursor_y = 0;
+        }
+    } else if (direction == SCROLL_DOWN) {
         // Scroll down: Move rows 0 to (CONSOLE_ROWS - 2) to rows 1 to (CONSOLE_ROWS - 1)
         memmove(console.text_buffer[1],
                 console.text_buffer[0],
@@ -105,14 +107,15 @@ void console_scroll(int direction)
 
         // Clear the first row (row 0)
         memset(console.text_buffer[0], 0, CONSOLE_COLS * sizeof(char));
-    }
-    else
-    {
-        serial_printf("Error: Invalid scroll direction!\n");
-        return;
+
+        // Update cursor position
+        console.cursor_y++;
+        if (console.cursor_y >= CONSOLE_ROWS) {
+            console.cursor_y = CONSOLE_ROWS - 1;
+        }
     }
 
-    // Refresh the console display to reflect changes
+    // Refresh console display
     console_refresh();
 }
 

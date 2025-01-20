@@ -189,3 +189,30 @@ void *memmove(void *dest, const void *src, size_t n)
     }
     return dest;
 }
+
+int atoi(const char *str) {
+    int result = 0;
+    int sign = 1;
+    int i = 0;
+
+    // Skip whitespace
+    while (str[i] == ' ' || str[i] == '\t' || str[i] == '\n') {
+        i++;
+    }
+
+    // Check for sign
+    if (str[i] == '-') {
+        sign = -1;
+        i++;
+    } else if (str[i] == '+') {
+        i++;
+    }
+
+    // Convert digits to integer
+    while (str[i] >= '0' && str[i] <= '9') {
+        result = result * 10 + (str[i] - '0');
+        i++;
+    }
+
+    return sign * result;
+}

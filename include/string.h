@@ -31,4 +31,6 @@ char *strstr(const char *in, const char *str);
 
 void *memmove(void *dest, const void *src, size_t n);
 
+int atoi(const char *str);
+
 #endif

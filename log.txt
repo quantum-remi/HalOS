@@ -36,4 +36,3 @@ System initialized successfully
 Console: Clearing screen with fore 16777215 back 0
 Console: Clearing buffer...
 Console: Clearing complete
-VBE: Error - (135, 1112080) is out of bounds
