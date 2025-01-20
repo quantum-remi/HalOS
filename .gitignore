@@ -2,3 +2,5 @@ obj/*.o
 obj/asm/*.o
 out/*
 .vscode/*
+log.txt
+disk.img

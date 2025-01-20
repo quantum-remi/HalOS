@@ -11,6 +11,7 @@
 #include "liballoc.h"
 #include "pmm.h"
 #include "pci.h"
+#include "ide.h"
 
 #define BRAND_QEMU 1
 #define BRAND_VBOX 2
@@ -300,6 +301,103 @@ int test_memory_allocation()
     return 0;
 }
 
+void drive_read(int drive, uint32 num_sectors, uint8 lba, char buffer) 
+{
+    ide_read_sectors(drive, num_sectors, lba, (uint32)buffer);
+    console_printf("reading finished\n");
+}
+
+void drive_write(int drive, uint32 num_sectors, uint8 lba, char buffer) 
+{
+    ide_write_sectors(drive, num_sectors, lba, (uint32)buffer);
+    console_printf("Writing %s sectors to drive %s at LBA %s from buffer %s\n", num_sectors, drive, lba, buffer);
+}
+void drive()
+{
+    char buffer[255];
+    const int DRIVE = ata_get_drive_by_model("QEMU HARDDISK");
+    const uint32 LBA = 0;
+    const uint8 NO_OF_SECTORS = 1;
+    char buf[ATA_SECTOR_SIZE] = {0};
+    if (DRIVE == -1)
+    {
+        console_printf("Drive not found\n");
+        return;
+    }
+    ata_get_drive_by_model("VBOX HARDDISK");
+    console_printf("Read. Read from Drive\n");
+    console_printf("Write. Write to Drive\n");
+    // console_printf("Enter your choice: ");
+    const char *shell = "drive> ";
+    const char *read = "read> ";
+    const char *write = "write> ";
+    while (1)
+    {
+        console_printf(shell);
+        memset(buffer, 0, sizeof(buffer));
+        getstr(buffer, sizeof(buffer));
+        if (strcmp(buffer, "exit") == 0)
+            break;
+        else if (strcmp(buffer, "help") == 0)
+        {
+            console_printf("=====================================\n");
+            console_printf("|        Drive Menu Help Guide      |\n");
+            console_printf("=====================================\n");
+            console_printf("|  Commands:                        |\n");
+            console_printf("|  - read  : Read from Drive        |\n");
+            console_printf("|  - write : Write to Drive         |\n");
+            console_printf("|  - clear : Clear Screen           |\n");
+            console_printf("|  - exit  : Exit from Drive Menu   |\n");
+            console_printf("=====================================\n");
+        }
+        else if (strcmp(buffer, "read") == 0)
+        {
+            while (1)
+            {
+                console_printf(read);
+                memset(buffer, 0, sizeof(buffer));
+                getstr(buffer, sizeof(buffer));
+                if (strcmp(buffer, "exit") == 0)
+                    break;
+                else
+                {
+                    if (strlen(buffer) == 0)
+                        continue;
+                    drive_read(DRIVE, LBA, NO_OF_SECTORS, (uint32)buf);
+                    console_printf("%s\n", buf);
+                    break;
+                }
+            }
+        }
+        else if (strcmp(buffer, "clear") == 0)
+        {
+            console_clear(VESA_COLOR_WHITE, VESA_COLOR_BLACK);
+        }
+        else if (strcmp(buffer, "write") == 0)
+        {
+            while (1)
+            {
+                console_printf(write);
+                memset(buffer, 0, sizeof(buffer));
+                getstr(buf, sizeof(buffer));
+                if (strlen(buf) == 0)
+                    continue;
+                if (strcmp(buf, "exit") == 0)
+                    break;
+                else
+                {
+                    drive_write(DRIVE, LBA, NO_OF_SECTORS, (uint32)buf);
+                    break;
+                }
+            }
+        }
+        else
+        {
+            console_printf("invalid command: %s\n", buffer);
+        }
+    }
+}
+
 void shell()
 {
     console_clear(VESA_COLOR_WHITE, VESA_COLOR_BLACK);
@@ -323,33 +421,38 @@ void shell()
         }
         else if (strcmp(buffer, "help") == 0)
         {
-            console_printf("Hal OS Terminal\n");
-            console_printf("--------------------------------------------------------------\n");
-            console_printf("Available Commands:\n");
-            console_printf("--------------------------------------------------------------\n");
-            console_printf("  help      - Display this help message\n");
-            console_printf("  cpuid     - Display CPU information\n");
-            console_printf("  haiku     - Display a haiku\n");
-            console_printf("  echo      - Echo a message to the console\n");
-            console_printf("  clear     - Clear the console screen\n");
-            console_printf("  malloc    - Test memory allocation\n");
-            console_printf("  memory    - Display system memory information\n");
-            console_printf("  lspci     - Display PCI information\n");
-            console_printf("  timer     - Display system timer information\n");
-            console_printf("  shutdown  - Shut down the system\n");
-            console_printf("  snake     - Play a game of Snake\n");
-            console_printf("  vesa      - Display VESA graphics information\n");
-            console_printf("  version   - Display Hal OS version information\n");
-            console_printf("  yuri      - Display Yuri is Peak!\n");
-            console_printf("--------------------------------------------------------------\n");
+            console_printf("===============================================\n");
+            console_printf("|              Hal OS Terminal                |\n");
+            console_printf("===============================================\n");
+            console_printf("|  Available Commands:                        |\n");
+            console_printf("|   * help - Display this help message        |\n");
+            console_printf("|   * cpuid - Display CPU information         |\n");
+            console_printf("|   * drive - Read or write from/to a drive   |\n");
+            console_printf("|   * haiku - Display a haiku                 |\n");
+            console_printf("|   * echo - Echo a message to the console    |\n");
+            console_printf("|   * clear - Clear the console screen        |\n");
+            console_printf("|   * malloc - Test memory allocation         |\n");
+            console_printf("|   * memory - Display system memory          |\n");
+            console_printf("|   * lspci - Display PCI information         |\n");
+            console_printf("|   * timer - Display system timer            |\n");
+            console_printf("|   * shutdown - Shut down the system         |\n");
+            console_printf("|   * snake - Play a game of Snake            |\n");
+            console_printf("|   * vesa - Display VESA graphics            |\n");
+            console_printf("|   * version - Display Hal OS version        |\n");
+            console_printf("|   * yuri - Display Yuri is Peak!            |\n");
+            console_printf("===============================================\n");
         }
         else if (strcmp(buffer, "help /f") == 0)
         {
-            console_printf("help, cpuid, haiku, echo, clear, malloc, memory, lspci, timer, shutdown, snake, vesa, version, yuri\n");
+            console_printf("help, cpuid, drive, haiku, echo, clear, malloc, memory, lspci, timer, shutdown, snake, vesa, version, yuri\n");
         }
         else if (strcmp(buffer, "echo") == 0)
         {
             echo();
+        }
+        else if (strcmp(buffer, "drive") == 0)
+        {
+            drive();
         }
         else if (strcmp(buffer, "shutdown") == 0)
         {

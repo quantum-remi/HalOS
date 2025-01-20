@@ -15,6 +15,7 @@
 #include "serial.h"
 #include "tss.h"
 #include "pci.h"
+#include "ide.h"
 // #include "liballoc.h"
 MULTIBOOT_INFO *g_mboot_ptr;
 
@@ -160,6 +161,8 @@ void kmain(unsigned long magic, unsigned long addr)
         keyboard_init();
         serial_printf("Initializing FPU...\n");
         fpu_enable();
+        serial_printf("Initializing ATA...\n");
+        ata_init();
 
         serial_printf("Initializing PCI...\n");
         pci_init();

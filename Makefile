@@ -222,9 +222,14 @@ $(OBJ)/ide.o : $(SRC)/drivers/ide.c
 	@printf "\n"
 
 qemu:
-	qemu-system-i386 -m 1G -vga qxl -cdrom $(TARGET_ISO) -serial file:log.txt
+	qemu-system-i386 -m 1G -vga qxl -cdrom $(TARGET_ISO) -serial file:log.txt -drive id=disk,if=none,format=raw,file=disk.img -device ide-hd,drive=disk
 
-dev: 
+disk:
+	qemu-img create disk.img 1G
+
+rm-disk:
+	rm -f disk.img
+dev:
 	make clean
 	make
 	make qemu
