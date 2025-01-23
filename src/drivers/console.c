@@ -31,20 +31,12 @@ void init_resolution()
 
 void console_init(VESA_COLOR_TYPE fore_color, VESA_COLOR_TYPE back_color)
 {
-    serial_printf("Console: Starting initialization...\n");
-
-    // Clear console state
     memset(&console, 0, sizeof(console));
 
-    // Set colors
     console.fore_color = VBE_RGB(255, 255, 255);
     console.back_color = VBE_RGB(0, 0, 0);
 
-    // Clear screen
-    serial_printf("Console: Clearing screen...\n");
     console_clear(fore_color, back_color);
-
-    serial_printf("Console: Initialization complete\n");
 }
 
 void draw_char(int x, int y, char c, uint32 fg, uint32 bg)
@@ -70,7 +62,6 @@ void draw_char(int x, int y, char c, uint32 fg, uint32 bg)
 
 void console_clear(VESA_COLOR_TYPE fore_color, VESA_COLOR_TYPE back_color)
 {
-    serial_printf("Console: Clearing screen with fore %u back %u\n", fore_color, back_color);
     for (uint32 y = 0; y < g_height; y++)
     {
         for (uint32 x = 0; x < g_width; x++)
@@ -78,15 +69,11 @@ void console_clear(VESA_COLOR_TYPE fore_color, VESA_COLOR_TYPE back_color)
             vbe_putpixel(x, y, back_color);
         }
     }
-    serial_printf("Console: Clearing buffer...\n");
     memset(console.text_buffer, 0, sizeof(console.text_buffer));
     console.cursor_x = console.cursor_y = 0;
-    serial_printf("Console: Clearing complete\n");
 }
 
 void console_scroll(int direction) {
-    serial_printf("Console: Scrolling %s...\n", direction == SCROLL_UP ? "up" : "down");
-
     if (console_scrolling) {
         return;
     }
@@ -117,7 +104,6 @@ void console_scroll(int direction) {
         console.cursor_y++;
     }
 
-    serial_printf("Console: Scrolling complete\n");
     console_scrolling = 0;
     // Refresh the console display
     console_refresh();
@@ -208,21 +194,16 @@ void console_putstr(const char *str)
 
 void console_refresh()
 {
-    // serial_printf("Console: Refreshing...\n");
     for (int y = 0; y < CONSOLE_ROWS; y++)
     {
-        // serial_printf("Console: Refreshing row %d...\n", y);
         for (int x = 0; x < CONSOLE_COLS; x++)
         {
             char c = console.text_buffer[y][x];
 
             // Always draw characters, including spaces
-            // serial_printf("Console: Drawing character at (%d, %d)...\n", x, y);
             draw_char(x, y, c ? c : ' ', console.fore_color, console.back_color);
         }
     }
-    // serial_printf("Console: Refresh complete\n");
-    // swap_buffers();
 }
 
 void getstr(char *buffer, uint32 max_size)
@@ -340,3 +321,4 @@ void console_printf(const char *format, ...)
     console_vprintf(format, args);
     va_end(args);
 }
+

@@ -18,7 +18,7 @@ void (*exec_bios32_function)() = (void *)0x7c00;
  */
 void bios32_init()
 {
-    serial_printf("BIOS32: Initializing...\n");
+    // serial_printf("BIOS32: Initializing...\n");
 
     // Setup GDT entries for real mode transition
     gdt_set_entry(6, 0, 0xffffffff, 0x9A, 0x0f);
@@ -30,7 +30,7 @@ void bios32_init()
     g_real_mode_idt.base_address = 0;
     g_real_mode_idt.limit = 0x3ff;
 
-    serial_printf("BIOS32: GDT setup complete. Base=0x%x Limit=0x%x\n");
+    // serial_printf("BIOS32: GDT setup complete. Base=0x%x Limit=0x%x\n");
     // copy output registers to out
     g_real_mode_idt.base_address = 0;
     g_real_mode_idt.limit = 0x3ff;
