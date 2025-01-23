@@ -2,33 +2,33 @@
 #define PAGING_H
 
 #include "types.h"
-#include "isr.h"
 
-#define PAGE_SIZE 4096
-#define PAGE_DIR_ENTRIES 1024
-#define PAGE_TABLE_ENTRIES 1024
+typedef struct {
+    uint32 present : 1;
+    uint32 rw : 1;
+    uint32 user : 1;
+    uint32 write_through : 1;
+    uint32 cache_disabled : 1;
+    uint32 accessed : 1;
+    uint32 dirty : 1;
+    uint32 pat : 1;
+    uint32 global : 1;
+    uint32 available : 3;
+    uint32 frame : 20;
+} page_t;
 
-// Bit manipulation macros - fix pointer dereferencing
-#define CHECK_BIT(var,pos) ((*(uint32*)&(var)) & (1U<<(pos)))
-#define SET_BIT(var,pos) (*(uint32*)&(var) |= (1U<<(pos)))
-#define CLEAR_BIT(var,pos) (*(uint32*)&(var) &= ~(1U<<(pos)))
+typedef struct {
+    page_t pages[1024];
+} page_table_t;
 
-// Page flags
-#define PAGE_PRESENT 1
-#define PAGE_RW 2
-#define PAGE_USER 4
-#define PAGE_ACCESSED 32
-#define PAGE_DIRTY 64
+typedef struct {
+    page_table_t *tables[1024];
+} page_directory_t;
 
-extern uint32 g_page_directory[PAGE_DIR_ENTRIES] __attribute__((aligned(4096)));
-extern uint32 g_page_tables[PAGE_DIR_ENTRIES][PAGE_TABLE_ENTRIES] __attribute__((aligned(4096)));
-extern BOOL g_is_paging_enabled;
+void paging_init();
+void load_page_directory(page_directory_t *dir);
+void enable_paging();
 
-void paging_init(void);
-void page_fault_handler(REGISTERS* regs);
-void paging_allocate_page(void *virtual_addr);
-void paging_free_page(void *virtual_addr);
-void map_page(uint32 phys_addr, uint32 virt_addr, uint32 flags);
-void* paging_get_physical_address(void* virtual_addr);
+page_directory_t *get_page_directory();
 
 #endif

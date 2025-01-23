@@ -78,7 +78,7 @@ void isr_exception_handler(REGISTERS reg)
         serial_printf("EXCEPTION: %s\n", exception_messages[reg.int_no]);
         print_registers(&reg);
         for (;;)
-            ;
+            __asm__ volatile("hlt");
     }
     if (g_interrupt_handlers[reg.int_no] != NULL)
     {

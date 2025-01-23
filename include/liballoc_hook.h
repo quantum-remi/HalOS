@@ -3,7 +3,7 @@
 
 #include "types.h"
 #include "string.h"
-#include "pmm.h"
+#include "vmm.h"
 
 int liballoc_lock();
 int liballoc_unlock();

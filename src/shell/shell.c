@@ -90,10 +90,6 @@ void timer()
 
 void memory()
 {
-    uint32 used_blocks = pmm_get_used_blocks();
-
-    // display_kernel_memory_map(&g_kmap);
-    console_printf("  Used Blocks: %d MB \n ", used_blocks / 1024);
 
     console_printf("total_memory: %d MB, %d Bytes\n", g_kmap.system.total_memory / 1024, g_kmap.available.size);
     console_printf("start_addr: 0x%x, end_addr: 0x%x\n", g_kmap.available.start_addr, g_kmap.available.end_addr);
@@ -288,20 +284,7 @@ int test_memory_allocation()
         free(ptr3[i]);
     }
 
-    // Test 5: Test for double-free
-    void *ptr5 = malloc(100);
-    free(ptr5);
-    // Intentionally double-free
-    // free(ptr5);
-    uint32 used_blocks = pmm_get_used_blocks();
-    uint32 total_memory = g_pmm_info.memory_size;
-    uint32 used_memory = used_blocks * PMM_BLOCK_SIZE;
-
-    console_printf("Used Memory:\n");
-    console_printf("  Used Blocks: %d\n", used_blocks);
-    console_printf("  Total Memory: %d bytes\n", total_memory);
-    console_printf("  Used Memory: %d bytes (%.2f%% of total)\n", used_memory, (float)used_memory / total_memory * 100);
-    console_printf("All tests passed!\n");
+    console_printf("All tests passed\n");
     return 0;
 }
 

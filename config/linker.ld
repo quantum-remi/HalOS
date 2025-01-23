@@ -3,6 +3,7 @@ ENTRY(_start)
 SECTIONS
 {
     __kernel_section_start = .;
+    
     /* text section */
     .text 0x0100000 : {
         __kernel_text_section_start = .;
@@ -45,4 +46,8 @@ SECTIONS
 
     end = .; _end = .; __end = .;
     __kernel_section_end = .;
+    
+    /* Define physical and virtual addresses */
+    __kernel_physical_start = 0x0100000;
+    __kernel_virtual_start = 0xC0000000;
 }

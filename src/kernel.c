@@ -16,6 +16,7 @@
 #include "tss.h"
 #include "pci.h"
 #include "ide.h"
+#include "vmm.h"
 // #include "liballoc.h"
 MULTIBOOT_INFO *g_mboot_ptr;
 
@@ -66,6 +67,7 @@ int get_kernel_memory_map(KERNEL_MEMORY_MAP *kmap, MULTIBOOT_INFO *mboot_info)
 
     return -1;
 }
+
 void display_kernel_memory_map(KERNEL_MEMORY_MAP *kmap)
 {
     console_printf("kernel:\n");
@@ -135,28 +137,17 @@ void kmain(unsigned long magic, unsigned long addr)
             return;
         }
 
-        // pmm_init(g_kmap.available.start_addr, g_kmap.available.size);
-
-        pmm_init(g_kmap.available.start_addr, g_kmap.available.size);
-        pmm_init_region(g_kmap.available.start_addr, PMM_BLOCK_SIZE * 256);
-        serial_printf("Max blocks: %d\n", pmm_get_max_blocks());
-        // initialize a region of memory of size (4096 * 10), 10 blocks memory
-        // pmm_init_region(g_kmap.available.start_addr, PMM_BLOCK_SIZE * 10);
+        serial_printf("Initializing PMM...\n");
+        pmm_init(g_kmap.system.total_memory, (uint32 *)mboot_info->mmap_addr);
         serial_printf("PMM init\n");
 
-        // serial_printf("Initializing paging...\n");
-        // paging_init();
+        serial_printf("Initializing VMM...\n");
+        vmm_init();
+        serial_printf("VMM init\n");
 
-        // paging_allocate_page((void *)0x8973456);
-        // serial_printf("physical address: 0x%x\n", paging_get_physical_address((void *)0x8973456));
-
-        // int *x = (int *)paging_get_physical_address((void *)0x8973456);
-        // x[0] = 123;
-
-        // paging_free_page((void *)0x8973456);
-
-        // pmm_deinit_region(g_kmap.available.start_addr, PMM_BLOCK_SIZE * 10);
-        // serial_printf("PMM Deinit\n");
+        serial_printf("Initializing paging...\n");
+        paging_init();
+        serial_printf("Paging init\n");
 
         serial_printf("Initializing BIOS32...\n");
         bios32_init();

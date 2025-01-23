@@ -24,14 +24,14 @@ DEFINES=
 # assembler flags
 ASM_FLAGS = -f elf32
 # compiler flags
-CC_FLAGS = $(INCLUDE) $(DEFINES) -m32 -std=c23 -ffreestanding -Wall -Wextra
+CC_FLAGS = $(INCLUDE) $(DEFINES) -m32 -g -std=c23 -ffreestanding -Wall -Wextra
 # linker flags, for linker add linker.ld file too
 LD_FLAGS = -m elf_i386 -T $(CONFIG)/linker.ld -nostdlib
 # make flags
 MAKEFLAGS += -j$(nproc)
 
 # target file to create in linking
-TARGET=$(OUT)/kernel.bin
+TARGET=$(OUT)/kernel.elf
 
 # iso file target to create
 TARGET_ISO=$(OUT)/os.iso
@@ -43,7 +43,7 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o $(ASM_OBJ)/load_tss.o \
 		$(OBJ)/string.o $(OBJ)/console.o\
 		$(OBJ)/gdt.o $(OBJ)/idt.o $(OBJ)/isr.o $(OBJ)/8259_pic.o\
 		$(OBJ)/keyboard.o $(OBJ)/timer.o\
-		$(OBJ)/pmm.o \
+		$(OBJ)/pmm.o $(OBJ)/vmm.o \
 		$(OBJ)/paging.o  $(OBJ)/snake.o \
 		$(OBJ)/vesa.o $(OBJ)/fpu.o \
 		$(OBJ)/bios32.o $(OBJ)/shell.o \
@@ -151,6 +151,11 @@ $(OBJ)/pmm.o : $(SRC)/mm/pmm.c
 	$(CC) $(CC_FLAGS) -c $(SRC)/mm/pmm.c -o $(OBJ)/pmm.o
 	@printf "\n"
 
+$(OBJ)/vmm.o : $(SRC)/mm/vmm.c
+	@printf "[ $(SRC)/mm/vmm.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/mm/vmm.c -o $(OBJ)/vmm.o
+	@printf "\n"
+
 $(OBJ)/kernel.o : $(SRC)/kernel.c
 	@printf "[ $(SRC)/kernel.c ]\n"
 	$(CC) $(CC_FLAGS) -c $(SRC)/kernel.c -o $(OBJ)/kernel.o
@@ -233,6 +238,11 @@ dev:
 	make clean
 	make
 	make qemu
+
+debug:
+	make clean
+	make
+	qemu-system-i386 -m 1G -vga virtio -cdrom $(TARGET_ISO) -serial stdio -drive id=disk,if=none,format=raw,file=disk.img -device ide-hd,drive=disk -s -S
 clean:
 	rm -f $(OBJ)/*.o
 	rm -f $(ASM_OBJ)/*.o

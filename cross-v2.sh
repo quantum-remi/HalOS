@@ -11,7 +11,7 @@ command -v gcc >/dev/null 2>&1 || { echo >&2 "gcc is required but not installed.
 # Versions
 BINUTILS_VERSION=2.43
 GCC_VERSION=14.2.0
-
+GDB_VERSION=16.1
 # Directory setup
 mkdir -p cross
 cd cross
@@ -59,6 +59,16 @@ cd ..
 
 # Clean up GCC source
 rm -rf "gcc-$GCC_VERSION" "gcc-$GCC_VERSION.tar.gz"
+
+# Download extract and build GDB 
+wget "https://ftp.gnu.org/gnu/gdb/gdb-$GDB_VERSION.tar.gz"
+tar -xf "gdb-$GDB_VERSION.tar.gz"
+mkdir -p build-gdb
+cd build-gdb
+
+../gdb-$GDB_VERSION/configure --target="$TARGET" --prefix="$PREFIX"
+make -j"$CORES"
+make install
 
 echo "Cross-compilation toolchain setup complete at $PREFIX."
 
