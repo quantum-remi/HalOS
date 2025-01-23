@@ -3,6 +3,8 @@
 
 #include "types.h"
 
+void panic(char *msg);
+
 // symbols from linker.ld for section addresses
 extern uint8 __kernel_section_start;
 extern uint8 __kernel_section_end;

@@ -5,8 +5,7 @@
 #include "pmm.h"
 #include "string.h"
 #include "serial.h"
-
-BOOL g_is_paging_enabled = FALSE;
+#include "kernel.h"
 
 /*
 References:-
@@ -44,115 +43,136 @@ bit 12-31: frame
 
 */
 
+BOOL g_is_paging_enabled = FALSE;
 uint32 g_page_directory[1024] __attribute__((aligned(4096)));
-uint32 g_page_tables[1024] __attribute__((aligned(4096)));
+uint32 g_page_tables[1024][1024] __attribute__((aligned(4096)));
 
-void page_fault_handler(REGISTERS *r)
+#define PAGE_DIR_IDX(x) ((x) >> 22)
+#define PAGE_TABLE_IDX(x) (((x) >> 12) & 0x3FF)
+
+void map_page(uint32 phys_addr, uint32 virt_addr, uint32 flags)
+{
+    uint32 pd_idx = PAGE_DIR_IDX(virt_addr);
+    uint32 pt_idx = PAGE_TABLE_IDX(virt_addr);
+
+    g_page_tables[pd_idx][pt_idx] = (phys_addr & ~0xFFF) | (flags & 0xFFF);
+    g_page_directory[pd_idx] = ((uint32)&g_page_tables[pd_idx]) | flags;
+}
+
+void page_fault_handler(REGISTERS* regs)
 {
     uint32 faulting_address;
-    __asm__ volatile("mov %%cr2, %0"
-                 : "=r"(faulting_address));
-    serial_printf("Segmentation fault 0x%x\n", faulting_address);
-    while (1)
-        ;
+    __asm__ volatile("mov %%cr2, %0" : "=r" (faulting_address));
+
+    int present = !(regs->err_code & 0x1);
+    int rw = regs->err_code & 0x2;
+    int us = regs->err_code & 0x4;
+    int reserved = regs->err_code & 0x8;
+
+    serial_printf("Page fault at 0x%x ( %s %s %s %s)\n",
+        faulting_address,
+        present ? "present" : "not-present",
+        rw ? "read-only" : "read-write",
+        us ? "user-mode" : "supervisor-mode",
+        reserved ? "reserved" : "non-reserved");
+
+    panic("Page Fault");
 }
+
 
 void paging_init()
 {
-    int i;
-    uint32 cr0;
+    uint32 i, cr0;
+    uint32 phys_addr;
+    
+    serial_printf("paging_init(): Starting...\n");
+    
+    // Verify 4KB alignment
+    if ((uint32)g_page_directory & 0xFFF) {
+        panic("Page directory not aligned");
+    }
+    
+    if ((uint32)g_page_tables & 0xFFF) {
+        panic("Page tables not aligned");
+    }
 
+    // Clear structures
     memset(g_page_directory, 0, sizeof(g_page_directory));
     memset(g_page_tables, 0, sizeof(g_page_tables));
 
-    for (i = 0; i < 1024; i++)
-    {
-        // set present and read/write bits
-        g_page_directory[i] = 0x00000002;
+    // Identity map first 4MB
+    for(i = 0; i < 1024; i++) {
+        phys_addr = i * PAGE_SIZE;
+        g_page_tables[0][i] = phys_addr | PAGE_PRESENT | PAGE_RW;
     }
 
-    for (i = 0; i < 1024; i++)
-    {
-        // set present, read/write, suprevisor and frame address starting from 4096
-        g_page_tables[i] = (i * PAGE_SIZE) | 3;
-    }
+    // Set first PD entry
+    g_page_directory[0] = ((uint32)g_page_tables[0]) | PAGE_PRESENT | PAGE_RW;
+    serial_printf("PD[0] = 0x%x\n", g_page_directory[0]);
 
-    // set supervisor level, read/write, present
-    g_page_directory[0] = ((unsigned int)g_page_tables) | 3;
+    // Get current CR0
+    // __asm__ volatile("mov %%cr0, %0" : "=r"(cr0));
+    // serial_printf("Current CR0: 0x%x\n", cr0);
 
-    // add page fault interrupt handler
-    isr_register_interrupt_handler(14, page_fault_handler);
+    // Load CR3 and enable paging
+    serial_printf("Loading page directory at 0x%x into CR3\n", (uint32)g_page_directory);
+    
+    __asm__ volatile(
+        "cli\n"                      // Disable interrupts
+        "movl %0, %%eax\n"          // Load PD address
+        "movl %%eax, %%cr3\n"       // Set CR3
+        "movl %%cr0, %%eax\n"       // Get CR0
+        "orl $0x80000001, %%eax\n"  // Set PE and PG bits
+        "movl %%eax, %%cr0\n"       // Update CR0
+        :: "r"(g_page_directory)     // Input operand
+        : "eax"                      // Clobber list
+    );
 
-    // set cr3 point to page directory
-    __asm__ volatile("mov %0, %%cr3" ::"r"(g_page_directory));
-
-    // set bit in cr0 to enable paging
-    __asm__ volatile("mov %%cr0, %0" : "=r"(cr0));
-    cr0 = cr0 | 0x80000000;
-    __asm__ volatile("mov %0, %%cr0" ::"r"(cr0));
+    serial_printf("Paging enabled\n");
 
     g_is_paging_enabled = TRUE;
 }
 
-#define CHECK_BIT(var, pos) ((var) & (1 << (pos)))
-
-// convert given virtual address to its physical address
-void *paging_get_physical_address(void *virtual_addr)
+void* paging_get_physical_address(void* virtual_addr) 
 {
     if (!g_is_paging_enabled)
-    {
         return virtual_addr;
-    }
-    // get page directory, table & frame indexes
 
-    // TODO Requires detailed analysis of memory frame allocation and page directory/table entries
+    uint32 pdindex = PAGE_DIR_IDX((uint32)virtual_addr);
+    uint32 ptindex = PAGE_TABLE_IDX((uint32)virtual_addr);
+    uint32 offset = (uint32)virtual_addr & 0xFFF;
 
-    uint32 page_dir_index = (uint32)virtual_addr >> 22;
-    uint32 page_table_index = (uint32)virtual_addr >> 12 & 0x03FF;
-    uint32 page_frame_offset = (uint32)virtual_addr & 0xfff;
-    if (!CHECK_BIT(g_page_directory[page_dir_index], 1))
-    {
-        serial_printf("physical address: page directory entry does not exists\n");
-        return NULL;
-    }
-    if (!CHECK_BIT(g_page_tables[page_table_index], 1))
-    {
-        serial_printf("physical address: page table entry does not exist\n");
-        return NULL;
-    }
-    uint32 addr = g_page_tables[page_table_index] >> 11;
-    addr = (addr << 12) + page_frame_offset;
-    return (void *)addr;
-    return NULL;
+    if (!(g_page_directory[pdindex] & 1))
+        return NULL; // Page directory entry not present
+
+    uint32* pt = (uint32*)(g_page_directory[pdindex] & ~0xFFF);
+    if (!(pt[ptindex] & 1))
+        return NULL; // Page not present
+
+    uint32 frame = pt[ptindex] & ~0xFFF;
+    return (void*)(frame + offset);
 }
-
 // allocate page by calling pmm alloca block
 void paging_allocate_page(void *virtual_addr)
 {
     if (!g_is_paging_enabled)
-    {
         return;
-    }
-
-    // TODO Requires detailed analysis of memory frame allocation and page directory/table entries
 
     uint32 page_dir_index = (uint32)virtual_addr >> 22;
-    uint32 page_table_index = (uint32)virtual_addr >> 12 & 0x03FF;
+    uint32 page_table_index = ((uint32)virtual_addr >> 12) & 0x3FF;
 
-    // if page directory is not currently present, then allocate a new one
-    if (!CHECK_BIT(g_page_directory[page_dir_index], 1))
+    // Check page directory entry
+    if (!(g_page_directory[page_dir_index] & PAGE_PRESENT))
     {
-        serial_printf("alloc: page directory entry does not exists for 0x%x\n", virtual_addr);
-        // set present, read/write, user and cache accessed,
-        g_page_directory[page_dir_index] = 27;
-        uint32 addr = (uint32)pmm_alloc_block();
-        g_page_directory[page_dir_index] |= ((addr >> 12) << 11);
-        return;
+        uint32 pt_addr = (uint32)pmm_alloc_block();
+        g_page_directory[page_dir_index] = pt_addr | PAGE_PRESENT | PAGE_RW | PAGE_USER;
     }
-    if (!CHECK_BIT(g_page_tables[page_table_index], 1))
+
+    // Check page table entry
+    if (!(g_page_tables[page_dir_index][page_table_index] & PAGE_PRESENT))
     {
-        serial_printf("alloc: page table entry does not exists for 0x%x\n", virtual_addr);
-        return;
+        uint32 page_addr = (uint32)pmm_alloc_block();
+        g_page_tables[page_dir_index][page_table_index] = page_addr | PAGE_PRESENT | PAGE_RW | PAGE_USER;
     }
 }
 

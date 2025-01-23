@@ -200,8 +200,10 @@ static void test_vesa()
             }
             x++;
         }
+        swap_buffers();
     }
 }
+
 void yuri()
 {
     while (1)

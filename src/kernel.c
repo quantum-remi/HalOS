@@ -5,7 +5,7 @@
 #include "keyboard.h"
 #include "multiboot.h"
 #include "timer.h"
-// #include "paging.h"
+#include "paging.h"
 #include "string.h"
 #include "pmm.h"
 #include "fpu.h"
@@ -84,6 +84,13 @@ void display_kernel_memory_map(KERNEL_MEMORY_MAP *kmap)
     console_printf("available:\n");
     console_printf("  start_adddr: 0x%x\n  end_addr: 0x%x\n  size: %d\n",
                    kmap->available.start_addr, kmap->available.end_addr, kmap->available.size);
+}
+
+void panic(char *msg)
+{
+    serial_printf("PANIC: %s\n", msg);
+    for (;;)
+        __asm__ volatile("hlt");
 }
 
 void kmain(unsigned long magic, unsigned long addr)
