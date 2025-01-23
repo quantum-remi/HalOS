@@ -4,7 +4,7 @@
 #include "kernel.h"
 #include "string.h"
 #include "isr.h"
-
+#include "timer.h"
 #define PAGE_TABLE_FLAGS 0x3 // Present and writable
 
 extern uint32 __kernel_physical_start;
@@ -24,23 +24,6 @@ void page_fault_handler(REGISTERS *r) {
 
 void paging_init()
 {
-    // Allocate and clear the page directory
-    int retries = 5;
-    while (retries > 0)
-    {
-        current_directory = (page_directory_t *)pmm_alloc_block();
-        // Free already allocated page tables
-        // for (int j = 0; j < 1024; j++)
-        // {
-        //     pmm_free_block((void *)((uint32)current_directory->tables[j] & ~0x3));
-        // }
-        pmm_free_block(current_directory);
-        return;
-        {
-            break;
-        }
-        retries--;
-    }
     if (!current_directory)
     {
         serial_printf("Failed to allocate memory for page directory after multiple attempts\n");
