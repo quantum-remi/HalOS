@@ -111,20 +111,6 @@ void kmain(unsigned long magic, unsigned long addr)
     serial_printf("Initializing TSS...\n");
     tss_init();
 
-    resolution.x = 1024;
-    resolution.y = 768;
-    if (vesa_init(resolution.x, resolution.y, 32) != 0)
-    {
-        serial_printf("ERROR: Resolution init failed\n");
-        return;
-    }
-    serial_printf("setting up resolution to %d x %d\n", resolution.x, resolution.y);
-    if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
-    {
-        serial_printf("ERROR: Invalid multiboot magic number!\n");
-        console_printf("Invalid multiboot magic number: 0x%x\n", magic);
-        return;
-    }
 
     // Get memory map first
     if (magic == MULTIBOOT_BOOTLOADER_MAGIC)
@@ -152,6 +138,20 @@ void kmain(unsigned long magic, unsigned long addr)
         serial_printf("Initializing BIOS32...\n");
         bios32_init();
 
+        resolution.x = 1024;
+        resolution.y = 768;
+        if (vesa_init(resolution.x, resolution.y, 32) != 0)
+        {
+            serial_printf("ERROR: Resolution init failed\n");
+            return;
+        }
+        serial_printf("setting up resolution to %d x %d\n", resolution.x, resolution.y);
+        if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
+        {
+            serial_printf("ERROR: Invalid multiboot magic number!\n");
+            console_printf("Invalid multiboot magic number: 0x%x\n", magic);
+            return;
+        }
         // Initialize remaining subsystems
         serial_printf("Initializing timer...\n");
         timer_init();

@@ -146,11 +146,8 @@ static int snake_collision()
 // Update draw_rect to use centered coordinates
 static void draw_rect(int x, int y, int w, int h, uint32 color)
 {
-    int start_x = (SCREEN_WIDTH - ((BOARD_WIDTH * CELL_SIZE) + (BORDER_SIZE * 2))) / 2;
-    int start_y = (SCREEN_HEIGHT - ((BOARD_HEIGHT * CELL_SIZE) + (BORDER_SIZE * 2))) / 2;
-
-    x += start_x;
-    y += start_y;
+    x += g_start_x;
+    y += g_start_y;
 
     for (int i = 0; i < w; i++)
     {
@@ -240,6 +237,7 @@ static void init_graphics()
             vbe_putpixel(x, y, COLOR_BG);
         }
     }
+    swap_buffers();
 }
 
 void snake_game()

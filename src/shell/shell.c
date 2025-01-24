@@ -474,6 +474,18 @@ void drive_test()
     strcpy(buf, "Hello World");
     ide_write_sectors(DRIVE, NO_OF_SECTORS, LBA, (uint32)buf);
 }
+
+void hwinfo()
+{
+    console_printf("Hardware Information:\n");
+    console_printf("CPU: ");
+    cpuid_info(1);
+    console_printf("Memory: %d MB\n", g_kmap.system.total_memory / 1024);
+    console_printf("Screen Resolution: %dx%d\n", g_width, g_height);
+    console_printf("Drives:\n");
+    drive_list();
+}
+
 void shell()
 {
     console_clear(VESA_COLOR_WHITE, VESA_COLOR_BLACK);
@@ -501,18 +513,19 @@ void shell()
             console_printf("|              Hal OS Terminal                |\n");
             console_printf("===============================================\n");
             console_printf("|  Available Commands:                        |\n");
-            console_printf("|   * help - Display this help message        |\n");
+            console_printf("|   * clear - Clear the console screen        |\n");
             console_printf("|   * cpuid - Display CPU information         |\n");
             console_printf("|   * drive - Read or write from/to a drive   |\n");
-            console_printf("|   * haiku - Display a haiku                 |\n");
             console_printf("|   * echo - Echo a message to the console    |\n");
-            console_printf("|   * clear - Clear the console screen        |\n");
+            console_printf("|   * haiku - Display a haiku                 |\n");
+            console_printf("|   * help - Display this help message        |\n");
+            console_printf("|   * hwinfo - Display hardware information   |\n");
+            console_printf("|   * lspci - Display PCI information         |\n");
             console_printf("|   * malloc - Test memory allocation         |\n");
             console_printf("|   * memory - Display system memory          |\n");
-            console_printf("|   * lspci - Display PCI information         |\n");
-            console_printf("|   * timer - Display system timer            |\n");
             console_printf("|   * shutdown - Shut down the system         |\n");
             console_printf("|   * snake - Play a game of Snake            |\n");
+            console_printf("|   * timer - Display system timer            |\n");
             console_printf("|   * vesa - Display VESA graphics            |\n");
             console_printf("|   * version - Display Hal OS version        |\n");
             console_printf("|   * yuri - Display Yuri is Peak!            |\n");
@@ -520,7 +533,7 @@ void shell()
         }
         else if (strcmp(buffer, "help /f") == 0)
         {
-            console_printf("help, cpuid, drive, haiku, echo, clear, malloc, memory, lspci, timer, shutdown, snake, vesa, version, yuri\n");
+            console_printf("clear, cpuid, drive, echo, haiku, help, hwinfo, lspci, malloc, memory, shutdown, snake, timer, vesa, version, yuri\n");
         }
         else if (strcmp(buffer, "echo") == 0)
         {
@@ -578,9 +591,14 @@ void shell()
         {
             yuri();
         }
+        else if (strcmp(buffer, "hwinfo") == 0)
+        {
+            hwinfo();
+        }
         else
         {
             console_printf("invalid command: %s\n", buffer);
         }
     }
 }
+
