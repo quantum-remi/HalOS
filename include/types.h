@@ -14,6 +14,14 @@ typedef uint8 byte;
 typedef uint16 word;
 typedef uint32 dword;
 
+#if __SIZEOF_POINTER__ == 4
+    typedef uint32 uintptr;
+#elif __SIZEOF_POINTER__ == 8
+    typedef uint64 uintptr;
+#else
+    #error "Unsupported pointer size"
+#endif
+
 typedef enum {
     FALSE,
     TRUE
