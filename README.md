@@ -8,10 +8,13 @@ HAL OS is a custom operating system built from scratch, focusing on simplicity a
 
 ## Features
 
+### Completed Features
+
 - Boot loader implementation
 - Memory management system
 - Basic CPU initialization and interrupt handling
 - Simple device drivers
+- Basic shell
 - Minimal kernel architecture
 - Bare metal execution without underlying OS
 - Assembly and C implementation
