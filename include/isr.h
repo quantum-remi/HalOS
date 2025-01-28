@@ -5,33 +5,34 @@
 #ifndef ISR_H
 #define ISR_H
 
-#include "types.h"
+#include <stdint.h>
+#include <stddef.h>
 
 #define NO_INTERRUPT_HANDLERS    256
 
 typedef struct {
-    uint32 ds;
-    uint32 edi, esi, ebp, esp, ebx, edx, ecx, eax;  // pushed by pusha
-    uint32 int_no, err_code;                        // interrupt number and error code
-    uint32 eip, cs, eflags, useresp, ss;            // pushed by the processor automatically
+    uint32_t ds;
+    uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;  // pushed by pusha
+    uint32_t int_no, err_code;                        // interrupt number and error code
+    uint32_t eip, cs, eflags, useresp, ss;            // pushed by the processor automatically
 } REGISTERS;
 
 typedef struct {
-    uint16 di;
-    uint16 si;
-    uint16 bp;
-    uint16 sp;
-    uint16 bx;
-    uint16 dx;
-    uint16 cx;
-    uint16 ax;
+    uint16_t di;
+    uint16_t si;
+    uint16_t bp;
+    uint16_t sp;
+    uint16_t bx;
+    uint16_t dx;
+    uint16_t cx;
+    uint16_t ax;
     // segments
-    uint16 ds;
-    uint16 es;
-    uint16 fs;
-    uint16 gs;
-    uint16 ss;
-    uint16 eflags;
+    uint16_t ds;
+    uint16_t es;
+    uint16_t fs;
+    uint16_t gs;
+    uint16_t ss;
+    uint16_t eflags;
 } REGISTERS16;
 
 // ISR function prototype
@@ -40,12 +41,12 @@ typedef void (*ISR)(REGISTERS *);
 /**
  * register given handler to interrupt handlers at given num
  */
-void isr_register_interrupt_handler(int num, ISR handler);
+void isr_register_interrupt_handler(size_t num, ISR handler);
 
 /*
  * turn off current interrupt
 */
-void isr_end_interrupt(int num);
+void isr_end_interrupt(size_t num);
 
 /**
  * invoke exception routine,

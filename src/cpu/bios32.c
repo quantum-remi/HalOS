@@ -1,3 +1,6 @@
+#include <stdint.h>
+#include <stddef.h>
+
 #include "bios32.h"
 #include "console.h"
 #include "gdt.h"
@@ -25,7 +28,7 @@ void bios32_init()
     gdt_set_entry(7, 0, 0xffffffff, 0x92, 0x0f);
 
     // Setup real mode environment
-    g_real_mode_gdt.base_address = (uint32)g_gdt;
+    g_real_mode_gdt.base_address = (uintptr_t)g_gdt;
     g_real_mode_gdt.limit = sizeof(g_gdt) - 1;
     g_real_mode_idt.base_address = 0;
     g_real_mode_idt.limit = 0x3ff;
@@ -39,14 +42,14 @@ void bios32_init()
 /**
  copy data to assembly bios32_call.asm and execute code from 0x7c00 address
 */
-void bios32_service(uint8 interrupt, REGISTERS16 *in, REGISTERS16 *out)
+void bios32_service(uint8_t interrupt, REGISTERS16 *in, REGISTERS16 *out)
 {
     void *new_code_base = (void *)0x7c00;
     // serial_printf("BIOS32: Calling interrupt 0x%x\n", interrupt);
     // copy our GDT entries g_gdt to bios32_gdt_entries(bios32_call.asm)
     memcpy(&bios32_gdt_entries, g_gdt, sizeof(g_gdt));
     // set base_address of bios32_gdt_entries(bios32_call.asm) starting from 0x7c00
-    g_real_mode_gdt.base_address = (uint32)REBASE_ADDRESS((&bios32_gdt_entries));
+    g_real_mode_gdt.base_address = (uintptr_t)REBASE_ADDRESS((&bios32_gdt_entries));
     // copy g_real_mode_gdt to bios32_gdt_ptr(bios32_call.asm)
     memcpy(&bios32_gdt_ptr, &g_real_mode_gdt, sizeof(IDT_PTR));
     // copy g_real_mode_idt to bios32_idt_ptr(bios32_call.asm)
@@ -56,10 +59,10 @@ void bios32_service(uint8 interrupt, REGISTERS16 *in, REGISTERS16 *out)
     // get out registers address defined in bios32_call.asm starting from 0x7c00
     void *in_reg16_address = REBASE_ADDRESS(&bios32_in_reg16_ptr);
     // copy bios interrupt number to bios32_int_number_ptr(bios32_call.asm)
-    memcpy(&bios32_int_number_ptr, &interrupt, sizeof(uint8));
+    memcpy(&bios32_int_number_ptr, &interrupt, sizeof(uint8_t));
     // serial_printf("BIOS32: Copying data to 0x%x\n", new_code_base);
     // copy bios32_call.asm code to new_code_base address
-    uint32 size = (uint32)BIOS32_END - (uint32)BIOS32_START;
+    size_t size = (size_t)BIOS32_END - (size_t)BIOS32_START;
     memcpy(new_code_base, BIOS32_START, size);
     // execute the code from 0x7c00
     exec_bios32_function();
@@ -76,7 +79,7 @@ void bios32_service(uint8 interrupt, REGISTERS16 *in, REGISTERS16 *out)
 // void int86(uint8 interrupt, REGISTERS16 *in, REGISTERS16 *out) {
 //     bios32_service(interrupt, in, out);
 // }
-void int86(uint8 interrupt, REGISTERS16 *in, REGISTERS16 *out)
+void int86(uint8_t interrupt, REGISTERS16 *in, REGISTERS16 *out)
 {
     // console_printf("Debug: BIOS32 call int 0x%x\n", interrupt);
     // console_printf("Debug: Input registers: AX=0x%x ES=0x%x DI=0x%x\n",

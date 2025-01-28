@@ -1,13 +1,13 @@
 #include "io.h"
 
-void fpu_set_control_word(const uint16 cw)
+void fpu_set_control_word(const uint16_t cw)
 {
     __asm__ volatile("fldcw %0" ::"m"(cw));
 }
 
 void fpu_enable()
 {
-    uint32 cr4;
+    uint32_t cr4;
     __asm__ volatile("mov %%cr4, %0" : "=r"(cr4));
     // set 9th bit to 1 in cr4
     cr4 |= 0x200;

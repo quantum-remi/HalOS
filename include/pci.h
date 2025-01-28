@@ -2,29 +2,30 @@
 #define PCI_H
 
 #include "console.h"
-#include "types.h"
+#include <stdint.h>
+#include <stddef.h>
 #include "io.h"
 #include "string.h"
 #include "serial.h"
 
 typedef union pci_device
 {
-    uint32 bits;
+    uint32_t bits;
     struct 
     {
-        uint32 always_zero          :2;
-        uint32 field_num            :6;
-        uint32 function_num         :3;
-        uint32 device_num           :5;
-        uint32 bus_num              :8;
-        uint32 reserved             :7;
-        uint32 enable               :1;
+        uint32_t always_zero       :2;
+        uint32_t field_num         :6;
+        uint32_t function_num      :3;
+        uint32_t device_num        :5;
+        uint32_t bus_num           :8;
+        uint32_t reserved          :7;
+        uint32_t enable            :1;
     };
 } pci_dev_t;
 
 typedef struct {
-    uint32 class_code;
-    uint32 subclass_code;
+    uint32_t class_code;
+    uint32_t subclass_code;
     const char* name;
 } pci_class_subclass_t;
 
@@ -66,17 +67,18 @@ typedef struct {
 #define DEVICE_PER_BUS           32
 #define FUNCTION_PER_DEVICE      32
 
-uint32 pci_read(pci_dev_t dev, uint32 field);
-void pci_write(pci_dev_t dev, uint32 field, uint32 value);
-uint32 get_device_type(pci_dev_t dev);
-uint32 get_secondary_bus(pci_dev_t dev);
-uint32 pci_reach_end(pci_dev_t dev);
-pci_dev_t pci_scan_function(uint16 vendor_id, uint16 device_id, uint32 bus, uint32 device, uint32 function, int device_type);
-pci_dev_t pci_scan_device(uint16 vendor_id, uint16 device_id, uint32 bus, uint32 device, int device_type);
-pci_dev_t pci_scan_bus(uint16 vendor_id, uint16 device_id, uint32 bus, int device_type);
-pci_dev_t pci_get_device(uint16 vendor_id, uint16 device_id, int device_type);
+
+uint32_t pci_read(pci_dev_t dev, uint32_t field);
+void pci_write(pci_dev_t dev, uint32_t field, uint32_t value);
+uint32_t get_device_type(pci_dev_t dev);
+uint32_t get_secondary_bus(pci_dev_t dev);
+uint32_t pci_reach_end(pci_dev_t dev);
+pci_dev_t pci_scan_function(uint16_t vendor_id, uint16_t device_id, uint32_t bus, uint32_t device, uint32_t function, int device_type);
+pci_dev_t pci_scan_device(uint16_t vendor_id, uint16_t device_id, uint32_t bus, uint32_t device, int device_type);
+pci_dev_t pci_scan_bus(uint16_t vendor_id, uint16_t device_id, uint32_t bus, int device_type);
+pci_dev_t pci_get_device(uint16_t vendor_id, uint16_t device_id, int device_type);
 void pci_init();
 void pci_print_devices();
-const char* get_subclass_name(uint32 class_code, uint32 subclass_code);
-const char* get_device_name(uint32 vendor_id, uint32 device_id);
+const char* get_subclass_name(uint32_t class_code, uint32_t subclass_code);
+const char* get_device_name(uint16_t vendor_id, uint16_t device_id);
 #endif // PCI_H

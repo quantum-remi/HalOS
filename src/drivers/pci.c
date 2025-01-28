@@ -1,6 +1,6 @@
 #include "pci.h"
 
-uint32 pci_size_map[100];
+uint32_t pci_size_map[100];
 pci_dev_t dev_zero = {0};
 
 pci_class_subclass_t pci_class_subclass_table[] = {
@@ -80,26 +80,26 @@ pci_class_subclass_t pci_class_subclass_table[] = {
     // Add more entries for other class and subclass codes as needed
 };
 
-uint32 pci_read(pci_dev_t dev, uint32 field)
+uint32_t pci_read(pci_dev_t dev, uint32_t field)
 {
     dev.field_num = (field & 0xFC) >> 2;
     dev.enable = 1;
     outportl(PCI_CONFIG_ADDRESS, dev.bits);
 
-    uint32 size = pci_size_map[field];
+    size_t size = pci_size_map[field];
     if (size == 1)
     {
-        uint8 t = inportb(PCI_CONFIG_DATA + (field & 3));
+        uint8_t t = inportb(PCI_CONFIG_DATA + (field & 3));
         return t;
     }
     else if (size == 2)
     {
-        uint16 t = inports(PCI_CONFIG_DATA + (field & 2));
+        uint16_t t = inports(PCI_CONFIG_DATA + (field & 2));
         return t;
     }
     else if (size == 4)
     {
-        uint32 t = inportl(PCI_CONFIG_DATA);
+        uint32_t t = inportl(PCI_CONFIG_DATA);
         return t;
     }
     else
@@ -108,7 +108,7 @@ uint32 pci_read(pci_dev_t dev, uint32 field)
     }
 }
 
-void pci_write(pci_dev_t dev, uint32 field, uint32 value)
+void pci_write(pci_dev_t dev, uint32_t field, uint32_t value)
 {
     dev.field_num = (field & 0xFC) >> 2;
     dev.enable = 1;
@@ -116,24 +116,24 @@ void pci_write(pci_dev_t dev, uint32 field, uint32 value)
     outportl(PCI_CONFIG_DATA, value);
 }
 
-uint32 get_device_type(pci_dev_t dev)
+uint32_t get_device_type(pci_dev_t dev)
 {
-    uint32 t = pci_read(dev, PCI_CLASS) << 8;
+    uint32_t t = pci_read(dev, PCI_CLASS) << 8;
     return t | pci_read(dev, PCI_SUBCLASS);
 }
 
-uint32 get_secondary_bus(pci_dev_t dev)
+uint32_t get_secondary_bus(pci_dev_t dev)
 {
     return pci_read(dev, PCI_SECONDARY_BUS);
 }
 
-uint32 pci_reach_end(pci_dev_t dev)
+uint32_t pci_reach_end(pci_dev_t dev)
 {
-    uint32 t = pci_read(dev, PCI_HEADER_TYPE);
+    uint32_t t = pci_read(dev, PCI_HEADER_TYPE);
     return !t;
 }
 
-pci_dev_t pci_scan_function(uint16 vendor_id, uint16 device_id, uint32 bus, uint32 device, uint32 function, int device_type)
+pci_dev_t pci_scan_function(uint16_t vendor_id, uint16_t device_id, uint32_t bus, uint32_t device, uint32_t function, int device_type)
 {
     pci_dev_t dev = {0};
     dev.bus_num = bus;
@@ -148,8 +148,8 @@ pci_dev_t pci_scan_function(uint16 vendor_id, uint16 device_id, uint32 bus, uint
         }
         if (device_type == -1 || device_type == get_device_type(dev))
         {
-            uint32 dev_id = pci_read(dev, PCI_DEVICE_ID);
-            uint32 vend_id = pci_read(dev, PCI_VENDOR_ID);
+            uint32_t dev_id = pci_read(dev, PCI_DEVICE_ID);
+            uint32_t vend_id = pci_read(dev, PCI_VENDOR_ID);
             if (vend_id == vendor_id && dev_id == device_id)
             {
                 return dev;
@@ -159,7 +159,7 @@ pci_dev_t pci_scan_function(uint16 vendor_id, uint16 device_id, uint32 bus, uint
     }
 }
 
-pci_dev_t pci_scan_device(uint16 vendor_id, uint16 device_id, uint32 bus, uint32 device, int device_type)
+pci_dev_t pci_scan_device(uint16_t vendor_id, uint16_t device_id, uint32_t bus, uint32_t device, int device_type)
 {
     pci_dev_t dev = {0};
     dev.bus_num = bus;
@@ -187,7 +187,7 @@ pci_dev_t pci_scan_device(uint16 vendor_id, uint16 device_id, uint32 bus, uint32
     return dev_zero;
 }
 
-pci_dev_t pci_scan_bus(uint16 vendor_id, uint16 device_id, uint32 bus, int device_type)
+pci_dev_t pci_scan_bus(uint16_t vendor_id, uint16_t device_id, uint32_t bus, int device_type)
 {
     for (int device = 0; device < DEVICE_PER_BUS; device++)
     {
@@ -201,7 +201,7 @@ pci_dev_t pci_scan_bus(uint16 vendor_id, uint16 device_id, uint32 bus, int devic
     return dev_zero;
 }
 
-pci_dev_t pci_get_device(uint16 vendor_id, uint16 device_id, int device_type)
+pci_dev_t pci_get_device(uint16_t vendor_id, uint16_t device_id, int device_type)
 {
     pci_dev_t t = pci_scan_bus(vendor_id, device_id, 0, device_type);
     if (t.bits)
@@ -259,19 +259,19 @@ void pci_init()
 void pci_print_devices()
 {
     pci_dev_t dev = {0};
-    for (int bus = 0; bus < 256; bus++)
+    for (uint8_t bus = 0; bus < 256; bus++)
     {
-        for (int device = 0; device < DEVICE_PER_BUS; device++)
+        for (uint8_t device = 0; device < DEVICE_PER_BUS; device++)
         {
-            for (int function = 0; function < FUNCTION_PER_DEVICE; function++)
+            for (uint8_t function = 0; function < FUNCTION_PER_DEVICE; function++)
             {
                 dev.bus_num = bus;
                 dev.device_num = device;
                 dev.function_num = function;
                 if (pci_read(dev, PCI_VENDOR_ID) != PCI_NONE)
                 {
-                    uint32 class_code = get_device_type(dev);
-                    uint32 subclass_code = pci_read(dev, PCI_SUBCLASS);
+                    uint32_t class_code = get_device_type(dev);
+                    uint32_t subclass_code = pci_read(dev, PCI_SUBCLASS);
                     console_printf("PCI Device: %x:%x:%x, Class: %x, Subclass: %x (%s)\n",
                                    dev.bus_num, dev.device_num, dev.function_num, class_code, subclass_code,
                                    get_subclass_name(class_code, subclass_code));
@@ -281,9 +281,9 @@ void pci_print_devices()
     }
 }
 
-const char *get_subclass_name(uint32 class_code, uint32 subclass_code)
+const char *get_subclass_name(uint32_t class_code, uint32_t subclass_code)
 {
-    for (int i = 0; i < sizeof(pci_class_subclass_table) / sizeof(pci_class_subclass_table[0]); i++)
+    for (size_t i = 0; i < sizeof(pci_class_subclass_table) / sizeof(pci_class_subclass_table[0]); i++)
     {
         if (pci_class_subclass_table[i].class_code == (class_code >> 8) && pci_class_subclass_table[i].subclass_code == (subclass_code & 0xFF))
         {

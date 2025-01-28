@@ -1,7 +1,7 @@
 #ifndef SERIAL_H
 #define SERIAL_H
 
-#include "types.h"
+#include <stdint.h>
 
 // COM1 port
 #define COM1 0x3F8

@@ -1,6 +1,8 @@
+#include <stdint.h>
+#include <stddef.h>
+
 #include "console.h"
 #include "string.h"
-#include "types.h"
 #include "vesa.h"
 #include "font.h"
 #include "serial.h"
@@ -9,8 +11,8 @@
 // Console state
 static struct
 {
-    uint32 fore_color;
-    uint32 back_color;
+    uint32_t fore_color;
+    uint32_t back_color;
     int cursor_x;
     int cursor_y;
     char text_buffer[CONSOLE_ROWS][CONSOLE_COLS];
@@ -18,8 +20,8 @@ static struct
 
 extern VBE20_MODEINFOBLOCK g_vbe_modeinfoblock;
 
-extern uint32 g_width;
-extern uint32 g_height;
+extern uint32_t g_width;
+extern uint32_t g_height;
 
 int console_scrolling = 0;
 
@@ -29,7 +31,7 @@ void init_resolution()
     g_height = g_vbe_modeinfoblock.YResolution;
 }
 
-void console_init(VESA_COLOR_TYPE fore_color, VESA_COLOR_TYPE back_color)
+void console_init(uint32_t fore_color, uint32_t back_color)
 {
     memset(&console, 0, sizeof(console));
 
@@ -39,7 +41,7 @@ void console_init(VESA_COLOR_TYPE fore_color, VESA_COLOR_TYPE back_color)
     console_clear(fore_color, back_color);
 }
 
-void draw_char(int x, int y, char c, uint32 fg, uint32 bg)
+void draw_char(int32_t x, int32_t y, char c, uint32_t fg, uint32_t bg)
 {
 
     for (int font_y = 0; font_y < FONT_HEIGHT; font_y++)
@@ -48,8 +50,8 @@ void draw_char(int x, int y, char c, uint32 fg, uint32 bg)
 
         for (int font_x = 0; font_x < FONT_WIDTH; font_x++)
         {
-            uint32 pixel_x = x * FONT_WIDTH + font_x;
-            uint32 pixel_y = y * FONT_HEIGHT + font_y;
+            uint32_t pixel_x = x * FONT_WIDTH + font_x;
+            uint32_t pixel_y = y * FONT_HEIGHT + font_y;
 
             if (pixel_x < g_width && pixel_y < g_height)
             {
@@ -60,11 +62,11 @@ void draw_char(int x, int y, char c, uint32 fg, uint32 bg)
     }
 }
 
-void console_clear(VESA_COLOR_TYPE fore_color, VESA_COLOR_TYPE back_color)
+void console_clear(uint32_t fore_color, uint32_t back_color)
 {
-    for (uint32 y = 0; y < g_height; y++)
+    for (uint32_t y = 0; y < g_height; y++)
     {
-        for (uint32 x = 0; x < g_width; x++)
+        for (uint32_t x = 0; x < g_width; x++)
         {
             vbe_putpixel(x, y, back_color);
         }
@@ -167,7 +169,7 @@ void console_ungetchar()
     }
 }
 
-void console_ungetchar_bound(uint8 n)
+void console_ungetchar_bound(uint8_t n)
 {
     while (n-- && console.cursor_x > 0)
     {
@@ -175,7 +177,7 @@ void console_ungetchar_bound(uint8 n)
     }
 }
 
-void console_gotoxy(uint16 x, uint16 y)
+void console_gotoxy(uint32_t x, uint32_t y)
 {
     if (x < CONSOLE_COLS && y < CONSOLE_ROWS)
     {
@@ -206,9 +208,9 @@ void console_refresh()
     }
 }
 
-void getstr(char *buffer, uint32 max_size)
+void getstr(char *buffer, uint32_t max_size)
 {
-    uint32 i = 0;
+    uint32_t i = 0;
     while (i < max_size - 1) // leave space for null terminator
     {
         char c = kb_getchar();
@@ -235,11 +237,11 @@ void getstr(char *buffer, uint32 max_size)
     buffer[i] = '\0'; // null terminate the string
 }
 
-void getstr_bound(char *buffer, uint8 bound)
+void getstr_bound(char *buffer, uint8_t bound)
 {
     if (!buffer || bound == 0)
         return;
-    uint8 idx = 0;
+    uint8_t idx = 0;
 
     while (idx < bound - 1)
     {

@@ -1,74 +1,75 @@
 #ifndef VESA_H
 #define VESA_H
 
-#include "types.h"
+#include <stdint.h>
+#include <stddef.h>
 
 // refer to documents under ref directory
 
 typedef struct {
     char VbeSignature[4];           /* VBE Signature */
-    uint16 VbeVersion;              /* VBE version number */
+    uint16_t VbeVersion;            /* VBE version number */
     char *OEMStringPtr;             /* Pointer to OEM string */
-    uint32 Capabilities;            /* Capabilities of video card */
-    uint32 *VideoModePtr;           /* Pointer to supported modes */
-    uint16 TotalMemory;             /* Number of 64kb memory blocks */
-    uint16 OemSoftwareRev;          /* VBE implementation Software revision */
-    uint32 OemVendorNamePtr;        /* Pointer to Vendor Name String */
-    uint32 OemProductNamePtr;       /* Pointer to Product Name String */
-    uint32 OemProductRevPtr;        /* Pointer to Product Revision String */
+    uint32_t Capabilities;          /* Capabilities of video card */
+    uint32_t *VideoModePtr;         /* Pointer to supported modes */
+    uint16_t TotalMemory;           /* Number of 64kb memory blocks */
+    uint16_t OemSoftwareRev;        /* VBE implementation Software revision */
+    uint32_t OemVendorNamePtr;      /* Pointer to Vendor Name String */
+    uint32_t OemProductNamePtr;     /* Pointer to Product Name String */
+    uint32_t OemProductRevPtr;      /* Pointer to Product Revision String */
     char reserved[222];             /* Pad to 256 byte block size */
     char OemData[256];              /* Data Area for OEM Strings */
 }__attribute__ ((packed)) VBE20_INFOBLOCK;
 
 typedef struct {
     // Mandatory information for all VBE revisions
-    uint16 ModeAttributes;          /* Mode attributes */
-    uint8 WinAAttributes;           /* Window A attributes */
-    uint8 WinBAttributes;           /* Window B attributes */
-    uint16 WinGranularity;          /* Window granularity in k */
-    uint16 WinSize;                 /* Window size in k */
-    uint16 WinASegment;             /* Window A segment */
-    uint16 WinBSegment;             /* Window B segment */
+    uint16_t ModeAttributes;        /* Mode attributes */
+    uint8_t WinAAttributes;         /* Window A attributes */
+    uint8_t WinBAttributes;         /* Window B attributes */
+    uint16_t WinGranularity;        /* Window granularity in k */
+    uint16_t WinSize;               /* Window size in k */
+    uint16_t WinASegment;           /* Window A segment */
+    uint16_t WinBSegment;           /* Window B segment */
     void (*WinFuncPtr)(void);       /* Pointer to window function */
-    uint16 BytesPerScanLine;        /* Bytes per scanline */
+    uint16_t BytesPerScanLine;      /* Bytes per scanline */
 
     // Mandatory information for VBE 1.2 and above
-    uint16 XResolution;             /* Horizontal resolution */
-    uint16 YResolution;             /* Vertical resolution */
-    uint8 XCharSize;                /* Character cell width */
-    uint8 YCharSize;                /* Character cell height */
-    uint8 NumberOfPlanes;           /* Number of memory planes */
-    uint8 BitsPerPixel;             /* Bits per pixel */
-    uint8 NumberOfBanks;            /* Number of CGA style banks */
-    uint8 MemoryModel;              /* Memory model type */
-    uint8 BankSize;                 /* Size of CGA style banks */
-    uint8 NumberOfImagePages;       /* Number of images pages */
-    uint8 Reserved;                 /* Reserved */
+    uint16_t XResolution;           /* Horizontal resolution */
+    uint16_t YResolution;           /* Vertical resolution */
+    uint8_t XCharSize;              /* Character cell width */
+    uint8_t YCharSize;              /* Character cell height */
+    uint8_t NumberOfPlanes;         /* Number of memory planes */
+    uint8_t BitsPerPixel;           /* Bits per pixel */
+    uint8_t NumberOfBanks;          /* Number of CGA style banks */
+    uint8_t MemoryModel;            /* Memory model type */
+    uint8_t BankSize;               /* Size of CGA style banks */
+    uint8_t NumberOfImagePages;     /* Number of images pages */
+    uint8_t Reserved;               /* Reserved */
 
     // Direct color fields
-    uint8 RedMaskSize;              /* Size of direct color red mask */
-    uint8 RedFieldPosition;         /* Bit posn of lsb of red mask */
-    uint8 GreenMaskSize;            /* Size of direct color green mask */
-    uint8 GreenFieldPosition;       /* Bit posn of lsb of green mask */
-    uint8 BlueMaskSize;             /* Size of direct color blue mask */
-    uint8 BlueFieldPosition;        /* Bit posn of lsb of blue mask */
-    uint8 RsvdMaskSize;             /* Size of direct color res mask */
-    uint8 RsvdFieldPosition;        /* Bit posn of lsb of res mask */
-    uint8 DirectColorModeInfo;      /* Direct color mode attributes */
+    uint8_t RedMaskSize;            /* Size of direct color red mask */
+    uint8_t RedFieldPosition;       /* Bit posn of lsb of red mask */
+    uint8_t GreenMaskSize;          /* Size of direct color green mask */
+    uint8_t GreenFieldPosition;     /* Bit posn of lsb of green mask */
+    uint8_t BlueMaskSize;           /* Size of direct color blue mask */
+    uint8_t BlueFieldPosition;      /* Bit posn of lsb of blue mask */
+    uint8_t RsvdMaskSize;           /* Size of direct color res mask */
+    uint8_t RsvdFieldPosition;      /* Bit posn of lsb of res mask */
+    uint8_t DirectColorModeInfo;    /* Direct color mode attributes */
 
     // Mandatory information for VBE 2.0 and above
-    uint32 PhysBasePtr;             /* physical address for flat frame buffer */
-    uint32 OffScreenMemOffset;      /* pointer to start of off screen memory */
-    uint16 OffScreenMemSize;        /* amount of off screen memory in 1k units */
-    uint8 Reserved2[206];           /* remainder of ModeInfoBlock */
+    uint32_t PhysBasePtr;           /* physical address for flat frame buffer */
+    uint32_t OffScreenMemOffset;    /* pointer to start of off screen memory */
+    uint16_t OffScreenMemSize;      /* amount of off screen memory in 1k units */
+    uint8_t Reserved2[206];         /* remainder of ModeInfoBlock */
 } VBE20_MODEINFOBLOCK;
 
 
-uint32 vbe_get_width();
-uint32 vbe_get_height();
+uint32_t vbe_get_width();
+uint32_t vbe_get_height();
 
-int vesa_init(uint32 width, uint32 height, uint32 bpp);
-uint32 vbe_rgb(uint8 red, uint8 green, uint8 blue);
+int vesa_init(uint32_t width, uint32_t height, uint32_t bpp);
+uint32_t vbe_rgb(uint8_t red, uint8_t green, uint8_t blue);
 void vbe_putpixel(int x, int y, int color);
 void wait_for_vblank();
 void swap_buffers();

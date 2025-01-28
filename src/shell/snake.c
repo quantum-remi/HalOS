@@ -43,7 +43,7 @@ static int score;
 
 // Function declarations
 static void init_graphics(void);
-static void draw_rect(int x, int y, int w, int h, uint32 color);
+static void draw_rect(int x, int y, int w, int h, uint32_t color);
 static void draw_border(void);
 static void snake_init(void);
 static void draw_game(void);
@@ -144,7 +144,7 @@ static int snake_collision()
 }
 
 // Update draw_rect to use centered coordinates
-static void draw_rect(int x, int y, int w, int h, uint32 color)
+static void draw_rect(int x, int y, int w, int h, uint32_t color)
 {
     x += g_start_x;
     y += g_start_y;

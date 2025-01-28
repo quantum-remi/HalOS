@@ -1,55 +1,53 @@
 #ifndef KERNEL_H
 #define KERNEL_H
 
-#include "types.h"
+#include <stdint.h>
+#include <stddef.h>
 
 void panic(char *msg);
 
 // symbols from linker.ld for section addresses
-extern uint8 __kernel_section_start;
-extern uint8 __kernel_section_end;
-extern uint8 __kernel_text_section_start;
-extern uint8 __kernel_text_section_end;
-extern uint8 __kernel_data_section_start;
-extern uint8 __kernel_data_section_end;
-extern uint8 __kernel_rodata_section_start;
-extern uint8 __kernel_rodata_section_end;
-extern uint8 __kernel_bss_section_start;
-extern uint8 __kernel_bss_section_end;
-
+extern uint32_t __kernel_physical_start;
+extern uint32_t __kernel_physical_end;
+extern uint32_t __kernel_text_section_start;
+extern uint32_t __kernel_text_section_end;
+extern uint32_t __kernel_data_section_start;
+extern uint32_t __kernel_data_section_end;
+extern uint32_t __kernel_bss_section_start;
+extern uint32_t __kernel_bss_section_end;
 struct resolution {
-    uint32 x;
-    uint32 y;
+    size_t x;
+    size_t y;
     
 };
 
 typedef struct {
     struct {
-        uint32 k_start_addr;
-        uint32 k_end_addr;
-        uint32 k_len;
-        uint32 text_start_addr;
-        uint32 text_end_addr;
-        uint32 text_len;
-        uint32 data_start_addr;
-        uint32 data_end_addr;
-        uint32 data_len;
-        uint32 rodata_start_addr;
-        uint32 rodata_end_addr;
-        uint32 rodata_len;
-        uint32 bss_start_addr;
-        uint32 bss_end_addr;
-        uint32 bss_len;
+        size_t k_start_addr;
+        size_t k_end_addr;
+        size_t k_len;
+        size_t text_start_addr;
+        size_t text_end_addr;
+        size_t text_len;
+        size_t data_start_addr;
+        size_t data_end_addr;
+        size_t data_len;
+        size_t rodata_start_addr;
+        size_t rodata_end_addr;
+        size_t rodata_len;
+        size_t bss_start_addr;
+        size_t bss_end_addr;
+        size_t bss_len;
     } kernel;
 
     struct {
-        uint32 total_memory;
+        size_t total_memory;
     } system;
 
     struct {
-        uint32 start_addr;
-        uint32 end_addr;
-        uint32 size;
+        size_t start_addr;
+        size_t end_addr;
+        size_t size;
     } available;
 } KERNEL_MEMORY_MAP;
 

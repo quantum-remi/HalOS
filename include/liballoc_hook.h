@@ -1,7 +1,8 @@
 #ifndef LIBALLOC_HOOK_H
 #define LIBALLOC_HOOK_H
 
-#include "types.h"
+#include <stdint.h>
+#include <stddef.h>
 #include "string.h"
 #include "vmm.h"
 

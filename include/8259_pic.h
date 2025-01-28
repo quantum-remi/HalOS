@@ -5,7 +5,8 @@
 #ifndef _8259_PIC_H
 #define _8259_PIC_H
 
-#include "types.h"
+#include <stdint.h>
+#include <stddef.h>
 
 /* for more, see https://wiki.osdev.org/8259_PIC */
 #define PIC1            0x20  /* IO base address for master PIC */
@@ -28,6 +29,7 @@ void pic8259_init();
 /**
  * send end of interrupt command to PIC 8259
  */
-void pic8259_eoi(uint8 irq);
+void pic8259_eoi(uint8_t irq);
 
 #endif
+

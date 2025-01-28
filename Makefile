@@ -227,7 +227,7 @@ $(OBJ)/ide.o : $(SRC)/drivers/ide.c
 	@printf "\n"
 
 qemu:
-	qemu-system-i386 -m 1G -vga virtio -cdrom $(TARGET_ISO) -serial stdio -drive id=disk,if=none,format=raw,file=disk.img -device ide-hd,drive=disk
+	qemu-system-i386 -m 4G -vga virtio -cdrom $(TARGET_ISO) -serial stdio -drive id=disk,if=none,format=raw,file=disk.img -device ide-hd,drive=disk
 
 disk:
 	qemu-img create disk.img 1G

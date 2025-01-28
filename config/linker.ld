@@ -50,4 +50,7 @@ SECTIONS
     /* Define physical and virtual addresses */
     __kernel_physical_start = 0x0100000;
     __kernel_virtual_start = 0xC0000000;
+
+    __kernel_physical_end = 0xC0000000 - 1;
+    __kernel_virtual_end = __kernel_virtual_start + (__kernel_physical_end - __kernel_physical_start);
 }

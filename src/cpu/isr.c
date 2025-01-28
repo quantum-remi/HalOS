@@ -37,17 +37,16 @@ char *exception_messages[32] = {
     "Reserved",
     "Reserved",
     "Reserved",
-    "Reserved",
     "Reserved"};
 
-void isr_register_interrupt_handler(int num, ISR handler)
+void isr_register_interrupt_handler(size_t num, ISR handler)
 {
-    serial_printf("IRQ %d registered\n", num);
+    serial_printf("IRQ %zu registered\n", num);
     if (num < NO_INTERRUPT_HANDLERS)
         g_interrupt_handlers[num] = handler;
 }
 
-void isr_end_interrupt(int num)
+void isr_end_interrupt(size_t num)
 {
     pic8259_eoi(num);
 }
@@ -65,7 +64,7 @@ void isr_irq_handler(REGISTERS *reg)
 static void print_registers(REGISTERS *reg)
 {
     serial_printf("REGISTERS:\n");
-    serial_printf("err_code=%d\n", reg->err_code);
+    serial_printf("err_code=%u\n", reg->err_code);
     serial_printf("eax=0x%x, ebx=0x%x, ecx=0x%x, edx=0x%x\n", reg->eax, reg->ebx, reg->ecx, reg->edx);
     serial_printf("edi=0x%x, esi=0x%x, ebp=0x%x, esp=0x%x\n", reg->edi, reg->esi, reg->ebp, reg->esp);
     serial_printf("eip=0x%x, cs=0x%x, ss=0x%x, eflags=0x%x, useresp=0x%x\n", reg->eip, reg->ss, reg->eflags, reg->useresp);

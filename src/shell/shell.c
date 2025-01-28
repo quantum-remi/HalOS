@@ -1,4 +1,8 @@
 #include "shell.h"
+
+
+#include <stdint.h>
+#include <stddef.h>
 #include "console.h"
 #include "string.h"
 #include <kernel.h>
@@ -18,12 +22,12 @@
 
 KERNEL_MEMORY_MAP g_kmap;
 
-extern uint32 g_width;
-extern uint32 g_height;
+extern uint32_t g_width;
+extern uint32_t g_height;
 
 extern IDE_DEVICE g_ide_devices[MAXIMUM_IDE_DEVICES];
 
-void __cpuid(uint32 type, uint32 *eax, uint32 *ebx, uint32 *ecx, uint32 *edx)
+void __cpuid(uint32_t type, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx)
 {
     __asm__ volatile("cpuid"
                      : "=a"(*eax), "=b"(*ebx), "=c"(*ecx), "=d"(*edx)
@@ -33,13 +37,13 @@ void __cpuid(uint32 type, uint32 *eax, uint32 *ebx, uint32 *ecx, uint32 *edx)
 int cpuid_info(int print)
 {
     char brand[49];
-    uint32 eax, ebx, ecx, edx;
-    uint32 type;
+    uint32_t eax, ebx, ecx, edx;
+    uint32_t type;
 
     memset(brand, 0, sizeof(brand));
-    __cpuid(0x80000002, (uint32 *)brand + 0x0, (uint32 *)brand + 0x1, (uint32 *)brand + 0x2, (uint32 *)brand + 0x3);
-    __cpuid(0x80000003, (uint32 *)brand + 0x4, (uint32 *)brand + 0x5, (uint32 *)brand + 0x6, (uint32 *)brand + 0x7);
-    __cpuid(0x80000004, (uint32 *)brand + 0x8, (uint32 *)brand + 0x9, (uint32 *)brand + 0xa, (uint32 *)brand + 0xb);
+    __cpuid(0x80000002, (uint32_t *)brand + 0x0, (uint32_t *)brand + 0x1, (uint32_t *)brand + 0x2, (uint32_t *)brand + 0x3);
+    __cpuid(0x80000003, (uint32_t *)brand + 0x4, (uint32_t *)brand + 0x5, (uint32_t *)brand + 0x6, (uint32_t *)brand + 0x7);
+    __cpuid(0x80000004, (uint32_t *)brand + 0x8, (uint32_t *)brand + 0x9, (uint32_t *)brand + 0xa, (uint32_t *)brand + 0xb);
 
     if (print)
     {
@@ -102,8 +106,8 @@ void memory()
 
 void ftoa(char *buf, float f)
 {
-    uint32 count = 1;
-    const uint32 DEFAULT_DECIMAL_COUNT = 8;
+    uint32_t count = 1;
+    const uint32_t DEFAULT_DECIMAL_COUNT = 8;
     char int_part_buf[16];
     char *p;
 
@@ -126,7 +130,7 @@ void ftoa(char *buf, float f)
     {
         while (decimal > 0)
         {
-            uint32 y = decimal * 10; // y = 0.14159 * 10 = 1
+            uint32_t y = decimal * 10; // y = 0.14159 * 10 = 1
             *buf++ = y + '0';
             decimal = (decimal * 10) - y; // decimal = (0.14159 * 10) - 1 = 0.4159
             count++;
@@ -171,26 +175,26 @@ static void test_vesa()
     else
     {
         // fill some colors
-        uint32 x = 0;
-        for (uint32 c = 0; c < 267; c++)
+        uint32_t x = 0;
+        for (uint32_t c = 0; c < 267; c++)
         {
-            for (uint32 i = 0; i < 600; i++)
+            for (uint32_t i = 0; i < 600; i++)
             {
                 vbe_putpixel(x, i, VBE_RGB(c % 255, 0, 0));
             }
             x++;
         }
-        for (uint32 c = 0; c < 267; c++)
+        for (uint32_t c = 0; c < 267; c++)
         {
-            for (uint32 i = 0; i < 600; i++)
+            for (uint32_t i = 0; i < 600; i++)
             {
                 vbe_putpixel(x, i, VBE_RGB(0, c % 255, 0));
             }
             x++;
         }
-        for (uint32 c = 0; c < 267; c++)
+        for (uint32_t c = 0; c < 267; c++)
         {
-            for (uint32 i = 0; i < 600; i++)
+            for (uint32_t i = 0; i < 600; i++)
             {
                 vbe_putpixel(x, i, VBE_RGB(0, 0, c % 255));
             }
@@ -288,16 +292,16 @@ int test_memory_allocation()
     return 0;
 }
 
-void drive_read(int drive, uint32 num_sectors, uint32 lba, char *buffer)
+void drive_read(int drive, uint32_t num_sectors, uint32_t lba, char *buffer)
 {
-    ide_read_sectors(drive, num_sectors, lba, (uint32)buffer);
-    console_printf("Reading %d sectors from drive %d at LBA %d\n", num_sectors, drive, lba);
+    ide_read_sectors(drive, num_sectors, lba, (uint32_t)buffer);
+    console_printf("Reading %u sectors from drive %d at LBA %u\n", num_sectors, drive, lba);
 }
 
-void drive_write(int drive, uint32 num_sectors, uint8 lba, char *buffer)
+void drive_write(int drive, uint32_t num_sectors, uint32_t lba, char *buffer)
 {
-    ide_write_sectors(drive, num_sectors, lba, (uint32)buffer);
-    console_printf("Writing %d sectors to drive %d at LBA %d from buffer %s\n", num_sectors, drive, lba, buffer);
+    ide_write_sectors(drive, num_sectors, lba, (uint32_t)buffer);
+    console_printf("Writing %u sectors to drive %d at LBA %u from buffer %s\n", num_sectors, drive, lba, buffer);
 }
 void drive_list()
 {
@@ -316,8 +320,8 @@ void drive()
     char buffer[255];
     char buf[ATA_SECTOR_SIZE] = {0};
     int drive = -1;
-    uint32 lba = 0;
-    uint8 no_of_sectors = 1;
+    uint32_t lba = 0;
+    uint8_t no_of_sectors = 1;
 
     console_printf("Drive Menu\n");
     console_printf("Type help for help\n");
@@ -466,13 +470,13 @@ void drive()
 void drive_test()
 {
     const int DRIVE = ata_get_drive_by_model("QEMU HARDDISK");
-    const uint32 LBA = 0;
-    const uint8 NO_OF_SECTORS = 1;
+    const uint32_t LBA = 0;
+    const uint8_t NO_OF_SECTORS = 1;
     char buf[ATA_SECTOR_SIZE] = {0};
 
     // write message to drive
     strcpy(buf, "Hello World");
-    ide_write_sectors(DRIVE, NO_OF_SECTORS, LBA, (uint32)buf);
+    ide_write_sectors(DRIVE, NO_OF_SECTORS, LBA, (uint32_t)buf);
 }
 
 void hwinfo()

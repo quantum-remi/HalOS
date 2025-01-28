@@ -5,7 +5,7 @@
 
 void pic8259_init()
 {
-    uint8 a1, a2;
+    uint8_t a1, a2;
 
     a1 = inportb(PIC1_DATA);
     a2 = inportb(PIC2_DATA);
@@ -26,7 +26,7 @@ void pic8259_init()
     outportb(PIC2_DATA, a2);
 }
 
-void pic8259_eoi(uint8 irq)
+void pic8259_eoi(uint8_t irq)
 {
     if (irq >= 0x28)
         outportb(PIC2, PIC_EOI);

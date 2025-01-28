@@ -1,7 +1,8 @@
 #ifndef CONSOLE_H
 #define CONSOLE_H
 
-#include "types.h"
+#include <stdint.h>
+#include <stddef.h>
 
 // Constants
 #define MAXIMUM_PAGES  32
@@ -33,17 +34,17 @@
 #define VESA_COLOR_WHITE 0x00FFFFFF
 
 // Function declarations
-void draw_char(int x, int y, char c, uint32 fg, uint32 bg);
-void console_clear(VESA_COLOR_TYPE fore_color, VESA_COLOR_TYPE back_color);
-void console_init(VESA_COLOR_TYPE fore_color, VESA_COLOR_TYPE back_color);
-void console_scroll(int line_count);
+void draw_char(int32_t x, int32_t y, char c, uint32_t fg, uint32_t bg);
+void console_clear(uint32_t fore_color, uint32_t back_color);
+void console_init(uint32_t fore_color, uint32_t back_color);
+void console_scroll(int direction);
 void console_putchar(char ch);
 void console_printf(const char *format, ...);
 void console_ungetchar(void);
-void console_gotoxy(uint16 x, uint16 y);
+void console_gotoxy(uint32_t x, uint32_t y);
 void console_putstr(const char *str);
 void console_refresh(void);
-void getstr(char *buffer, uint32 max_size);
-void getstr_bound(char *buffer, uint8 bound);
+void getstr(char *buffer, size_t max_size);
+void getstr_bound(char *buffer, uint8_t bound);
 
 #endif
