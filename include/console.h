@@ -35,7 +35,7 @@
 
 // Function declarations
 void draw_char(int32_t x, int32_t y, char c, uint32_t fg, uint32_t bg);
-void console_clear(uint32_t fore_color, uint32_t back_color);
+void console_clear(uint32_t back_color);
 void console_init(uint32_t fore_color, uint32_t back_color);
 void console_scroll(int direction);
 void console_putchar(char ch);

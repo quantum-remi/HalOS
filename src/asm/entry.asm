@@ -24,6 +24,15 @@ section .multiboot
     dd MAGIC_HEADER
     dd FLAGS
     dd CHECKSUM
+    dd 0                     ; Header address
+    dd 0                     ; Load address
+    dd 0                     ; Load end address
+    dd 0                     ; BSS end address
+    dd 0                     ; Entry address
+    dd 0                     ; Mode type (0=linear)
+    dd 1024                  ; Width
+    dd 768                   ; Height
+    dd 32                    ; Depth
 
 section .data
     align 4096

@@ -24,7 +24,7 @@ DEFINES=
 # assembler flags
 ASM_FLAGS = -f elf32
 # compiler flags
-CC_FLAGS = $(INCLUDE) $(DEFINES) -m32 -g -std=c23 -ffreestanding -Wall -Wextra
+CC_FLAGS = $(INCLUDE) $(DEFINES) -m32 -g -std=c23 -ffreestanding -Wall -Wextra -mno-sse -mno-sse2 -mno-sse3
 # linker flags, for linker add linker.ld file too
 LD_FLAGS = -m elf_i386 -T $(CONFIG)/linker.ld -nostdlib
 # make flags
@@ -39,6 +39,7 @@ ISO_DIR=$(OUT)/isodir
 
 OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o $(ASM_OBJ)/load_tss.o \
 		$(ASM_OBJ)/load_idt.o $(ASM_OBJ)/exception.o $(ASM_OBJ)/irq.o $(ASM_OBJ)/bios32_call.o\
+		$(ASM_OBJ)/vesa.o\
 		$(OBJ)/io.o \
 		$(OBJ)/string.o $(OBJ)/console.o\
 		$(OBJ)/gdt.o $(OBJ)/idt.o $(OBJ)/isr.o $(OBJ)/8259_pic.o\
@@ -58,7 +59,7 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o $(ASM_OBJ)/load_tss.o \
 all: $(OBJECTS)
 	@printf "[ linking... ]\n"
 	$(LD) $(LD_FLAGS) -o $(TARGET) $(OBJECTS)
-	grub2-file --is-x86-multiboot $(TARGET)
+	grub2-file --is-x86-multiboot2 $(TARGET) && echo "Valid" || echo "Invalid"
 	@printf "\n"
 	@printf "[ building ISO... ]\n"
 	$(MKDIR) $(ISO_DIR)/boot/grub
@@ -100,6 +101,11 @@ $(ASM_OBJ)/irq.o : $(ASM_SRC)/irq.asm
 $(ASM_OBJ)/bios32_call.o : $(ASM_SRC)/bios32_call.asm
 	@printf "[ $(ASM_SRC)/bios32_call.asm ]\n"
 	$(ASM) $(ASM_FLAGS) $(ASM_SRC)/bios32_call.asm -o $(ASM_OBJ)/bios32_call.o
+	@printf "\n"
+
+$(ASM_OBJ)/vesa.o : $(ASM_SRC)/vesa.asm
+	@printf "[ $(ASM_SRC)/vesa.asm ]\n"
+	$(ASM) $(ASM_FLAGS) $(ASM_SRC)/vesa.asm -o $(ASM_OBJ)/vesa.o
 	@printf "\n"
 
 $(OBJ)/io.o : $(SRC)/libs/io.c
@@ -227,7 +233,7 @@ $(OBJ)/ide.o : $(SRC)/drivers/ide.c
 	@printf "\n"
 
 qemu:
-	qemu-system-i386 -m 4G -vga virtio -cdrom $(TARGET_ISO) -serial stdio -drive id=disk,if=none,format=raw,file=disk.img -device ide-hd,drive=disk
+	qemu-system-i386 -m 4G -vga cirrus -cdrom $(TARGET_ISO) -serial stdio -drive id=disk,if=none,format=raw,file=disk.img -device ide-hd,drive=disk -cpu qemu64,+fpu,+sse,+sse2
 
 disk:
 	qemu-img create disk.img 1G
@@ -242,7 +248,7 @@ dev:
 debug:
 	make clean
 	make
-	qemu-system-i386 -m 1G -vga virtio -cdrom $(TARGET_ISO) -serial stdio -drive id=disk,if=none,format=raw,file=disk.img -device ide-hd,drive=disk -s -S
+	qemu-system-i386 -m 1G -vga cirrus -cdrom $(TARGET_ISO) -serial stdio -drive id=disk,if=none,format=raw,file=disk.img -device ide-hd,drive=disk -cpu qemu64,+fpu,+sse,+sse2 -s -S
 clean:
 	rm -f $(OBJ)/*.o
 	rm -f $(ASM_OBJ)/*.o

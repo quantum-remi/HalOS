@@ -151,57 +151,7 @@ void float_print(const char *msg, float f, const char *end)
 
 static void test_vesa()
 {
-    int ret = vesa_init(g_width, g_height, 32);
-    if (ret < 0)
-    {
-        console_printf("failed to init vesa graphics\n");
-    }
-    if (ret == 1)
-    {
-        // scroll to top
-        for (int i = 0; i < MAXIMUM_PAGES; i++)
-            console_scroll(SCROLL_UP);
 
-        while (1)
-        {
-            // add scrolling to view all modes
-            char c = kb_get_scancode();
-            if (c == SCAN_CODE_KEY_UP)
-                console_scroll(SCROLL_UP);
-            if (c == SCAN_CODE_KEY_DOWN)
-                console_scroll(SCROLL_DOWN);
-        }
-    }
-    else
-    {
-        // fill some colors
-        uint32_t x = 0;
-        for (uint32_t c = 0; c < 267; c++)
-        {
-            for (uint32_t i = 0; i < 600; i++)
-            {
-                vbe_putpixel(x, i, VBE_RGB(c % 255, 0, 0));
-            }
-            x++;
-        }
-        for (uint32_t c = 0; c < 267; c++)
-        {
-            for (uint32_t i = 0; i < 600; i++)
-            {
-                vbe_putpixel(x, i, VBE_RGB(0, c % 255, 0));
-            }
-            x++;
-        }
-        for (uint32_t c = 0; c < 267; c++)
-        {
-            for (uint32_t i = 0; i < 600; i++)
-            {
-                vbe_putpixel(x, i, VBE_RGB(0, 0, c % 255));
-            }
-            x++;
-        }
-        swap_buffers();
-    }
 }
 
 void yuri()
@@ -404,7 +354,7 @@ void drive()
         }
         else if (strcmp(buffer, "clear") == 0)
         {
-            console_clear(VESA_COLOR_WHITE, VESA_COLOR_BLACK);
+            console_clear(VESA_COLOR_BLACK);
         }
         else if (strcmp(buffer, "list") == 0)
         {
@@ -492,7 +442,7 @@ void hwinfo()
 
 void shell()
 {
-    console_clear(VESA_COLOR_WHITE, VESA_COLOR_BLACK);
+    console_clear(VESA_COLOR_BLACK);
     char buffer[255];
     const char *shell = "kernel> ";
 
@@ -553,7 +503,7 @@ void shell()
         }
         else if (strcmp(buffer, "clear") == 0)
         {
-            console_clear(VESA_COLOR_WHITE, VESA_COLOR_BLACK);
+            console_clear(VESA_COLOR_BLACK);
         }
         else if (strcmp(buffer, "timer") == 0)
         {

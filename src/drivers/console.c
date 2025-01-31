@@ -18,27 +18,19 @@ static struct
     char text_buffer[CONSOLE_ROWS][CONSOLE_COLS];
 } console;
 
-extern VBE20_MODEINFOBLOCK g_vbe_modeinfoblock;
 
 extern uint32_t g_width;
 extern uint32_t g_height;
 
 int console_scrolling = 0;
 
-void init_resolution()
-{
-    g_width = g_vbe_modeinfoblock.XResolution;
-    g_height = g_vbe_modeinfoblock.YResolution;
-}
 
 void console_init(uint32_t fore_color, uint32_t back_color)
 {
     memset(&console, 0, sizeof(console));
-
-    console.fore_color = VBE_RGB(255, 255, 255);
-    console.back_color = VBE_RGB(0, 0, 0);
-
-    console_clear(fore_color, back_color);
+    console.fore_color = fore_color;  // Use parameters instead of hardcoded values
+    console.back_color = back_color;
+    console_clear(back_color);  // Update console_clear to take only back_color
 }
 
 void draw_char(int32_t x, int32_t y, char c, uint32_t fg, uint32_t bg)
@@ -62,15 +54,11 @@ void draw_char(int32_t x, int32_t y, char c, uint32_t fg, uint32_t bg)
     }
 }
 
-void console_clear(uint32_t fore_color, uint32_t back_color)
+void console_clear(uint32_t back_color)
 {
     for (uint32_t y = 0; y < g_height; y++)
-    {
         for (uint32_t x = 0; x < g_width; x++)
-        {
             vbe_putpixel(x, y, back_color);
-        }
-    }
     memset(console.text_buffer, 0, sizeof(console.text_buffer));
     console.cursor_x = console.cursor_y = 0;
 }

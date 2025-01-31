@@ -259,7 +259,7 @@ void pci_init()
 void pci_print_devices()
 {
     pci_dev_t dev = {0};
-    for (uint8_t bus = 0; bus < 256; bus++)
+    for (uint16_t bus = 0; bus < 256; bus++)
     {
         for (uint8_t device = 0; device < DEVICE_PER_BUS; device++)
         {

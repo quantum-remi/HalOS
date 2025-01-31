@@ -75,7 +75,6 @@ void kmain(unsigned long magic, unsigned long addr)
     serial_printf("\n=== Boot Sequence Started ===\n");
 
     // Initialize core subsystems with detailed logging
-    struct resolution resolution = { .x = 1024, .y = 768 };
 
     serial_printf("Initializing GDT...\n");
     gdt_init();
@@ -86,12 +85,18 @@ void kmain(unsigned long magic, unsigned long addr)
     serial_printf("Initializing TSS...\n");
     tss_init();
 
+    multiboot_info_t *mboot_info = (multiboot_info_t *)addr;
+    
+    if (mboot_info->flags & MULTIBOOT_INFO_VBE_INFO) {
+        serial_printf("VBE control info: 0x%x\n", mboot_info->vbe_control_info);
+        serial_printf("VBE mode info: 0x%x\n", mboot_info->vbe_mode_info);
+    }
+
     if (magic != MULTIBOOT_BOOTLOADER_MAGIC) {
         panic("Invalid multiboot magic number");
         return;
     }
 
-    multiboot_info_t *mboot_info = (multiboot_info_t *)addr;
 
     // Initialize kernel memory map
     if (get_kernel_memory_map(&g_kmap, mboot_info) < 0) {
@@ -103,15 +108,28 @@ void kmain(unsigned long magic, unsigned long addr)
     pmm_init(g_kmap.system.total_memory * 1024, (uint32_t *)mboot_info->mmap_addr);
 
     // // Initialize BIOS32
-    // serial_printf("Initializing BIOS32...\n");
-    // bios32_init();
+    serial_printf("Initializing BIOS32...\n");
+    bios32_init();
 
     // Set up graphics resolution
-    if (vesa_init(resolution.x, resolution.y, 32) != 0) {
-        serial_printf("ERROR: Resolution init failed\n");
-        return;
+        // Initialize VESA graphics
+    if(vesa_init(mboot_info) != 0) {
+        serial_printf("Failed to initialize VESA graphics\n");
+        // Fall back to text mode or safe default
+        console_printf("Graphics initialization failed!\n");
+    } else {
+        // Graphics initialized successfully
+        console_printf("VESA %ux%ux%u initialized\n", 
+                      vbe_get_width(), vbe_get_height(), vbe_get_bpp());
+
+        // Draw test pattern
+        for(int y = 0; y < 100; y++) {
+            for(int x = 0; x < 100; x++) {
+                vbe_putpixel(x, y, vbe_rgb(x*2, y*2, 0));
+            }
+        }
     }
-    serial_printf("Resolution set to %d x %d\n", resolution.x, resolution.y);
+
 
     // Initialize remaining subsystems
     serial_printf("Initializing timer...\n");

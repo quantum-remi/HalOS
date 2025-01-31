@@ -18,11 +18,11 @@ static int g_start_y;
 #define SCREEN_HEIGHT 768
 
 // Colors
-#define COLOR_BORDER VBE_RGB(128, 128, 128)
-#define COLOR_SNAKE VBE_RGB(0, 255, 0)
-#define COLOR_FOOD VBE_RGB(255, 0, 0)
-#define COLOR_BG VBE_RGB(0, 0, 0)
-#define COLOR_SCORE VBE_RGB(255, 255, 255)
+#define COLOR_BORDER 0x00FFFFFF
+#define COLOR_SNAKE 0x00FF00
+#define COLOR_FOOD 0xFF0000
+#define COLOR_BG 0x000000
+#define COLOR_SCORE 0xFFFFFF
 
 typedef struct
 {
@@ -215,11 +215,6 @@ static void draw_game()
 // Add cleanup function
 static void init_graphics()
 {
-    if (vesa_init(SCREEN_WIDTH, SCREEN_HEIGHT, 32) < 0)
-    {
-        console_printf("Failed to initialize VESA graphics\n");
-        return;
-    }
 
     // Calculate board position to center it
     int board_width = (BOARD_WIDTH * CELL_SIZE) + (BORDER_SIZE * 2);
@@ -237,12 +232,12 @@ static void init_graphics()
             vbe_putpixel(x, y, COLOR_BG);
         }
     }
-    swap_buffers();
+    // swap_buffers();
 }
 
 void snake_game()
 {
-    console_clear(VESA_COLOR_WHITE, VESA_COLOR_BLACK);
+    console_clear(VESA_COLOR_BLACK);
     // Initialize graphics
     init_graphics();
     snake_init();
@@ -273,11 +268,11 @@ void snake_game()
         }
         update_counter++;
         usleep(sleep_time);
-        swap_buffers();
+        // swap_buffers();
     }
 
     // Clear screen again
-    console_clear(VESA_COLOR_WHITE, VESA_COLOR_BLACK);
+    console_clear(VESA_COLOR_BLACK);
 
     // Show game over
     console_printf("Game Over! Final Score: %d\n", score);
@@ -285,5 +280,5 @@ void snake_game()
 
     // Wait for key and clear again
     kb_getchar();
-    console_clear(VESA_COLOR_WHITE, VESA_COLOR_BLACK);
+    console_clear(VESA_COLOR_BLACK);
 }
