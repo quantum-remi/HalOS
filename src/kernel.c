@@ -75,7 +75,7 @@ void kmain(unsigned long magic, unsigned long addr)
     serial_printf("\n=== Boot Sequence Started ===\n");
 
     // Initialize core subsystems with detailed logging
-
+    struct resolution resolution = { .x = 1024, .y = 768 };
     serial_printf("Initializing GDT...\n");
     gdt_init();
 
@@ -112,22 +112,11 @@ void kmain(unsigned long magic, unsigned long addr)
     bios32_init();
 
     // Set up graphics resolution
-        // Initialize VESA graphics
-    if(vesa_init(mboot_info) != 0) {
-        serial_printf("Failed to initialize VESA graphics\n");
-        // Fall back to text mode or safe default
-        console_printf("Graphics initialization failed!\n");
-    } else {
-        // Graphics initialized successfully
-        console_printf("VESA %ux%ux%u initialized\n", 
-                      vbe_get_width(), vbe_get_height(), vbe_get_bpp());
-
-        // Draw test pattern
-        for(int y = 0; y < 100; y++) {
-            for(int x = 0; x < 100; x++) {
-                vbe_putpixel(x, y, vbe_rgb(x*2, y*2, 0));
-            }
-        }
+    // Initialize VESA graphics
+    if (vesa_init(resolution.x, resolution.y, 32) != 0)
+    {
+        serial_printf("ERROR: Resolution init failed\n");
+        return;
     }
 
 
