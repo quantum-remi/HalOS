@@ -71,11 +71,89 @@ void *pmm_alloc_block() {
             }
         }
     }
-
     // spin_unlock(&pmm_lock);
     serial_printf("PMM: Out of memory!\n");
     return NULL;
 }
+
+
+void *pmm_alloc_blocks(int num_blocks)
+{
+    if (num_blocks <= 0)
+        return NULL;
+    
+    // serial_printf("PMM: Allocating %d blocks\n", num_blocks);
+    
+    // Allocate a temporary array on the stack to hold the block pointers.
+    void *blocks[num_blocks];
+    int max_attempts = 5;
+    
+    for (int attempt = 0; attempt < max_attempts; attempt++) 
+    {
+        // Initialize the array to NULL for this attempt.
+        for (int i = 0; i < num_blocks; i++)
+            blocks[i] = NULL;
+        
+        bool contiguous = true;
+        
+        // Allocate each block individually.
+        for (int i = 0; i < num_blocks; i++) 
+        {
+            blocks[i] = pmm_alloc_block();
+            if (!blocks[i]) 
+            {
+                // serial_printf("PMM: Allocation failed for block %d\n", i);
+                contiguous = false;
+                break;
+            }
+        }
+        
+        // If any allocation failed, free already allocated blocks.
+        if (!contiguous) 
+        {
+            for (int i = 0; i < num_blocks; i++) 
+            {
+                if (blocks[i])
+                    pmm_free_block(blocks[i]);
+            }
+            // serial_printf("PMM: All allocations failed, trying again\n");
+            continue;
+        }
+        
+        // Check if the blocks are contiguous.
+        for (int i = 1; i < num_blocks; i++) 
+        {
+            if ((uint32_t)blocks[i] != (uint32_t)blocks[i - 1] + PMM_BLOCK_SIZE) 
+            {
+                serial_printf("PMM: Non-contiguous block allocation detected\n");
+                contiguous = false;
+                break;
+            }
+        }
+        
+        if (contiguous) 
+        {
+            // Success: return the base address of the contiguous blocks.
+            // serial_printf("PMM: Allocated %d contiguous blocks at 0x%x\n", num_blocks, (uint32_t)blocks[0]);
+            return blocks[0];
+        } 
+        else 
+        {
+            // Not contiguous: free all allocated blocks and try again.
+            for (int i = 0; i < num_blocks; i++) 
+            {
+                if (blocks[i])
+                    pmm_free_block(blocks[i]);
+            }
+            serial_printf("PMM: Freeing all blocks and trying again\n");
+        }
+    }
+    
+    // Failed to allocate a contiguous region after max_attempts.
+    serial_printf("PMM: Failed to allocate %d contiguous blocks after %d attempts\n", num_blocks, max_attempts);
+    return NULL;
+}
+
 
 // Free a block
 void pmm_free_block(void *p) {
@@ -100,4 +178,15 @@ void pmm_free_block(void *p) {
         serial_printf("PMM: Double-free at 0x%x\n", addr);
     }
     // spin_unlock(&pmm_lock);
+}
+
+void pmm_free_blocks(void *p, int num_blocks)
+{
+    if (!p || num_blocks <= 0)
+        return;
+    
+    for (int i = 0; i < num_blocks; i++) {
+        // Calculate the address of the i-th block and free it
+        pmm_free_block((char *)p + i * PMM_BLOCK_SIZE);
+    }
 }

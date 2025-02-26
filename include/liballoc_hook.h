@@ -1,10 +1,12 @@
 #ifndef LIBALLOC_HOOK_H
 #define LIBALLOC_HOOK_H
 
+#define BLOCK_SIZE 4096
+
 #include <stdint.h>
 #include <stddef.h>
 #include "string.h"
-#include "vmm.h"
+#include "pmm.h"
 
 int liballoc_lock();
 int liballoc_unlock();

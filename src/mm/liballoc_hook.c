@@ -14,17 +14,19 @@ int liballoc_unlock()
 
 void *liballoc_alloc(int num_blocks)
 {
-    // // Use VMM to allocate the requested number of blocks
-    // void *memory = vmm_alloc_blocks(num_blocks);
-    // return memory ? memory : NULL; // Return NULL if allocation fails
+    if (num_blocks <= 0)
+        return NULL;
+
+    // Allocate a contiguous region of physical memory blocks.
+    return pmm_alloc_blocks(num_blocks);
 }
 
 int liballoc_free(void *ptr, int num_blocks)
 {
-    // if (!ptr)
-    //     return -1; // Return error if the pointer is NULL
+    if (!ptr)
+        return -1; // Return error if the pointer is NULL
 
-    // // Use VMM to free the requested number of blocks
-    // vmm_free_blocks(ptr, num_blocks);
-    // return 0; // Return 0 on success
+    // Free the contiguous region of blocks.
+    pmm_free_blocks(ptr, num_blocks);
+    return 0;
 }

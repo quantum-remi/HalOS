@@ -59,7 +59,7 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o $(ASM_OBJ)/load_tss.o \
 all: $(OBJECTS)
 	@printf "[ linking... ]\n"
 	$(LD) $(LD_FLAGS) -o $(TARGET) $(OBJECTS)
-	grub2-file --is-x86-multiboot2 $(TARGET) && echo "Valid" || echo "Invalid"
+	grub2-file --is-x86-multiboot $(TARGET) && echo "Valid" || echo "Invalid"
 	@printf "\n"
 	@printf "[ building ISO... ]\n"
 	$(MKDIR) $(ISO_DIR)/boot/grub
