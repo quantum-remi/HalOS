@@ -21,6 +21,7 @@ uint32_t g_width = 0, g_height = 0;
 uint32_t *g_vbe_buffer = NULL;
 uint32_t *back_buffer = NULL;
 
+int vga;
 uint32_t vbe_get_width()
 {
     return g_width;
@@ -68,6 +69,7 @@ void vbe_set_mode(uint32_t mode)
     in.ax = 0x4F02;
     in.bx = mode;
     int86(0x10, &in, &out); // call video interrupt 0x10 to set mode
+    serial_printf("VBE: Set mode 0x%x, AX=0x%x\n", mode, out.ax); // Debug log
 }
 
 // find the vbe mode by width & height & bits per pixel
@@ -141,59 +143,76 @@ uint32_t vbe_rgb(uint8_t red, uint8_t green, uint8_t blue)
     return color;
 }
 
-// put the pixel on the given x,y point
-void vbe_putpixel(int x, int y, int color)
-{
-    if (x < 0 || x >= g_width || y < 0 || y >= g_height)
-    {
-        serial_printf("VBE: Error - (%d, %d) is out of bounds\n", x, y);
-        return;
+void test_vga_buffer() {
+    uint8_t *vga_buffer = (uint8_t*)0xA0000;
+    for (int i = 0; i < 320 * 200; i++) {
+        vga_buffer[i] = 0x0F; // Bright white (8-bit color)
     }
-    uint32_t i = y * g_width + x;
-    *(back_buffer + i) = color;
 }
 
-int vesa_init(uint32_t width, uint32_t height, uint32_t bpp)
-{
-    // serial_printf("VESA: Starting initialization...\n");
+// put the pixel on the given x,y point
+void vbe_putpixel(int x, int y, int color) {
+    if (vga != 0) {
+        // VGA Mode 0x13 (320x200x8)
+        if (x < 0 || x >= g_width || y < 0 || y >= g_height) {
+            serial_printf("VGA: Error - (%d, %d) is out of bounds\n", x, y);
+            return;
+        }
+        uint32_t i = y * g_width + x;
+        uint8_t *vga_buffer = (uint8_t*)0xA0000;
+        vga_buffer[i] = (uint8_t)color;
+        return;
+    } else {
+        // VESA Mode
+        if (x < 0 || x >= g_width || y < 0 || y >= g_height) {
+            serial_printf("VBE: Error - (%d, %d) is out of bounds\n", x, y);
+            return;
+        }
+        uint32_t i = y * g_width + x;
+        *(back_buffer + i) = color;
+    }
+}
 
-    // Initialize BIOS32 interface
-    // serial_printf("VESA: Initializing BIOS32...\n");
+
+int vesa_init(uint32_t width, uint32_t height, uint32_t bpp) {
     bios32_init();
-    // serial_printf("VESA: BIOS32 initialized\n");
 
-    // serial_printf("initializing vesa vbe 2.0\n");
-    if (!get_vbe_info())
-    {
-        serial_printf("No VESA VBE 2.0 detected\n");
-        return -1;
+    if (!get_vbe_info()) {
+        serial_printf("VESA: VBE2 not detected\n");
+        goto vga_fallback; // Jump to VGA setup
     }
-// set this to 1 to print all available modes to console
-#define PRINT_MODES 0
-#if PRINT_MODES
-    serial_printf("Press UP and DOWN arrow keys to scroll\n");
-    serial_printf("Modes:\n");
-    vbe_print_available_modes();
-    return 1;
-#else
+
     g_selected_mode = vbe_find_mode(width, height, bpp);
-    if (g_selected_mode == -1)
-    {
-        serial_printf("failed to find mode for %d-%d\n", width, height);
-        return -1;
+    if (g_selected_mode == -1) {
+        serial_printf("VESA: Mode %dx%d-%dbpp not found\n", width, height, bpp);
+        goto vga_fallback;
     }
-    // serial_printf("\nselected mode: %d \n", g_selected_mode);
-    // set selection resolution to width & height
+
+    // Success: Set VESA mode
     g_width = g_vbe_modeinfoblock.XResolution;
     g_height = g_vbe_modeinfoblock.YResolution;
-    // set selected mode video physical address point to buffer for pixel plotting
     g_vbe_buffer = (uint32_t *)g_vbe_modeinfoblock.PhysBasePtr;
-    // set the mode to start graphics window
     vbe_set_mode(g_selected_mode);
     swap_buffers();
-#endif
 
-    serial_printf("VESA: VBE2 detected successfully\n");
-    return 0;
+    test_vga_buffer();
+
+    vga = 0;  // Mark VESA as active
+    return 0;  // Return 0 on success
+vga_fallback:
+    REGISTERS16 in = {0}, out = {0};
+    in.ax = 0x13;
+    int86(0x10, &in, &out);
+    if (out.ax != 0x004F) {
+        serial_printf("VGA: Failed (AX=0x%x). Falling back to text mode.\n", out.ax);
+        in.ax = 0x03; // Text mode 80x25
+        int86(0x10, &in, &out);
+        return -1;
+    }
+
+    // Mark VGA as active
+    g_width = 320;
+    g_height = 200;
+    vga = 1;
+    return -1;
 }
-

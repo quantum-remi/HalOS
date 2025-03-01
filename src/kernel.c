@@ -68,6 +68,7 @@ void panic(char *msg)
         __asm__ volatile("hlt");
 }
 
+
 void kmain(unsigned long magic, unsigned long addr)
 {
     // Initialize serial port
@@ -113,12 +114,7 @@ void kmain(unsigned long magic, unsigned long addr)
 
     // Set up graphics resolution
     // Initialize VESA graphics
-    if (vesa_init(resolution.x, resolution.y, 32) != 0)
-    {
-        serial_printf("ERROR: Resolution init failed\n");
-        return;
-    }
-
+    vesa_init(resolution.x, resolution.y, 32);
 
     // Initialize remaining subsystems
     serial_printf("Initializing timer...\n");
@@ -136,6 +132,10 @@ void kmain(unsigned long magic, unsigned long addr)
     serial_printf("Initializing PCI...\n");
     pci_init();
 
+    for (int i = 0; i < 10; i++) {
+        vbe_putpixel(i, i, 0xFFFFFF); // Draw white pixel
+        
+    }
     // Initialize console
     console_init(VESA_COLOR_WHITE, VESA_COLOR_BLACK);
     serial_printf("Console initialized\n");

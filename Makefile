@@ -50,7 +50,7 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o $(ASM_OBJ)/load_tss.o \
 		$(OBJ)/bios32.o $(OBJ)/shell.o \
 		$(OBJ)/serial.o $(OBJ)/printf.o \
 		$(OBJ)/tss.o $(OBJ)/liballoc.o $(OBJ)/liballoc_hook.o \
-		$(OBJ)/pci.o $(OBJ)/ide.o\
+		$(OBJ)/pci.o $(OBJ)/ide.o $(OBJ)/fat.o \
 		$(OBJ)/kernel.o
 
 .PHONY: all	
@@ -230,6 +230,11 @@ $(OBJ)/pci.o : $(SRC)/drivers/pci.c
 $(OBJ)/ide.o : $(SRC)/drivers/ide.c
 	@printf "[ $(SRC)/drivers/ide.c ]\n"
 	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/ide.c -o $(OBJ)/ide.o
+	@printf "\n"
+
+$(OBJ)/fat.o : $(SRC)/drivers/fat.c
+	@printf "[ $(SRC)/drivers/fat.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/fat.c -o $(OBJ)/fat.o
 	@printf "\n"
 
 qemu:
