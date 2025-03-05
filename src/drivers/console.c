@@ -246,48 +246,91 @@ void getstr_bound(char *buffer, uint8_t bound) {
     buffer[idx] = 0;
 }
 
-void console_vprintf(const char *format, va_list args)
-{
-    char buf[32];
-    int i, n;
+static void format_number(char *buf, unsigned int val, int base, 
+    int uppercase, int width, int pad_zero) {
+    const char *digits = uppercase ? "0123456789ABCDEF" : "0123456789abcdef";
+    int i = 0;
 
-    while ((n = *format++) != 0)
-    {
-        if (n != '%')
-        {
+    // Handle zero explicitly
+    if (val == 0) {
+    buf[i++] = '0';
+    } else {
+    while (val > 0) {
+    buf[i++] = digits[val % base];
+    val /= base;
+    }
+    }
+
+    // Apply padding
+    while (i < width) {
+    buf[i++] = pad_zero ? '0' : ' ';
+    }
+
+    // Reverse digits
+    for (int j = 0; j < i/2; j++) {
+    char temp = buf[j];
+    buf[j] = buf[i-j-1];
+    buf[i-j-1] = temp;
+    }
+
+    buf[i] = '\0';
+}
+
+void console_vprintf(const char *format, va_list args) {
+    char buf[32];
+    int i, n, width, pad_zero;
+    unsigned int uval;
+
+    while ((n = *format++) != 0) {
+        if (n != '%') {
             console_putchar(n);
             continue;
         }
 
+        // Parse format specifier
+        pad_zero = 0;
+        width = 0;
+        
+        // Check for padding flag
+        if (*format == '0') {
+            pad_zero = 1;
+            format++;
+        }
+
+        // Parse width
+        while (*format >= '0' && *format <= '9') {
+            width = width * 10 + (*format++ - '0');
+        }
+
         n = *format++;
-        switch (n)
-        {
-        case 'c':
-            console_putchar(va_arg(args, int));
-            break;
-        case 's':
-            {
+        switch (n) {
+            case 'c':
+                console_putchar(va_arg(args, int));
+                break;
+            case 's': {
                 char *p = va_arg(args, char *);
-                if (!p)
-                    p = "(null)";
-                while (*p)
-                    console_putchar(*p++);
+                if (!p) p = "(null)";
+                while (*p) console_putchar(*p++);
+                break;
             }
-            break;
-        case 'd':
-        case 'x':
-            {
-                char *p;
+            case 'd': {
                 int val = va_arg(args, int);
-                itoa(buf, n == 'x' ? 16 : 10, val);
-                for (p = buf; *p; p++)
-                    console_putchar(*p);
+                format_number(buf, val, 10, 0, width, pad_zero);
+                for (char *p = buf; *p; p++) console_putchar(*p);
+                break;
             }
-            break;
-        default:
-            console_putchar('%');
-            console_putchar(n);
-            break;
+            case 'u':
+            case 'x':
+            case 'X': {
+                uval = va_arg(args, unsigned int);
+                format_number(buf, uval, 16, (n == 'X'), width, pad_zero);
+                for (char *p = buf; *p; p++) console_putchar(*p);
+                break;
+            }
+            default:
+                console_putchar('%');
+                console_putchar(n);
+                break;
         }
     }
 }

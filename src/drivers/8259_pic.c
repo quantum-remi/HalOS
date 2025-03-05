@@ -25,8 +25,6 @@ void pic8259_init()
     outportb(PIC1_DATA, a1);
     outportb(PIC2_DATA, a2);
 
-    // outportb(PIC1_DATA, 0xFF);
-    // outportb(PIC2_DATA, 0xFF);
 }
 
 void pic8259_eoi(uint8_t irq)

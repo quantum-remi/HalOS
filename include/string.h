@@ -31,6 +31,8 @@ void itoa(char *buf, int base, int d);
 
 char *strstr(const char *in, const char *str);
 
+char *strchr(const char *s, int c);
+
 void *memmove(void *dest, const void *src, size_t n);
 
 int atoi(const char *str);

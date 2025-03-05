@@ -186,6 +186,25 @@ char *strstr(const char *in, const char *str)
     return (char *)(in - 1);
 }
 
+char *strchr(const char *s, int c) {
+    const char ch = (char)c;
+    
+    // Search through the string
+    while (*s != '\0') {
+        if (*s == ch) {
+            return (char *)s;  // Found match
+        }
+        s++;
+    }
+    
+    // Check if we're looking for null terminator
+    if (ch == '\0') {
+        return (char *)s;
+    }
+    
+    return NULL;  // Character not found
+}
+
 void *memmove(void *dest, const void *src, size_t n)
 {
     uint8_t *pdest = (uint8_t *)dest;
