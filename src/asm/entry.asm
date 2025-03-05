@@ -1,17 +1,9 @@
 ; constants for multiboot header
-MEMINFO     equ  1<<0
-BOOTDEVICE  equ  1<<1
-CMDLINE     equ  1<<2
-MODULECOUNT equ  1<<3
-SYMT        equ  48 ; bits 4 & 5
-MEMMAP      equ  1<<6
-DRIVE       equ  1<<7
-CONFIGT     equ  1<<8
-BOOTLDNAME  equ  1<<9
-APMT        equ  1<<10
-VIDEO       equ  1<<11
-VIDEO_FRAMEBUF equ  1<<12
-FLAGS       equ  MEMINFO | BOOTDEVICE | CMDLINE | MODULECOUNT | SYMT | MEMMAP | DRIVE | CONFIGT | BOOTLDNAME | VIDEO_FRAMEBUF
+MEMINFO     equ  1<<0    ; 0x1
+BOOTDEVICE  equ  1<<1    ; 0x2
+VIDEO_MODE  equ  1<<2    ; 0x4 
+FLAGS       equ  MEMINFO | BOOTDEVICE | VIDEO_MODE
+
 MAGIC_HEADER       equ  0x1BADB002
 CHECKSUM    equ -(MAGIC_HEADER + FLAGS)
 
@@ -24,15 +16,12 @@ section .multiboot
     dd MAGIC_HEADER
     dd FLAGS
     dd CHECKSUM
-    dd 0                     ; Header address
-    dd 0                     ; Load address
-    dd 0                     ; Load end address
-    dd 0                     ; BSS end address
-    dd 0                     ; Entry address
-    dd 0                     ; Mode type (0=linear)
-    dd 1024                  ; Width
-    dd 768                   ; Height
-    dd 32                    ; Depth
+    ; Address fields (set to 0 if not using AOUT kludge)
+    dd 0    ; header_addr
+    dd 0    ; load_addr
+    dd 0    ; load_end_addr
+    dd 0    ; bss_end_addr
+    dd 0    ; entry_addr
 
 section .data
     align 4096

@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-
+#include "vesa.h"
 // Constants
 #define MAXIMUM_PAGES  32
 #define SCROLL_UP     1
@@ -14,7 +14,7 @@
 #define CONSOLE_COLS 128
 #define CONSOLE_ROWS 48
 
-#define VESA_COLOR_TYPE uint32
+#define VESA_COLOR_TYPE uint32_t
 
 #define VESA_COLOR_BLACK 0x00000000
 #define VESA_COLOR_BLUE 0x000000FF
@@ -34,10 +34,10 @@
 #define VESA_COLOR_WHITE 0x00FFFFFF
 
 // Function declarations
-void draw_char(int32_t x, int32_t y, char c, uint32_t fg, uint32_t bg);
-void console_clear(uint32_t back_color);
-void console_init(uint32_t fore_color, uint32_t back_color);
-void console_scroll(int direction);
+void draw_char(int x, int y, char c);
+void console_clear(void);
+void console_init(uint32_t fg, uint32_t bg);
+void console_scroll(int lines);
 void console_putchar(char ch);
 void console_printf(const char *format, ...);
 void console_ungetchar(void);

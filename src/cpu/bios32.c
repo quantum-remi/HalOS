@@ -21,20 +21,13 @@ void (*exec_bios32_function)() = (void *)0x7c00;
  */
 void bios32_init()
 {
-    // serial_printf("BIOS32: Initializing...\n");
-
-    // Setup GDT entries for real mode transition
-    gdt_set_entry(6, 0, 0xffffffff, 0x9A, 0x0f);
-    gdt_set_entry(7, 0, 0xffffffff, 0x92, 0x0f);
+    // Setup GDT entries for real mode transition (16-bit segments)
+    gdt_set_entry(6, 0, 0xffff, 0x9A, 0x00); // Code segment: 0x9A (present, ring 0, code, readable), flags 0x00 (16-bit)
+    gdt_set_entry(7, 0, 0xffff, 0x92, 0x00); // Data segment: 0x92 (present, ring 0, data, writable), flags 0x00
 
     // Setup real mode environment
     g_real_mode_gdt.base_address = (uintptr_t)g_gdt;
     g_real_mode_gdt.limit = sizeof(g_gdt) - 1;
-    g_real_mode_idt.base_address = 0;
-    g_real_mode_idt.limit = 0x3ff;
-
-    // serial_printf("BIOS32: GDT setup complete. Base=0x%x Limit=0x%x\n");
-    // copy output registers to out
     g_real_mode_idt.base_address = 0;
     g_real_mode_idt.limit = 0x3ff;
 }
@@ -85,7 +78,10 @@ void int86(uint8_t interrupt, REGISTERS16 *in, REGISTERS16 *out)
     // console_printf("Debug: Input registers: AX=0x%x ES=0x%x DI=0x%x\n",
     //        in->ax, in->es, in->di);
 
+    __asm__ __volatile__("cli");
+
     bios32_service(interrupt, in, out);
 
+    __asm__ __volatile__("sti");
     // console_printf("Debug: Output registers: AX=0x%x\n", out->ax);
 }

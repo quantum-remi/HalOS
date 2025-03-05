@@ -83,21 +83,32 @@ void kmain(unsigned long magic, unsigned long addr)
     serial_printf("Initializing IDT...\n");
     idt_init();
 
-    serial_printf("Initializing TSS...\n");
-    tss_init();
+    // tss_init();
 
-    multiboot_info_t *mboot_info = (multiboot_info_t *)addr;
+    multiboot_info_t* mboot_info = (multiboot_info_t *)addr;
     
-    if (mboot_info->flags & MULTIBOOT_INFO_VBE_INFO) {
-        serial_printf("VBE control info: 0x%x\n", mboot_info->vbe_control_info);
-        serial_printf("VBE mode info: 0x%x\n", mboot_info->vbe_mode_info);
-    }
 
+    
     if (magic != MULTIBOOT_BOOTLOADER_MAGIC) {
         panic("Invalid multiboot magic number");
-        return;
     }
-
+    
+    // Validate framebuffer info
+    if (!(mboot_info->flags & MULTIBOOT_INFO_FRAMEBUFFER_INFO)) {
+        panic("No framebuffer info from GRUB");
+    }
+    
+    uint32_t width = mboot_info->framebuffer_width;
+    uint32_t height = mboot_info->framebuffer_height;
+    uint32_t pitch = mboot_info->framebuffer_pitch;
+    uint32_t bpp = mboot_info->framebuffer_bpp;
+    uint32_t *framebuffer = (uint32_t *)(uintptr_t)mboot_info->framebuffer_addr;
+    
+    serial_printf("Framebuffer info:\n");
+    serial_printf("  Width: %d\n", width);
+    serial_printf("  Height: %d\n", height);
+    serial_printf("  BPP: %d\n", mboot_info->framebuffer_bpp);
+    serial_printf("  Framebuffer addr: 0x%x\n", framebuffer);
 
     // Initialize kernel memory map
     if (get_kernel_memory_map(&g_kmap, mboot_info) < 0) {
@@ -109,13 +120,20 @@ void kmain(unsigned long magic, unsigned long addr)
     pmm_init(g_kmap.system.total_memory * 1024, (uint32_t *)mboot_info->mmap_addr);
 
     // // Initialize BIOS32
-    serial_printf("Initializing BIOS32...\n");
-    bios32_init();
+    // serial_printf("Initializing BIOS32...\n");
+    // bios32_init();
 
     // Set up graphics resolution
     // Initialize VESA graphics
-    vesa_init(resolution.x, resolution.y, 32);
-
+    if(vesa_init(framebuffer, width, height, pitch, bpp) < 0)
+    {
+        serial_printf("VESA initialization failed!\n");
+        // Handle error
+    } else {
+        // serial_printf("VESA initialized: %dx%d@%dbpp\n", 
+                     // g_width, g_height, vesa_ctx.bpp);
+        serial_printf("VESA initialized\n");
+    }
     // Initialize remaining subsystems
     serial_printf("Initializing timer...\n");
     timer_init();
@@ -132,10 +150,6 @@ void kmain(unsigned long magic, unsigned long addr)
     serial_printf("Initializing PCI...\n");
     pci_init();
 
-    for (int i = 0; i < 10; i++) {
-        vbe_putpixel(i, i, 0xFFFFFF); // Draw white pixel
-        
-    }
     // Initialize console
     console_init(VESA_COLOR_WHITE, VESA_COLOR_BLACK);
     serial_printf("Console initialized\n");
@@ -145,4 +159,8 @@ void kmain(unsigned long magic, unsigned long addr)
 
     // Start shell
     shell();
+
+    for (;;)
+        console_printf("you should not be here\n");
+        __asm__ volatile("hlt");
 }

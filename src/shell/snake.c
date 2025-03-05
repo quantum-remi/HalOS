@@ -7,15 +7,16 @@
 static int g_start_x;
 static int g_start_y;
 
+extern uint32_t g_width;
+extern uint32_t g_height;
+
 // Game constants
 #define CELL_SIZE 16
 #define BORDER_SIZE 2
-#define BOARD_WIDTH 30
-#define BOARD_HEIGHT 25
+#define BOARD_WIDTH (g_width / CELL_SIZE - 4)
+#define BOARD_HEIGHT (g_height / CELL_SIZE - 4)
 #define SNAKE_MAX_LENGTH 100
 
-#define SCREEN_WIDTH 1024
-#define SCREEN_HEIGHT 768
 
 // Colors
 #define COLOR_BORDER 0x00FFFFFF
@@ -210,35 +211,22 @@ static void draw_game()
               COLOR_FOOD);
 }
 
-// Rest of snake_update() and snake_handle_input() remain same
 
-// Add cleanup function
-static void init_graphics()
-{
+static void init_graphics(void) {
+    // Calculate board position using actual resolution
+    int board_pixel_width = BOARD_WIDTH * CELL_SIZE + BORDER_SIZE * 2;
+    int board_pixel_height = BOARD_HEIGHT * CELL_SIZE + BORDER_SIZE * 2;
+    
+    g_start_x = (g_width - board_pixel_width) / 2;
+    g_start_y = (g_height - board_pixel_height) / 2;
 
-    // Calculate board position to center it
-    int board_width = (BOARD_WIDTH * CELL_SIZE) + (BORDER_SIZE * 2);
-    int board_height = (BOARD_HEIGHT * CELL_SIZE) + (BORDER_SIZE * 2);
-
-    // Store globally for use in drawing functions
-    g_start_x = (SCREEN_WIDTH - board_width) / 2;
-    g_start_y = (SCREEN_HEIGHT - board_height) / 2;
-
-    // Clear screen
-    for (int x = 0; x < SCREEN_WIDTH; x++)
-    {
-        for (int y = 0; y < SCREEN_HEIGHT; y++)
-        {
-            vbe_putpixel(x, y, COLOR_BG);
-        }
-    }
-    // swap_buffers();
+    // Clear screen using VESA
+    console_clear();
 }
 
 void snake_game()
 {
-    console_clear(VESA_COLOR_BLACK);
-    // Initialize graphics
+    console_clear();
     init_graphics();
     snake_init();
     draw_border();
@@ -272,7 +260,7 @@ void snake_game()
     }
 
     // Clear screen again
-    console_clear(VESA_COLOR_BLACK);
+    console_clear();
 
     // Show game over
     console_printf("Game Over! Final Score: %d\n", score);
@@ -280,5 +268,5 @@ void snake_game()
 
     // Wait for key and clear again
     kb_getchar();
-    console_clear(VESA_COLOR_BLACK);
+    console_clear();
 }

@@ -1,56 +1,45 @@
 ENTRY(_start)
 
-SECTIONS
-{
-    __kernel_section_start = .;
-    
-    /* text section */
-    .text 0x0100000 : {
+SECTIONS {
+    /* Place the Multiboot header at the VERY START of the kernel */
+    . = 0x100000;  /* Load address = 1MB (standard for x86 kernels) */
+
+    /* Multiboot header section (must be first!) */
+    .multiboot : {
+        *(.multiboot)
+    }
+
+    /* Text section (code) */
+    .text : ALIGN(4096) {
         __kernel_text_section_start = .;
-        . = ALIGN(4);
-        /* set multiboot header */
-        LONG(0x1BADB002)
-        LONG(0x00000003)
-        LONG(0xE4524FFB)
-        code = .; _code = .; __code = .;
         *(.text)
-        *(.rodata)
-        . = ALIGN(4096);
+        *(.rodata*)
         __kernel_text_section_end = .;
     }
 
-    /* initialized data section */
-    .data : {
-        __kernel_data_section_start = .;
-        data = .; _data = .; __data = .;
-        *(.data)
-        . = ALIGN(4096);
-        __kernel_data_section_end = .;
-    }
-
-    /* constant data section */
-    .rodata : {
+    /* Read-only data */
+    .rodata : ALIGN(4096) {
         __kernel_rodata_section_start = .;
         *(.rodata)
         __kernel_rodata_section_end = .;
     }
 
-    /* un-initialized data section */
-    .bss : {
+    /* Initialized data */
+    .data : ALIGN(4096) {
+        __kernel_data_section_start = .;
+        *(.data)
+        __kernel_data_section_end = .;
+    }
+
+    /* Uninitialized data (BSS) */
+    .bss : ALIGN(4096) {
         __kernel_bss_section_start = .;
-        bss = .; _bss = .; __bss = .;
+        *(COMMON)
         *(.bss)
-        . = ALIGN(4096);
         __kernel_bss_section_end = .;
     }
 
-    end = .; _end = .; __end = .;
-    __kernel_section_end = .;
-    
-    /* Define physical and virtual addresses */
-    __kernel_physical_start = 0x0100000;
-    __kernel_virtual_start = 0xC0000000;
-
-    __kernel_physical_end = 0xC0000000 - 1;
-    __kernel_virtual_end = __kernel_virtual_start + (__kernel_physical_end - __kernel_physical_start);
+    /* Define kernel memory regions */
+    __kernel_physical_start = 0x100000;
+    __kernel_physical_end = .;
 }

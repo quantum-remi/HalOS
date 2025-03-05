@@ -151,7 +151,6 @@ void float_print(const char *msg, float f, const char *end)
 
 static void test_vesa()
 {
-
 }
 
 void yuri()
@@ -354,7 +353,7 @@ void drive()
         }
         else if (strcmp(buffer, "clear") == 0)
         {
-            console_clear(VESA_COLOR_BLACK);
+            console_clear();
         }
         else if (strcmp(buffer, "list") == 0)
         {
@@ -442,7 +441,7 @@ void hwinfo()
 
 void shell()
 {
-    console_clear(VESA_COLOR_BLACK);
+    console_clear();
     char buffer[255];
     const char *shell = "kernel> ";
 
@@ -503,7 +502,7 @@ void shell()
         }
         else if (strcmp(buffer, "clear") == 0)
         {
-            console_clear(VESA_COLOR_BLACK);
+            console_clear();
         }
         else if (strcmp(buffer, "timer") == 0)
         {

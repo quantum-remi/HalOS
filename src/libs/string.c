@@ -39,6 +39,24 @@ size_t strlen(const char *s)
     return len;
 }
 
+char *strncpy(char *dest, const char *src, size_t n)
+{
+    size_t i = 0;
+
+    // Copy characters from src to dest until n characters are copied or the end of src is reached.
+    while (i < n && src[i] != '\0') {
+        dest[i] = src[i];
+        i++;
+    }
+
+    // Pad the remaining space in dest with null terminators.
+    while (i < n) {
+        dest[i++] = '\0';
+    }
+
+    return dest;
+}
+
 int strcmp(const char *s1, const char *s2)
 {
     int i = 0;

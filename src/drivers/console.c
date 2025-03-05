@@ -1,262 +1,250 @@
 #include <stdint.h>
 #include <stddef.h>
+#include <stdarg.h>
+#include <stdbool.h>
 
 #include "console.h"
 #include "string.h"
-#include "vesa.h"
 #include "font.h"
 #include "serial.h"
 #include "keyboard.h"
+#include "liballoc.h"
 
 // Console state
 static struct
 {
-    uint32_t fore_color;
-    uint32_t back_color;
+    uint32_t fg;
+    uint32_t bg;
+    uint32_t cols;
+    uint32_t rows;
     int cursor_x;
     int cursor_y;
-    char text_buffer[CONSOLE_ROWS][CONSOLE_COLS];
+    bool cursor_visible;
+    char *buffer;
 } console;
 
 
 extern uint32_t g_width;
 extern uint32_t g_height;
+extern uint32_t g_pitch;
+extern uint32_t* g_vbe_buffer;
 
 int console_scrolling = 0;
 
-
-void console_init(uint32_t fore_color, uint32_t back_color)
-{
-    memset(&console, 0, sizeof(console));
-    console.fore_color = fore_color;  // Use parameters instead of hardcoded values
-    console.back_color = back_color;
-    console_clear(back_color);  // Update console_clear to take only back_color
+static inline char* buffer_at(int x, int y) {
+    return &console.buffer[y * console.cols + x];
 }
 
-void draw_char(int32_t x, int32_t y, char c, uint32_t fg, uint32_t bg)
+void console_init(uint32_t fg, uint32_t bg)
 {
+    console.cols = g_width / FONT_WIDTH;
+    console.rows = g_height / FONT_HEIGHT;
 
-    for (int font_y = 0; font_y < FONT_HEIGHT; font_y++)
-    {
+    console.buffer = (char *)malloc(console.rows * console.cols);
+    console.cursor_x = 0;
+    console.cursor_y = 0;
+    console.cursor_visible = true;
+
+    console.fg = fg;
+    console.bg = bg;
+    console_clear();
+}
+
+void draw_char(int x, int y, char c) {
+    uint32_t screen_x = x * FONT_WIDTH;
+    uint32_t screen_y = y * FONT_HEIGHT;
+    
+    for(int font_y = 0; font_y < FONT_HEIGHT; font_y++) {
         unsigned char font_row = font8x16[(unsigned char)c][font_y];
+        
+        for(int font_x = 0; font_x < FONT_WIDTH; font_x++) {
+            uint32_t color = (font_row & (0x80 >> font_x)) 
+                            ? console.fg 
+                            : console.bg;
+            vbe_putpixel(screen_x + font_x, screen_y + font_y, color);
+        }
+    }
+}
 
-        for (int font_x = 0; font_x < FONT_WIDTH; font_x++)
-        {
-            uint32_t pixel_x = x * FONT_WIDTH + font_x;
-            uint32_t pixel_y = y * FONT_HEIGHT + font_y;
+void console_clear(void)
+{
+    for(uint32_t y = 0; y < g_height; y++) {
+        for(uint32_t x = 0; x < g_width; x++) {
+            vbe_putpixel(x, y, console.bg);
+        }
+    }
+    memset(console.buffer, 0, console.rows * console.cols);
+    console.cursor_x = console.cursor_y = 0;
+}
 
-            if (pixel_x < g_width && pixel_y < g_height)
-            {
-                vbe_putpixel(pixel_x, pixel_y,
-                             (font_row & (0x80 >> font_x)) ? fg : bg);
+void console_scroll(int lines) {
+    // Scroll using memmove with pitch-aware access
+    const uint32_t scroll_pixels = lines * FONT_HEIGHT;
+    const uint32_t pitch_pixels = g_pitch / sizeof(uint32_t);
+    const size_t scroll_bytes = scroll_pixels * pitch_pixels * sizeof(uint32_t);
+    
+    // Scroll framebuffer
+    memmove(g_vbe_buffer,
+            g_vbe_buffer + scroll_pixels * pitch_pixels,
+            (g_height - scroll_pixels) * pitch_pixels * sizeof(uint32_t));
+    
+    // Clear scrolled area using putpixel
+    for(uint32_t y = g_height - scroll_pixels; y < g_height; y++) {
+        for(uint32_t x = 0; x < g_width; x++) {
+            vbe_putpixel(x, y, console.bg);
+        }
+    }
+}
+
+void console_putchar(char c) {
+    if(c == '\n') {
+        console.cursor_x = 0;
+        if(++console.cursor_y >= console.rows) {
+            console_scroll(1);
+            console.cursor_y = console.rows - 1;
+        }
+        return;
+    }
+
+    if(console.cursor_x >= console.cols) {
+        console_putchar('\n');
+    }
+
+    // Store character in buffer
+    console.buffer[console.cursor_y * console.cols + console.cursor_x] = c;
+    draw_char(console.cursor_x, console.cursor_y, c);
+    console.cursor_x++;
+}
+
+void console_ungetchar(void) {
+    if (console.cursor_x > 0) {
+        console.cursor_x--;
+        *buffer_at(console.cursor_x, console.cursor_y) = '\0';
+        
+        // Clear character from screen
+        uint32_t screen_x = console.cursor_x * FONT_WIDTH;
+        uint32_t screen_y = console.cursor_y * FONT_HEIGHT;
+        
+        for(int y = 0; y < FONT_HEIGHT; y++) {
+            for(int x = 0; x < FONT_WIDTH; x++) {
+                vbe_putpixel(screen_x + x, screen_y + y, console.bg);
             }
         }
     }
 }
 
-void console_clear(uint32_t back_color)
-{
-    for (uint32_t y = 0; y < g_height; y++)
-        for (uint32_t x = 0; x < g_width; x++)
-            vbe_putpixel(x, y, back_color);
-    memset(console.text_buffer, 0, sizeof(console.text_buffer));
-    console.cursor_x = console.cursor_y = 0;
-}
-
-void console_scroll(int direction) {
-    if (console_scrolling) {
-        return;
-    }
-    console_scrolling = 1;
-
-    if (direction == SCROLL_UP) {
-        // Move rows up
-        memmove(console.text_buffer[0],
-                console.text_buffer[1],
-                (CONSOLE_ROWS - 1) * CONSOLE_COLS * sizeof(char));
-
-        // Clear the last row
-        memset(console.text_buffer[CONSOLE_ROWS - 1], 0, CONSOLE_COLS * sizeof(char));
-    } else if (direction == SCROLL_DOWN) {
-        // Move rows down
-        memmove(console.text_buffer[1],
-                console.text_buffer[0],
-                (CONSOLE_ROWS - 1) * CONSOLE_COLS * sizeof(char));
-
-        // Clear the first row
-        memset(console.text_buffer[0], 0, CONSOLE_COLS * sizeof(char));
-    }
-
-    // Clamp cursor position (if needed)
-    if (direction == SCROLL_UP && console.cursor_y > 0) {
-        console.cursor_y--;
-    } else if (direction == SCROLL_DOWN && console.cursor_y < CONSOLE_ROWS - 1) {
-        console.cursor_y++;
-    }
-
-    console_scrolling = 0;
-    // Refresh the console display
-    console_refresh();
-}
-
-void console_putchar(char c)
-{
-
-    if (console.cursor_x >= CONSOLE_COLS) {
-        console.cursor_x = 0;
-        console.cursor_y++;
-        if (console.cursor_y >= CONSOLE_ROWS) {
-            console.cursor_y = CONSOLE_ROWS - 1;
-        }
-    }
-
-    if (c == '\n') // Handle newline
-    {
-        console.cursor_x = 0;
-        console.cursor_y++;
-    }
-    else if (c == '\r') // Handle carriage return
-    {
-        console.cursor_x = 0;
-    }
-    else
-    {
-        // Write character to buffer and render it
-        if (console.cursor_x < CONSOLE_COLS && console.cursor_y < CONSOLE_ROWS)
-        {
-            console.text_buffer[console.cursor_y][console.cursor_x] = c;
-            draw_char(console.cursor_x, console.cursor_y, c,
-                      console.fore_color, console.back_color);
-            console.cursor_x++;
-        }
-    }
-
-    // Move to the next line if end of row is reached
-    if (console.cursor_x >= CONSOLE_COLS)
-    {
-        console.cursor_x = 0;
-        console.cursor_y++;
-    }
-
-    // Scroll if the cursor moves beyond the last row
-    if (console.cursor_y >= CONSOLE_ROWS)
-    {
-        console_scroll(SCROLL_UP);
-        console.cursor_y = CONSOLE_ROWS - 1;
-    }
-}
-
-void console_ungetchar()
-{
-    if (console.cursor_x > 0)
-    {
-        console.cursor_x--;
-        console.text_buffer[console.cursor_y][console.cursor_x] = 0;
-        draw_char(console.cursor_x, console.cursor_y, ' ',
-                  console.fore_color, console.back_color);
-    }
-}
-
-void console_ungetchar_bound(uint8_t n)
-{
-    while (n-- && console.cursor_x > 0)
-    {
+void console_ungetchar_bound(uint8_t n) {
+    while (n-- > 0 && console.cursor_x > 0) {
         console_ungetchar();
     }
 }
 
-void console_gotoxy(uint32_t x, uint32_t y)
-{
-    if (x < CONSOLE_COLS && y < CONSOLE_ROWS)
-    {
+void console_gotoxy(uint32_t x, uint32_t y) {
+    if (x < console.cols && y < console.rows) {
         console.cursor_x = x;
         console.cursor_y = y;
     }
 }
 
-void console_putstr(const char *str)
-{
-    while (*str)
-    {
+
+void console_putstr(const char *str) {
+    while (*str) {
         console_putchar(*str++);
     }
 }
 
-void console_refresh()
-{
-    for (int y = 0; y < CONSOLE_ROWS; y++)
-    {
-        for (int x = 0; x < CONSOLE_COLS; x++)
-        {
-            char c = console.text_buffer[y][x];
-
-            // Always draw characters, including spaces
-            draw_char(x, y, c ? c : ' ', console.fore_color, console.back_color);
+void console_refresh(void) {
+    for (uint32_t y = 0; y < console.rows; y++) {
+        for (uint32_t x = 0; x < console.cols; x++) {
+            char c = *buffer_at(x, y);
+            if(c == 0) c = ' ';  // Draw spaces for empty cells
+            
+            // Only redraw if different from current display
+            uint32_t screen_x = x * FONT_WIDTH;
+            uint32_t screen_y = y * FONT_HEIGHT;
+            bool needs_redraw = false;
+            
+            // Check if current pixels match expected character
+            for(int fy = 0; fy < FONT_HEIGHT; fy++) {
+                unsigned char font_row = font8x16[(unsigned char)c][fy];
+                for(int fx = 0; fx < FONT_WIDTH; fx++) {
+                    uint32_t expected = (font_row & (0x80 >> fx)) 
+                                      ? console.fg : console.bg;
+                    uint32_t actual = vbe_getpixel(screen_x + fx, screen_y + fy);
+                    if(actual != expected) {
+                        needs_redraw = true;
+                        break;
+                    }
+                }
+                if(needs_redraw) break;
+            }
+            
+            if(needs_redraw) {
+                draw_char(x, y, c);
+            }
         }
     }
 }
 
-void getstr(char *buffer, uint32_t max_size)
-{
+void getstr(char *buffer, uint32_t max_size) {
     uint32_t i = 0;
-    while (i < max_size - 1) // leave space for null terminator
-    {
+    while (i < max_size - 1) {
         char c = kb_getchar();
-        if (c == '\b') // backspace
-        {
-            if (i > 0)
-            {
+        if (c == '\b') {
+            if (i > 0) {
                 i--;
                 console_ungetchar();
             }
         }
-        else if (c == '\n') // enter key
-        {
-            console_putchar('\n'); // print the newline character
-            buffer[i] = '\0';      // null terminate the string
+        else if (c == '\n') {
+            console_putchar('\n');
+            buffer[i] = '\0';
             return;
         }
-        else
-        {
+        else if (c >= 32 && c <= 126) {  // Printable ASCII only
             buffer[i++] = c;
             console_putchar(c);
         }
+        
+        // Prevent overflow
+        if (console.cursor_x >= console.cols) {
+            console_putchar('\n');
+        }
     }
-    buffer[i] = '\0'; // null terminate the string
+    buffer[i] = '\0';
 }
 
-void getstr_bound(char *buffer, uint8_t bound)
-{
-    if (!buffer || bound == 0)
-        return;
+void getstr_bound(char *buffer, uint8_t bound) {
+    if (!buffer || bound == 0) return;
     uint8_t idx = 0;
 
-    while (idx < bound - 1)
-    {
+    while (idx < bound - 1) {
         char c = kb_getchar();
 
-        if (c == '\n')
-        {
+        if (c == '\n') {
             console_putchar('\n');
             buffer[idx] = 0;
             return;
         }
 
-        if (c == '\b' && idx > 0)
-        {
+        if (c == '\b' && idx > 0) {
             idx--;
             buffer[idx] = 0;
             console_ungetchar();
             continue;
         }
 
-        buffer[idx++] = c;
-        console_putchar(c);
+        if (c >= 32 && c <= 126) {  // Printable ASCII only
+            buffer[idx++] = c;
+            console_putchar(c);
+        }
+
+        if (console.cursor_x >= console.cols) {
+            console_putchar('\n');
+        }
     }
     buffer[idx] = 0;
 }
-
-#include <stdarg.h>
 
 void console_vprintf(const char *format, va_list args)
 {
