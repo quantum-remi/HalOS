@@ -39,7 +39,6 @@ ISO_DIR=$(OUT)/isodir
 
 OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o $(ASM_OBJ)/load_tss.o \
 		$(ASM_OBJ)/load_idt.o $(ASM_OBJ)/exception.o $(ASM_OBJ)/irq.o $(ASM_OBJ)/bios32_call.o\
-		$(ASM_OBJ)/vesa.o\
 		$(OBJ)/io.o \
 		$(OBJ)/string.o $(OBJ)/console.o\
 		$(OBJ)/gdt.o $(OBJ)/idt.o $(OBJ)/isr.o $(OBJ)/8259_pic.o\
@@ -101,11 +100,6 @@ $(ASM_OBJ)/irq.o : $(ASM_SRC)/irq.asm
 $(ASM_OBJ)/bios32_call.o : $(ASM_SRC)/bios32_call.asm
 	@printf "[ $(ASM_SRC)/bios32_call.asm ]\n"
 	$(ASM) $(ASM_FLAGS) $(ASM_SRC)/bios32_call.asm -o $(ASM_OBJ)/bios32_call.o
-	@printf "\n"
-
-$(ASM_OBJ)/vesa.o : $(ASM_SRC)/vesa.asm
-	@printf "[ $(ASM_SRC)/vesa.asm ]\n"
-	$(ASM) $(ASM_FLAGS) $(ASM_SRC)/vesa.asm -o $(ASM_OBJ)/vesa.o
 	@printf "\n"
 
 $(OBJ)/io.o : $(SRC)/libs/io.c
