@@ -232,7 +232,7 @@ $(OBJ)/fat.o : $(SRC)/drivers/fat.c
 	@printf "\n"
 
 qemu:
-	qemu-system-i386 -m 4G -vga virtio -cdrom $(TARGET_ISO) -serial stdio -drive id=disk,if=none,format=raw,file=disk.img -device ide-hd,drive=disk -cpu qemu64,+fpu,+sse,+sse2
+	qemu-system-i386 -m 4G -vga virtio -boot d -cdrom $(TARGET_ISO) -serial stdio -drive id=disk,if=none,format=raw,file=disk.img -device ide-hd,drive=disk -cpu qemu64,+fpu,+sse,+sse2
 
 disk:
 	qemu-img create disk.img 1G

@@ -134,6 +134,11 @@ void kmain(unsigned long magic, unsigned long addr)
                      // g_width, g_height, vesa_ctx.bpp);
         serial_printf("VESA initialized\n");
     }
+
+    // Initialize console
+    console_init(VESA_COLOR_WHITE, VESA_COLOR_BLACK);
+    serial_printf("Console initialized\n");
+    
     // Initialize remaining subsystems
     serial_printf("Initializing timer...\n");
     timer_init();
@@ -150,9 +155,6 @@ void kmain(unsigned long magic, unsigned long addr)
     serial_printf("Initializing PCI...\n");
     pci_init();
 
-    // Initialize console
-    console_init(VESA_COLOR_WHITE, VESA_COLOR_BLACK);
-    serial_printf("Console initialized\n");
 
     serial_printf("System initialized successfully\n");
     console_printf("System initialized successfully\n");
