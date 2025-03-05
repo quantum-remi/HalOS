@@ -24,7 +24,7 @@ DEFINES=
 # assembler flags
 ASM_FLAGS = -f elf32
 # compiler flags
-CC_FLAGS = $(INCLUDE) $(DEFINES) -m32 -g -std=c23 -ffreestanding -Wall -Wextra -mno-sse -mno-sse2 -mno-sse3
+CC_FLAGS = $(INCLUDE) $(DEFINES) -m32 -g -std=c23 -ffreestanding -Wall -Wextra
 # linker flags, for linker add linker.ld file too
 LD_FLAGS = -m elf_i386 -T $(CONFIG)/linker.ld -nostdlib
 # make flags

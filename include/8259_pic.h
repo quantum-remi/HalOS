@@ -31,5 +31,7 @@ void pic8259_init();
  */
 void pic8259_eoi(uint8_t irq);
 
+int pic8259_is_spurious(uint8_t irq);
+
 #endif
 

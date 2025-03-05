@@ -53,12 +53,14 @@ void isr_end_interrupt(size_t num)
 
 void isr_irq_handler(REGISTERS *reg)
 {
+    uint8_t irq = reg->int_no - 32;
+    if(irq == 7 && !pic8259_is_spurious(7)) return;
+    if(irq == 8 && !pic8259_is_spurious(8)) return;
     if (g_interrupt_handlers[reg->int_no] != NULL)
     {
-        ISR handler = g_interrupt_handlers[reg->int_no];
-        handler(reg);
+        g_interrupt_handlers[reg->int_no](reg);
     }
-    pic8259_eoi(reg->int_no);
+    pic8259_eoi(irq);
 }
 
 static void print_registers(REGISTERS *reg)
@@ -72,16 +74,8 @@ static void print_registers(REGISTERS *reg)
 
 void isr_exception_handler(REGISTERS reg)
 {
-    if (reg.int_no < 32)
-    {
-        serial_printf("EXCEPTION: %s\n", exception_messages[reg.int_no]);
-        print_registers(&reg);
-        for (;;)
-            __asm__ volatile("hlt");
-    }
-    if (g_interrupt_handlers[reg.int_no] != NULL)
-    {
-        ISR handler = g_interrupt_handlers[reg.int_no];
-        handler(&reg);
+    if(reg.int_no < 32) {
+        serial_printf("EXCEPTION %d: %s\n", reg.int_no, exception_messages[reg.int_no]);
+        for(;;) __asm__ volatile("hlt");
     }
 }

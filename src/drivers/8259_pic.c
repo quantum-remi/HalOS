@@ -24,6 +24,9 @@ void pic8259_init()
 
     outportb(PIC1_DATA, a1);
     outportb(PIC2_DATA, a2);
+
+    // outportb(PIC1_DATA, 0xFF);
+    // outportb(PIC2_DATA, 0xFF);
 }
 
 void pic8259_eoi(uint8_t irq)
@@ -31,4 +34,10 @@ void pic8259_eoi(uint8_t irq)
     if (irq >= 0x28)
         outportb(PIC2, PIC_EOI);
     outportb(PIC1, PIC_EOI);
+}
+
+int pic8259_is_spurious(uint8_t irq) {
+    if(irq == 7) return (inportb(PIC1_COMMAND) & 0x80) == 0;
+    if(irq == 15) return (inportb(PIC2_COMMAND) & 0x80) == 0;
+    return 1;
 }
