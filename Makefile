@@ -58,7 +58,6 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o $(ASM_OBJ)/load_tss.o \
 
 
 all: $(OBJECTS)
-	i686-elf-objcopy -I binary config/ter-powerline-v12n.psf font.o
 	@printf "[ linking... ]\n"
 	$(LD) $(LD_FLAGS) -o $(TARGET) $(OBJECTS)
 	grub2-file --is-x86-multiboot $(TARGET) && echo "Valid" || echo "Invalid"
@@ -70,9 +69,9 @@ all: $(OBJECTS)
 	$(GRUB) -o $(TARGET_ISO) $(ISO_DIR)
 	rm -f $(TARGET)
 
-$(OBJ)/font.o : $(CONFIG)/ter-powerline-v12n.psf
-	@printf "[ $(CONFIG)/ter-powerline-v12n.psf ]\n"
-	$(OBJCOPY) -O elf32-i386 -B i386 -I binary $(CONFIG)/ter-powerline-v12n.psf $(OBJ)/font.o
+$(OBJ)/font.o : $(CONFIG)/ter-powerline-v20b.psf
+	@printf "[ $(CONFIG)/ter-powerline-v20b.psf ]\n"
+	$(OBJCOPY) -O elf32-i386 -B i386 -I binary $(CONFIG)/ter-powerline-v20b.psf $(OBJ)/font.o
 	@printf "\n"
 
 $(ASM_OBJ)/entry.o : $(ASM_SRC)/entry.asm

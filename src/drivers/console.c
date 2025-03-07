@@ -32,8 +32,7 @@ extern uint32_t g_pitch;
 extern uint32_t* g_vbe_buffer;
 
 // font data
-extern char _binary___config_ter_powerline_v12n_psf_start;
-extern char _binary___config_ter_powerline_v12n_psf_end;
+extern char _binary___config_ter_powerline_v20b_psf_start;
 
 int console_scrolling = 0;
 
@@ -42,7 +41,7 @@ static inline char* buffer_at(int x, int y) {
 }
 void console_init(uint32_t fg, uint32_t bg)
 {
-    console.font = (PSF2_Header *)&_binary___config_ter_powerline_v12n_psf_start;
+    console.font = (PSF2_Header *)&_binary___config_ter_powerline_v20b_psf_start;
     if (console.font->magic != PSF2_FONT_MAGIC) {
         panic("Invalid font magic number");
     }
