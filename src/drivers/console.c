@@ -5,7 +5,7 @@
 
 #include "console.h"
 #include "string.h"
-#include "font.h"
+#include "kernel.h"
 #include "serial.h"
 #include "keyboard.h"
 #include "liballoc.h"
@@ -21,24 +21,33 @@ static struct
     int cursor_y;
     bool cursor_visible;
     char *buffer;
+    PSF2_Header *font;
+    uint16_t *unicode;
 } console;
 
-
+// VESA variables
 extern uint32_t g_width;
 extern uint32_t g_height;
 extern uint32_t g_pitch;
 extern uint32_t* g_vbe_buffer;
+
+// font data
+extern char _binary___config_ter_powerline_v12n_psf_start;
+extern char _binary___config_ter_powerline_v12n_psf_end;
 
 int console_scrolling = 0;
 
 static inline char* buffer_at(int x, int y) {
     return &console.buffer[y * console.cols + x];
 }
-
 void console_init(uint32_t fg, uint32_t bg)
 {
-    console.cols = g_width / FONT_WIDTH;
-    console.rows = g_height / FONT_HEIGHT;
+    console.font = (PSF2_Header *)&_binary___config_ter_powerline_v12n_psf_start;
+    if (console.font->magic != PSF2_FONT_MAGIC) {
+        panic("Invalid font magic number");
+    }
+    console.cols = g_width / console.font->width;
+    console.rows = g_height / console.font->height;
 
     console.buffer = (char *)malloc(console.rows * console.cols);
     console.cursor_x = 0;
@@ -51,17 +60,21 @@ void console_init(uint32_t fg, uint32_t bg)
 }
 
 void draw_char(int x, int y, char c) {
-    uint32_t screen_x = x * FONT_WIDTH;
-    uint32_t screen_y = y * FONT_HEIGHT;
-    
-    for(int font_y = 0; font_y < FONT_HEIGHT; font_y++) {
-        unsigned char font_row = font8x16[(unsigned char)c][font_y];
-        
-        for(int font_x = 0; font_x < FONT_WIDTH; font_x++) {
-            uint32_t color = (font_row & (0x80 >> font_x)) 
-                            ? console.fg 
-                            : console.bg;
-            vbe_putpixel(screen_x + font_x, screen_y + font_y, color);
+    uint32_t screen_x = x * console.font->width;
+    uint32_t screen_y = y * console.font->height;
+    int bytes_per_row = (console.font->width + 7) / 8;
+    const unsigned char *glyph = (const unsigned char*)console.font + console.font->headersize + (unsigned char)c * console.font->bytesperglyph;
+
+    for (int font_y = 0; font_y < console.font->height; font_y++) {
+        for (int byte = 0; byte < bytes_per_row; byte++) {
+            unsigned char font_byte = glyph[font_y * bytes_per_row + byte];
+            for (int bit = 0; bit < 8; bit++) {
+                int font_x = byte * 8 + bit;
+                if (font_x >= console.font->width) break;
+
+                uint32_t color = (font_byte & (0x80 >> bit)) ? console.fg : console.bg;
+                vbe_putpixel(screen_x + font_x, screen_y + font_y, color);
+            }
         }
     }
 }
@@ -79,7 +92,7 @@ void console_clear(void)
 
 void console_scroll(int lines) {
     // Scroll using memmove with pitch-aware access
-    const uint32_t scroll_pixels = lines * FONT_HEIGHT;
+    const uint32_t scroll_pixels = lines * console.font->height;
     const uint32_t pitch_pixels = g_pitch / sizeof(uint32_t);
     const size_t scroll_bytes = scroll_pixels * pitch_pixels * sizeof(uint32_t);
     
@@ -122,8 +135,8 @@ void console_ungetchar(void) {
         *buffer_at(console.cursor_x, console.cursor_y) = '\0';
         
         // Clear character from screen
-        uint32_t screen_x = console.cursor_x * FONT_WIDTH;
-        uint32_t screen_y = console.cursor_y * FONT_HEIGHT;
+        uint32_t screen_x = console.cursor_x * console.font->width;
+        uint32_t screen_y = console.cursor_y * console.font->height;
         
         for(int y = 0; y < FONT_HEIGHT; y++) {
             for(int x = 0; x < FONT_WIDTH; x++) {
@@ -154,35 +167,30 @@ void console_putstr(const char *str) {
 }
 
 void console_refresh(void) {
-    for (uint32_t y = 0; y < console.rows; y++) {
-        for (uint32_t x = 0; x < console.cols; x++) {
-            char c = *buffer_at(x, y);
-            if(c == 0) c = ' ';  // Draw spaces for empty cells
-            
-            // Only redraw if different from current display
-            uint32_t screen_x = x * FONT_WIDTH;
-            uint32_t screen_y = y * FONT_HEIGHT;
-            bool needs_redraw = false;
-            
-            // Check if current pixels match expected character
-            for(int fy = 0; fy < FONT_HEIGHT; fy++) {
-                unsigned char font_row = font8x16[(unsigned char)c][fy];
-                for(int fx = 0; fx < FONT_WIDTH; fx++) {
-                    uint32_t expected = (font_row & (0x80 >> fx)) 
-                                      ? console.fg : console.bg;
-                    uint32_t actual = vbe_getpixel(screen_x + fx, screen_y + fy);
-                    if(actual != expected) {
-                        needs_redraw = true;
-                        break;
-                    }
+    uint32_t screen_x = console.cursor_x * console.font->width;
+    uint32_t screen_y = console.cursor_y * console.font->height;
+    char c = console.buffer[console.cursor_y * console.cols + console.cursor_x];
+    bool needs_redraw = false;
+    int bytes_per_row = (console.font->width + 7) / 8;
+    const unsigned char *glyph = (const unsigned char*)console.font + console.font->headersize + (unsigned char)c * console.font->bytesperglyph;
+    
+    for (int fy = 0; fy < console.font->height; fy++) {
+        for (int byte = 0; byte < bytes_per_row; byte++) {
+            unsigned char font_byte = glyph[fy * bytes_per_row + byte];
+            for (int bit = 0; bit < 8; bit++) {
+                int fx_pixel = byte * 8 + bit;
+                if (fx_pixel >= console.font->width) break;
+    
+                uint32_t expected = (font_byte & (0x80 >> bit)) ? console.fg : console.bg;
+                uint32_t actual = vbe_getpixel(screen_x + fx_pixel, screen_y + fy);
+                if (actual != expected) {
+                    needs_redraw = true;
+                    break;
                 }
-                if(needs_redraw) break;
             }
-            
-            if(needs_redraw) {
-                draw_char(x, y, c);
-            }
+            if (needs_redraw) break;
         }
+        if (needs_redraw) break;
     }
 }
 

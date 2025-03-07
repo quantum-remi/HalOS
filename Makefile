@@ -4,6 +4,8 @@ ASM = /usr/bin/nasm
 CC = i686-elf-gcc
 # linker
 LD = i686-elf-ld
+# object copy
+OBJCOPY = i686-elf-objcopy
 # grub iso creator
 GRUB = /usr/bin/grub2-mkrescue
 # sources
@@ -49,13 +51,14 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o $(ASM_OBJ)/load_tss.o \
 		$(OBJ)/bios32.o $(OBJ)/shell.o \
 		$(OBJ)/serial.o $(OBJ)/printf.o \
 		$(OBJ)/tss.o $(OBJ)/liballoc.o $(OBJ)/liballoc_hook.o \
-		$(OBJ)/pci.o $(OBJ)/ide.o $(OBJ)/fat.o \
+		$(OBJ)/pci.o $(OBJ)/ide.o $(OBJ)/fat.o $(OBJ)/font.o \
 		$(OBJ)/kernel.o
 
 .PHONY: all	
 
 
 all: $(OBJECTS)
+	i686-elf-objcopy -I binary config/ter-powerline-v12n.psf font.o
 	@printf "[ linking... ]\n"
 	$(LD) $(LD_FLAGS) -o $(TARGET) $(OBJECTS)
 	grub2-file --is-x86-multiboot $(TARGET) && echo "Valid" || echo "Invalid"
@@ -66,6 +69,11 @@ all: $(OBJECTS)
 	$(CP) $(CONFIG)/grub.cfg $(ISO_DIR)/boot/grub/
 	$(GRUB) -o $(TARGET_ISO) $(ISO_DIR)
 	rm -f $(TARGET)
+
+$(OBJ)/font.o : $(CONFIG)/ter-powerline-v12n.psf
+	@printf "[ $(CONFIG)/ter-powerline-v12n.psf ]\n"
+	$(OBJCOPY) -O elf32-i386 -B i386 -I binary $(CONFIG)/ter-powerline-v12n.psf $(OBJ)/font.o
+	@printf "\n"
 
 $(ASM_OBJ)/entry.o : $(ASM_SRC)/entry.asm
 	@printf "[ $(ASM_SRC)/entry.asm ]\n"

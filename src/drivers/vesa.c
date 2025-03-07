@@ -1,14 +1,8 @@
 #include "vesa.h"
 #include "string.h"
 #include "serial.h"
-#include "bios32.h"
 #include "isr.h"
-#include "io.h"
 #include "console.h"
-
-// vbe information
-VBE20_INFOBLOCK g_vbe_infoblock;
-VBE20_MODEINFOBLOCK g_vbe_modeinfoblock;
 
 uint32_t g_width = 0, g_height = 0, g_pitch = 0, g_bpp = 0;
 uint32_t *g_vbe_buffer = NULL;
