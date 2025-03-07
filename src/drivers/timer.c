@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
+unsigned int seed = 0;
 
 // number of ticks since system booted
 uint32_t g_ticks = 0;
@@ -27,6 +28,11 @@ void timer_set_frequency(uint16_t f)
     outportb(TIMER_CHANNEL_0_DATA_PORT, divisor & 0xFF);
     // set high byte
     outportb(TIMER_CHANNEL_0_DATA_PORT, (divisor >> 8) & 0xFF);
+}
+
+
+void srand(uint32_t new_seed) {
+    seed = new_seed ^ (g_ticks << 16);  // Mix with timer ticks
 }
 
 void timer_handler(REGISTERS *r)
@@ -88,11 +94,9 @@ void uptime()
     console_printf("uptime: %d seconds\n", g_ticks / g_freq_hz);
 }
 
-unsigned int seed;
-
 int rand(void)
 {
-    seed = seed * 1103515245 + 12345 + g_ticks;
-    return (seed / 65536) % 32768;
+    seed = (seed * 1103515245 + 12345) ^ (g_ticks);  // XOR with current ticks
+    return (seed >> 16) & 0x7FFF;
 }
 
