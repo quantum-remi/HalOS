@@ -4,6 +4,7 @@
         "console.h": "c",
         "vesa.h": "c",
         "string.h": "c",
-        "vmm.h": "c"
+        "vmm.h": "c",
+        "serial.h": "c"
     }
 }

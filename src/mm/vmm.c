@@ -5,7 +5,7 @@
 #include "serial.h"
 
 extern uint32_t __kernel_vmem_start;
-#define KERNEL_VMEM_START __kernel_vmem_start
+// #define KERNEL_VMEM_START __kernel_vmem_start
 
 // Simplistic bitmap: one byte per page (0 = free, 1 = used)
 static uint8_t vmm_bitmap[VMM_MAX_PAGES];
@@ -31,7 +31,7 @@ static void set_page_free(int index) {
 }
 
 void vmm_init() {
-    serial_printf("VMM: Initializing virtual memory manager\n");
+    // serial_printf("VMM: Initializing virtual memory manager\n");
     
     // Initialize paging structures
     paging_init(0);
@@ -59,7 +59,7 @@ void vmm_init() {
         paging_map_page(phys_addr, virt_addr, PAGE_PRESENT | PAGE_WRITABLE);  // Higher half mapping
     }
 
-    serial_printf("VMM: Page directory at 0x%x\n", (uint32_t)pd);
+    // serial_printf("VMM: Page directory at 0x%x\n", (uint32_t)pd);
     paging_enable((uint32_t)pd);
 
     // Reload segment registers with kernel segments
@@ -105,7 +105,7 @@ void *vmm_alloc_page() {
     
     // Map the physical page to the virtual address
     paging_map_page(phys_addr, virt_addr, PAGE_PRESENT | PAGE_WRITABLE);
-    serial_printf("VMM: Allocated page - virt: 0x%x, phys: 0x%x\n", virt_addr, phys_addr);
+    // serial_printf("VMM: Allocated page - virt: 0x%x, phys: 0x%x\n", virt_addr, phys_addr);
     return (void *)virt_addr;
 }
 

@@ -17,7 +17,7 @@ void paging_init(uint32_t mem_size) {
         serial_printf("Paging: Failed to allocate page directory!\n");
         return;
     }
-    serial_printf("Paging: Page directory allocated at 0x%x\n", (uint32_t)page_directory);
+    // serial_printf("Paging: Page directory allocated at 0x%x\n", (uint32_t)page_directory);
 
     // Clear page directory
     memset(page_directory, 0, PAGE_SIZE);
@@ -62,10 +62,10 @@ void paging_enable(uint32_t page_directory_addr) {
         return;
     }
 
-    serial_printf("Paging: Loading page directory at 0x%X\n", page_directory_addr);
+    // serial_printf("Paging: Loading page directory at 0x%X\n", page_directory_addr);
     load_page_directory(page_directory_addr);
 
-    serial_printf("Paging: Enabling paging\n");
+    // serial_printf("Paging: Enabling paging\n");
     enable_paging_internal();
 
     // Far jump to ensure we're using the new page tables
@@ -100,6 +100,6 @@ void paging_map_page(uint32_t phys_addr, uint32_t virt_addr, uint32_t flags) {
 }
 
 uint32_t *get_page_directory() {
-    serial_printf("Paging: get_page_directory returning 0x%x\n", (uint32_t)page_directory);
+    // serial_printf("Paging: get_page_directory returning 0x%x\n", (uint32_t)page_directory);
     return page_directory;
 }

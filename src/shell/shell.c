@@ -148,6 +148,73 @@ void float_print(const char *msg, float f, const char *end)
 
 static void test_vesa()
 {
+    console_printf("Running VESA graphics demo...\n");
+    
+    // Rainbow gradient - using triangle wave pattern instead of sine
+    for (uint32_t y = 0; y < g_height; y++) {
+        uint8_t r = (y * 255) / g_height;
+        uint8_t g = ((y * 510 / g_height) > 255) ? 510 - (y * 510 / g_height) : (y * 510 / g_height);
+        uint8_t b = 255 - ((y * 255) / g_height);
+        for (uint32_t x = 0; x < g_width; x++) {
+            vbe_putpixel(x, y, (r << 16) | (g << 8) | b);
+        }
+    }
+
+    // Animated bouncing ball
+    int ball_x = g_width / 2;
+    int ball_y = g_height / 2;
+    int dx = 5, dy = 3;
+    int radius = 20;
+    int iterations = 5000;
+
+    while (iterations-- && !kbhit()) {
+        // Clear previous ball position
+        for (int y = -radius; y <= radius; y++) {
+            for (int x = -radius; x <= radius; x++) {
+                if (x*x + y*y <= radius*radius) {
+                    int px = ball_x + x;
+                    int py = ball_y + y;
+                    if (px >= 0 && px < g_width && py >= 0 && py < g_height) {
+                        // Restore background gradient using same calculation as above
+                        uint8_t r = (py * 255) / g_height;
+                        uint8_t g = ((py * 510 / g_height) > 255) ? 510 - (py * 510 / g_height) : (py * 510 / g_height);
+                        uint8_t b = 255 - ((py * 255) / g_height);
+                        vbe_putpixel(px, py, (r << 16) | (g << 8) | b);
+                    }
+                }
+            }
+        }
+
+        // Update ball position
+        ball_x += dx;
+        ball_y += dy;
+
+        // Bounce off edges
+        if (ball_x <= radius || ball_x >= g_width - radius) dx = -dx;
+        if (ball_y <= radius || ball_y >= g_height - radius) dy = -dy;
+
+        // Draw new ball position
+        for (int y = -radius; y <= radius; y++) {
+            for (int x = -radius; x <= radius; x++) {
+                if (x*x + y*y <= radius*radius) {
+                    int px = ball_x + x;
+                    int py = ball_y + y;
+                    if (px >= 0 && px < g_width && py >= 0 && py < g_height) {
+                        // Create a shiny effect
+                        int d = (x*x + y*y);
+                        int intensity = 255 - (d * 255) / (radius * radius);
+                        vbe_putpixel(px, py, (intensity << 16) | (intensity << 8) | intensity);
+                    }
+                }
+            }
+        }
+
+        usleep(20000); // Add a small delay
+    }
+
+    console_printf("Press any key to exit VESA demo...\n");
+    if (!kbhit()) kb_getchar();
+    console_clear();
 }
 
 void yuri()

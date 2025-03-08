@@ -97,8 +97,8 @@ void *pmm_alloc_block()
                 pmm_memory_map[byte_idx] |= (1 << bit_idx);
                 pmm_used_blocks++;
                 // spin_unlock(&pmm_lock);
-                serial_printf("PMM: Allocated block at physical address 0x%x\n", 
-                             (uint32_t)(block * PMM_BLOCK_SIZE));
+                // serial_printf("PMM: Allocated block at physical address 0x%x\n", 
+                            //  (uint32_t)(block * PMM_BLOCK_SIZE));
                 return (void *)(block * PMM_BLOCK_SIZE); // Return physical address
             }
         }
