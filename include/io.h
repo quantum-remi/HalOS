@@ -17,6 +17,17 @@ void outportb(uint16_t port, uint8_t val);
 /**
  * read 2 bytes(short) from given port number
  */
+
+uint16_t inportw(uint16_t port);
+
+/**
+ * write 2 bytes(short) to given port number
+ */
+void outportw(uint16_t port, uint16_t data);
+
+/**
+ * read 2 bytes(short) from given port number
+ */
 uint16_t inports(uint16_t port);
 
 /**

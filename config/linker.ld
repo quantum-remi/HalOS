@@ -41,5 +41,6 @@ SECTIONS {
 
     /* Define kernel memory regions */
     __kernel_physical_start = 0x100000;
-    __kernel_physical_end = .;
+    __kernel_vmem_start = 0xC0000000;
+    __kernel_physical_end = . + 4K;
 }

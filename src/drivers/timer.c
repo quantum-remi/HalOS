@@ -30,9 +30,9 @@ void timer_set_frequency(uint16_t f)
     outportb(TIMER_CHANNEL_0_DATA_PORT, (divisor >> 8) & 0xFF);
 }
 
-
-void srand(uint32_t new_seed) {
-    seed = new_seed ^ (g_ticks << 16);  // Mix with timer ticks
+void srand(uint32_t new_seed)
+{
+    seed = new_seed ^ (g_ticks << 16); // Mix with timer ticks
 }
 
 void timer_handler(REGISTERS *r)
@@ -96,7 +96,6 @@ void uptime()
 
 int rand(void)
 {
-    seed = (seed * 1103515245 + 12345) ^ (g_ticks);  // XOR with current ticks
+    seed = (seed * 1103515245 + 12345) ^ (g_ticks); // XOR with current ticks
     return (seed >> 16) & 0x7FFF;
 }
-

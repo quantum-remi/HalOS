@@ -82,4 +82,3 @@ void idt_init()
     load_idt((uint32_t)&g_idt_ptr);
     __asm__ volatile("sti");
 }
-

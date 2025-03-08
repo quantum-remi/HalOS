@@ -44,13 +44,15 @@ char *strncpy(char *dest, const char *src, size_t n)
     size_t i = 0;
 
     // Copy characters from src to dest until n characters are copied or the end of src is reached.
-    while (i < n && src[i] != '\0') {
+    while (i < n && src[i] != '\0')
+    {
         dest[i] = src[i];
         i++;
     }
 
     // Pad the remaining space in dest with null terminators.
-    while (i < n) {
+    while (i < n)
+    {
         dest[i++] = '\0';
     }
 
@@ -186,23 +188,27 @@ char *strstr(const char *in, const char *str)
     return (char *)(in - 1);
 }
 
-char *strchr(const char *s, int c) {
+char *strchr(const char *s, int c)
+{
     const char ch = (char)c;
-    
+
     // Search through the string
-    while (*s != '\0') {
-        if (*s == ch) {
-            return (char *)s;  // Found match
+    while (*s != '\0')
+    {
+        if (*s == ch)
+        {
+            return (char *)s; // Found match
         }
         s++;
     }
-    
+
     // Check if we're looking for null terminator
-    if (ch == '\0') {
+    if (ch == '\0')
+    {
         return (char *)s;
     }
-    
-    return NULL;  // Character not found
+
+    return NULL; // Character not found
 }
 
 void *memmove(void *dest, const void *src, size_t n)
@@ -227,26 +233,32 @@ void *memmove(void *dest, const void *src, size_t n)
     return dest;
 }
 
-int atoi(const char *str) {
+int atoi(const char *str)
+{
     int result = 0;
     int sign = 1;
     int i = 0;
 
     // Skip whitespace
-    while (str[i] == ' ' || str[i] == '\t' || str[i] == '\n') {
+    while (str[i] == ' ' || str[i] == '\t' || str[i] == '\n')
+    {
         i++;
     }
 
     // Check for sign
-    if (str[i] == '-') {
+    if (str[i] == '-')
+    {
         sign = -1;
         i++;
-    } else if (str[i] == '+') {
+    }
+    else if (str[i] == '+')
+    {
         i++;
     }
 
     // Convert digits to integer
-    while (str[i] >= '0' && str[i] <= '9') {
+    while (str[i] >= '0' && str[i] <= '9')
+    {
         result = result * 10 + (str[i] - '0');
         i++;
     }

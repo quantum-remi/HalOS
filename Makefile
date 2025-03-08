@@ -238,6 +238,11 @@ $(OBJ)/fat.o : $(SRC)/drivers/fat.c
 	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/fat.c -o $(OBJ)/fat.o
 	@printf "\n"
 
+# $(OBJ)/ahci.o : $(SRC)/drivers/ahci.c
+# 	@printf "[ $(SRC)/drivers/ahci.c ]\n"
+# 	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/ahci.c -o $(OBJ)/ahci.o
+# 	@printf "\n"
+
 qemu:
 	qemu-system-i386 -m 4G -vga virtio -boot d -cdrom $(TARGET_ISO) -serial stdio -drive id=disk,if=none,format=raw,file=disk.img -device ide-hd,drive=disk -cpu qemu64,+fpu,+sse,+sse2
 

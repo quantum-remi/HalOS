@@ -15,14 +15,16 @@ extern uint32_t __kernel_data_section_start;
 extern uint32_t __kernel_data_section_end;
 extern uint32_t __kernel_bss_section_start;
 extern uint32_t __kernel_bss_section_end;
-struct resolution {
+struct resolution
+{
     size_t x;
     size_t y;
-    
 };
 
-typedef struct {
-    struct {
+typedef struct
+{
+    struct
+    {
         size_t k_start_addr;
         size_t k_end_addr;
         size_t k_len;
@@ -40,11 +42,13 @@ typedef struct {
         size_t bss_len;
     } kernel;
 
-    struct {
+    struct
+    {
         size_t total_memory;
     } system;
 
-    struct {
+    struct
+    {
         size_t start_addr;
         size_t end_addr;
         size_t size;

@@ -32,6 +32,8 @@ void gdt_init()
     gdt_set_entry(2, 0, 0xFFFFFFFF, 0x92, 0xCF);
     gdt_set_entry(3, 0, 0xFFFFFFFF, 0xFA, 0xCF);
     gdt_set_entry(4, 0, 0xFFFFFFFF, 0xF2, 0xCF);
+    // Added new GDT entry at index 5 for paging (code segment)
+    gdt_set_entry(5, 0, 0xFFFFFFFF, 0x9A, 0xCF);
 
     load_gdt((uint32_t)&g_gdt_ptr);
 }

@@ -51,4 +51,3 @@ void tss_print()
     console_printf("es:0x%x, cs:0x%x, ss:0x%x, ds:0x%x, fs:0x%x, gs:0x%x\n", g_tss.es, g_tss.cs, g_tss.ss, g_tss.ds, g_tss.fs, g_tss.gs);
     console_printf("ldt: 0x%x, trap: 0x%x, iomap_base: 0x%x\n", g_tss.iomap_base, g_tss.trap, g_tss.iomap_base);
 }
-

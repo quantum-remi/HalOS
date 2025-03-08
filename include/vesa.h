@@ -6,7 +6,7 @@
 
 int vesa_init(uint32_t *framebuffer, uint32_t width, uint32_t height, uint32_t pitch, uint32_t bpp);
 uint32_t vbe_rgb(uint8_t red, uint8_t green, uint8_t blue);
-static inline uint32_t* pixel_address(int x, int y);
+static inline uint32_t *pixel_address(int x, int y);
 void vbe_putpixel(int x, int y, int color);
 uint32_t vbe_getpixel(int x, int y);
 

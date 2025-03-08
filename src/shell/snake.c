@@ -17,7 +17,6 @@ extern uint32_t g_height;
 #define BOARD_HEIGHT (g_height / CELL_SIZE - 4)
 #define SNAKE_MAX_LENGTH 100
 
-
 // Colors
 #define COLOR_BORDER 0x00FFFFFF
 #define COLOR_SNAKE 0x00FF00
@@ -211,12 +210,12 @@ static void draw_game()
               COLOR_FOOD);
 }
 
-
-static void init_graphics(void) {
+static void init_graphics(void)
+{
     // Calculate board position using actual resolution
     int board_pixel_width = BOARD_WIDTH * CELL_SIZE + BORDER_SIZE * 2;
     int board_pixel_height = BOARD_HEIGHT * CELL_SIZE + BORDER_SIZE * 2;
-    
+
     g_start_x = (g_width - board_pixel_width) / 2;
     g_start_y = (g_height - board_pixel_height) / 2;
 

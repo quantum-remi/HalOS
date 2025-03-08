@@ -7,7 +7,8 @@
 
 #define PSF2_FONT_MAGIC 0x864ab572
 
-typedef struct {
+typedef struct
+{
     uint32_t magic;         /* magic bytes to identify PSF */
     uint32_t version;       /* zero */
     uint32_t headersize;    /* offset of bitmaps in file, 32 */
@@ -19,9 +20,9 @@ typedef struct {
 } PSF2_Header;
 
 // Constants
-#define MAXIMUM_PAGES  32
-#define SCROLL_UP     1
-#define SCROLL_DOWN   2
+#define MAXIMUM_PAGES 32
+#define SCROLL_UP 1
+#define SCROLL_DOWN 2
 
 #define FONT_WIDTH 8
 #define FONT_HEIGHT 16

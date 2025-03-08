@@ -4,7 +4,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
-typedef struct {
+typedef struct
+{
     uint32_t previous;
     uint32_t esp0;
     uint32_t ss0;
