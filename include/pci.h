@@ -8,20 +8,24 @@
 #include "string.h"
 #include "serial.h"
 
-typedef union pci_device
-{
+typedef union pci_device {
     uint32_t bits;
-    struct
-    {
-        uint32_t always_zero : 2;
-        uint32_t field_num : 6;
-        uint32_t function_num : 3;
-        uint32_t device_num : 5;
-        uint32_t bus_num : 8;
-        uint32_t reserved : 7;
-        uint32_t enable : 1;
+    struct {
+        uint32_t offset : 2;     // Bits 0-1: Always 0
+        uint32_t field : 6;      // Bits 2-7: Register number
+        uint32_t function : 3;   // Bits 8-10: Function number
+        uint32_t device : 5;     // Bits 11-15: Device number
+        uint32_t bus : 8;        // Bits 16-23: Bus number
+        uint32_t reserved : 7;   // Bits 24-30: Reserved
+        uint32_t enable : 1;     // Bit 31: Enable bit
     };
 } pci_dev_t;
+
+typedef struct {
+    pci_dev_t pci_info;
+    uint32_t mmio_base;
+    uint16_t device_id;
+} e1000_dev_t;
 
 extern pci_dev_t dev_zero;
 
@@ -55,7 +59,7 @@ typedef struct
 #define PCI_BAR4 0x20
 #define PCI_BAR5 0x24
 #define PCI_INTERRUPT_LINE 0x3C
-#define PCI_SECONDARY_BUS 0x09
+#define PCI_SECONDARY_BUS 0x19
 
 // Device type
 #define PCI_HEADER_TYPE_DEVICE 0
@@ -63,10 +67,20 @@ typedef struct
 #define PCI_HEADER_TYPE_CARDBUS 2
 #define PCI_TYPE_BRIDGE 0x0604
 #define PCI_TYPE_SATA 0x0106
+#define PCI_TYPE_ETHERNET 0x0200
 #define PCI_NONE 0xFFFF
 
 #define DEVICE_PER_BUS 32
 #define FUNCTION_PER_DEVICE 32
+
+#define PCI_VENDOR_INTEL     0x8086
+#define PCI_DEVICE_E1000     0x100E 
+
+#define PCI_CLASS_NETWORK     0x02
+#define PCI_SUBCLASS_ETHERNET 0x00
+#define PCI_TYPE_BRIDGE       0x0604
+
+#define PCI_DEV_MMIO_BASE(dev) ((dev).mmio_base)
 
 uint32_t pci_read(pci_dev_t dev, uint32_t field);
 void pci_write(pci_dev_t dev, uint32_t field, uint32_t value);
@@ -81,4 +95,6 @@ void pci_init();
 void pci_print_devices();
 const char *get_subclass_name(uint32_t class_code, uint32_t subclass_code);
 const char *get_device_name(uint16_t vendor_id, uint16_t device_id);
+e1000_dev_t e1000_probe();
+
 #endif // PCI_H

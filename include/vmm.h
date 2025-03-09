@@ -14,4 +14,6 @@ void *vmm_alloc_page();
 // Free the virtual page at the given address.
 void vmm_free_page(void *addr);
 
+void* vmm_map_mmio(uintptr_t phys_addr, size_t size, uint32_t flags);
+
 #endif

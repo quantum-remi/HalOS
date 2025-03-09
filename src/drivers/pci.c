@@ -82,7 +82,7 @@ pci_class_subclass_t pci_class_subclass_table[] = {
 
 uint32_t pci_read(pci_dev_t dev, uint32_t field)
 {
-    dev.field_num = (field & 0xFC) >> 2;
+    dev.field = (field & 0xFC) >> 2;
     dev.enable = 1;
     outportl(PCI_CONFIG_ADDRESS, dev.bits);
 
@@ -110,7 +110,7 @@ uint32_t pci_read(pci_dev_t dev, uint32_t field)
 
 void pci_write(pci_dev_t dev, uint32_t field, uint32_t value)
 {
-    dev.field_num = (field & 0xFC) >> 2;
+    dev.field = (field & 0xFC) >> 2;
     dev.enable = 1;
     outportl(PCI_CONFIG_ADDRESS, dev.bits);
     outportl(PCI_CONFIG_DATA, value);
@@ -136,34 +136,36 @@ uint32_t pci_reach_end(pci_dev_t dev)
 pci_dev_t pci_scan_function(uint16_t vendor_id, uint16_t device_id, uint32_t bus, uint32_t device, uint32_t function, int device_type)
 {
     pci_dev_t dev = {0};
-    dev.bus_num = bus;
-    dev.device_num = device;
-    dev.function_num = function;
+    dev.bus = bus;
+    dev.device = device;
+    dev.function = function;
 
-    while (1)
+    // Check if this is a bridge first
+    if (get_device_type(dev) == PCI_TYPE_BRIDGE)
     {
-        if (get_device_type(dev) == PCI_TYPE_BRIDGE)
-        {
-            pci_scan_bus(vendor_id, device_id, get_secondary_bus(dev), device_type);
-        }
-        if (device_type == -1 || device_type == get_device_type(dev))
-        {
-            uint32_t dev_id = pci_read(dev, PCI_DEVICE_ID);
-            uint32_t vend_id = pci_read(dev, PCI_VENDOR_ID);
-            if (vend_id == vendor_id && dev_id == device_id)
-            {
-                return dev;
-            }
-        }
-        return dev_zero;
+        uint32_t secondary_bus = get_secondary_bus(dev);
+        pci_scan_bus(vendor_id, device_id, secondary_bus, device_type);
     }
+
+    // Check device match
+    if (device_type == -1 || device_type == get_device_type(dev))
+    {
+        uint32_t dev_id = pci_read(dev, PCI_DEVICE_ID);
+        uint32_t vend_id = pci_read(dev, PCI_VENDOR_ID);
+        if (vend_id == vendor_id && dev_id == device_id)
+        {
+            return dev;
+        }
+    }
+
+    return dev_zero;
 }
 
 pci_dev_t pci_scan_device(uint16_t vendor_id, uint16_t device_id, uint32_t bus, uint32_t device, int device_type)
 {
     pci_dev_t dev = {0};
-    dev.bus_num = bus;
-    dev.device_num = device;
+    dev.bus = bus;
+    dev.device = device;
 
     if (pci_read(dev, PCI_VENDOR_ID) == PCI_NONE)
     {
@@ -172,7 +174,7 @@ pci_dev_t pci_scan_device(uint16_t vendor_id, uint16_t device_id, uint32_t bus, 
 
     for (int function = 0; function < FUNCTION_PER_DEVICE; function++)
     {
-        dev.function_num = function;
+        dev.function = function;
 
         if (pci_read(dev, PCI_VENDOR_ID) != PCI_NONE)
         {
@@ -187,48 +189,34 @@ pci_dev_t pci_scan_device(uint16_t vendor_id, uint16_t device_id, uint32_t bus, 
     return dev_zero;
 }
 
-pci_dev_t pci_scan_bus(uint16_t vendor_id, uint16_t device_id, uint32_t bus, int device_type)
-{
-    for (int device = 0; device < DEVICE_PER_BUS; device++)
-    {
+pci_dev_t pci_scan_bus(uint16_t vendor_id, uint16_t device_id, uint32_t bus, int device_type) {
+    for (int device = 0; device < DEVICE_PER_BUS; device++) {
         pci_dev_t t = pci_scan_device(vendor_id, device_id, bus, device, device_type);
-        if (t.bits)
-        {
+        if (t.bits) {
+            // Recursively scan bridges
+            if (get_device_type(t) == PCI_TYPE_BRIDGE) {
+                uint32_t secondary = get_secondary_bus(t);
+                pci_scan_bus(vendor_id, device_id, secondary, device_type);
+            }
             return t;
         }
     }
-
     return dev_zero;
 }
 
 pci_dev_t pci_get_device(uint16_t vendor_id, uint16_t device_id, int device_type)
 {
+    // Check main bus hierarchy first
     pci_dev_t t = pci_scan_bus(vendor_id, device_id, 0, device_type);
     if (t.bits)
-    {
         return t;
-    }
 
-    if (pci_reach_end(dev_zero))
+    // Check other buses if present
+    for (int bus = 1; bus < 256; bus++)
     {
-        serial_printf("PCI Get Device Failed\n");
-    }
-
-    for (int function = 1; function < FUNCTION_PER_DEVICE; function++)
-    {
-        pci_dev_t dev = {0};
-        dev.function_num = function;
-
-        if (pci_read(dev, PCI_VENDOR_ID) == PCI_NONE)
-        {
-            break;
-        }
-
-        t = pci_scan_function(vendor_id, device_id, 0, 0, function, device_type);
+        t = pci_scan_bus(vendor_id, device_id, bus, device_type);
         if (t.bits)
-        {
             return t;
-        }
     }
 
     return dev_zero;
@@ -259,21 +247,26 @@ void pci_init()
 void pci_print_devices()
 {
     pci_dev_t dev = {0};
+    if (get_device_type(dev) == PCI_TYPE_BRIDGE) {
+        uint32_t sec_bus = get_secondary_bus(dev);
+        pci_scan_bus(0, 0, sec_bus, -1); // Print devices on secondary bus
+    }
+
     for (uint16_t bus = 0; bus < 256; bus++)
     {
         for (uint8_t device = 0; device < DEVICE_PER_BUS; device++)
         {
             for (uint8_t function = 0; function < FUNCTION_PER_DEVICE; function++)
             {
-                dev.bus_num = bus;
-                dev.device_num = device;
-                dev.function_num = function;
+                dev.bus = bus;
+                dev.device = device;
+                dev.function = function;
                 if (pci_read(dev, PCI_VENDOR_ID) != PCI_NONE)
                 {
                     uint32_t class_code = get_device_type(dev);
                     uint32_t subclass_code = pci_read(dev, PCI_SUBCLASS);
                     console_printf("PCI Device: %x:%x:%x, Class: %x, Subclass: %x (%s)\n",
-                                   dev.bus_num, dev.device_num, dev.function_num, class_code, subclass_code,
+                                   dev.bus, dev.device, dev.function, class_code, subclass_code,
                                    get_subclass_name(class_code, subclass_code));
                 }
             }
@@ -291,4 +284,27 @@ const char *get_subclass_name(uint32_t class_code, uint32_t subclass_code)
         }
     }
     return "Unknown";
+}
+
+e1000_dev_t e1000_probe() {
+    e1000_dev_t dev = {0};
+    const uint16_t e1000_ids[] = {0x100E, 0x1004, 0x100F, 0x1533, 0x1536};
+    
+    for (int i = 0; i < sizeof(e1000_ids)/sizeof(e1000_ids[0]); i++) {
+        dev.pci_info = pci_get_device(PCI_VENDOR_INTEL, e1000_ids[i], 
+                                     (PCI_CLASS_NETWORK << 8) | PCI_SUBCLASS_ETHERNET);
+        if (dev.pci_info.bits) break;
+    }
+    
+    if (dev.pci_info.bits) {
+        uint32_t bar0 = pci_read(dev.pci_info, PCI_BAR0);
+        dev.mmio_base = bar0 & ~0xF;
+        dev.device_id = pci_read(dev.pci_info, PCI_DEVICE_ID);
+    }
+    uint8_t header_type = pci_read(dev.pci_info, PCI_HEADER_TYPE) & 0x7F;
+    if (header_type != 0x00) {  // Standard endpoint header
+        serial_printf("Invalid PCI header type: %x\n", header_type);
+        // Handle invalid header
+    }
+    return dev;
 }

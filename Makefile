@@ -52,6 +52,7 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o $(ASM_OBJ)/load_tss.o \
 		$(OBJ)/serial.o $(OBJ)/printf.o \
 		$(OBJ)/tss.o $(OBJ)/liballoc.o $(OBJ)/liballoc_hook.o \
 		$(OBJ)/pci.o $(OBJ)/ide.o $(OBJ)/fat.o $(OBJ)/font.o \
+		$(OBJ)/e1000.o $(OBJ)/arp.o $(OBJ)/eth.o \
 		$(OBJ)/kernel.o
 
 .PHONY: all	
@@ -238,13 +239,28 @@ $(OBJ)/fat.o : $(SRC)/drivers/fat.c
 	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/fat.c -o $(OBJ)/fat.o
 	@printf "\n"
 
+$(OBJ)/e1000.o : $(SRC)/drivers/nic/e1000.c
+	@printf "[ $(SRC)/drivers/nic/e1000.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/nic/e1000.c -o $(OBJ)/e1000.o
+	@printf "\n"
+
+$(OBJ)/eth.o : $(SRC)/drivers/net/eth.c
+	@printf "[ $(SRC)/drivers/net/eth.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/net/eth.c -o $(OBJ)/eth.o
+	@printf "\n"
+
+$(OBJ)/arp.o : $(SRC)/drivers/net/arp.c
+	@printf "[ $(SRC)/drivers/net/arp.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/net/arp.c -o $(OBJ)/arp.o
+	@printf "\n"
+
 # $(OBJ)/ahci.o : $(SRC)/drivers/ahci.c
 # 	@printf "[ $(SRC)/drivers/ahci.c ]\n"
 # 	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/ahci.c -o $(OBJ)/ahci.o
 # 	@printf "\n"
 
 qemu:
-	qemu-system-i386 -m 4G -vga virtio -boot d -cdrom $(TARGET_ISO) -serial stdio -drive id=disk,if=none,format=raw,file=disk.img -device ide-hd,drive=disk -cpu qemu64,+fpu,+sse,+sse2
+	qemu-system-i386 -m 4G -vga virtio -boot d -cdrom $(TARGET_ISO) -serial stdio -drive id=disk,if=none,format=raw,file=disk.img -device ide-hd,drive=disk -cpu qemu64,+fpu,+sse,+sse2 -netdev user,id=net0,hostfwd=tcp::8080-:80 -device e1000
 
 disk:
 	qemu-img create disk.img 1G

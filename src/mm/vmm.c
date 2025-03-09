@@ -118,3 +118,44 @@ void vmm_free_page(void *addr) {
     // memory is not fully implemented in this simple example.
     set_page_free(page_index);
 }
+
+void* vmm_map_mmio(uintptr_t phys_addr, size_t size, uint32_t flags) {
+    // Ensure size is page-aligned
+    size = (size + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
+    int pages_needed = size / PAGE_SIZE;
+
+    // Find contiguous free virtual pages
+    int start_index = -1;
+    for (int i = 0; i < VMM_MAX_PAGES; i++) {
+        if (vmm_bitmap[i] == 0) {
+            int j;
+            for (j = 0; j < pages_needed; j++) {
+                if (i + j >= VMM_MAX_PAGES || vmm_bitmap[i + j] != 0) break;
+            }
+            if (j == pages_needed) {
+                start_index = i;
+                break;
+            }
+        }
+    }
+
+    if (start_index < 0) {
+        serial_printf("VMM: Not enough contiguous virtual space for MMIO\n");
+        return NULL;
+    }
+
+    // Mark pages as used
+    for (int i = start_index; i < start_index + pages_needed; i++) {
+        set_page_used(i);
+    }
+
+    // Map physical to virtual
+    uint32_t virt_start = KERNEL_VMEM_START + start_index * PAGE_SIZE;
+    for (size_t i = 0; i < pages_needed; i++) {
+        uintptr_t curr_phys = phys_addr + (i * PAGE_SIZE);
+        uintptr_t curr_virt = virt_start + (i * PAGE_SIZE);
+        paging_map_page(curr_phys, curr_virt, flags | PAGE_PRESENT | PAGE_WRITABLE);
+    }
+
+    return (void*)virt_start;
+}

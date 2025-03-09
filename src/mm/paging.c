@@ -96,7 +96,7 @@ void paging_map_page(uint32_t phys_addr, uint32_t virt_addr, uint32_t flags) {
     // Get page table
     uint32_t *page_table = (uint32_t *)(page_directory[pd_index] & ~0xFFF);
     // Map the page
-    page_table[pt_index] = (phys_addr & ~0xFFF) | flags;
+    page_table[pt_index] = (phys_addr & ~0xFFF) | flags | ((flags & PAGE_UNCACHED) ? (1 << 4) : 0);
 }
 
 uint32_t *get_page_directory() {

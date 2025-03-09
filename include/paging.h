@@ -9,6 +9,8 @@
 #define PAGE_WRITABLE 0x2
 #define PAGE_USER     0x4
 
+#define PAGE_UNCACHED  (1 << 4)  // PCD (Page Cache Disable) flag
+
 // Initialize paging system (allocates the page directory)
 void paging_init(uint32_t mem_size);
 // Enable paging by loading CR3 and setting CR0.PG

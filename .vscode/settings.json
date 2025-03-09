@@ -5,6 +5,7 @@
         "vesa.h": "c",
         "string.h": "c",
         "vmm.h": "c",
-        "serial.h": "c"
+        "serial.h": "c",
+        "pci.h": "c"
     }
 }

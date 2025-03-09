@@ -21,6 +21,7 @@
 #include "tss.h"
 #include "vesa.h"
 #include "vmm.h"
+#include "eth.h"
 
 int get_kernel_memory_map(KERNEL_MEMORY_MAP *kmap, multiboot_info_t *mboot_info)
 {
@@ -188,6 +189,10 @@ void kmain(unsigned long magic, unsigned long addr)
 
     serial_printf("System initialized successfully\n");
     console_printf("System initialized successfully\n");
+
+
+    serial_printf("Initializing Ethernet...\n");
+    eth_init();
 
     // Start shell
     shell();
