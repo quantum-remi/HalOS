@@ -95,6 +95,5 @@ void pci_init();
 void pci_print_devices();
 const char *get_subclass_name(uint32_t class_code, uint32_t subclass_code);
 const char *get_device_name(uint16_t vendor_id, uint16_t device_id);
-e1000_dev_t e1000_probe();
 
 #endif // PCI_H

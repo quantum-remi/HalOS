@@ -24,7 +24,11 @@ void *liballoc_alloc(int num_blocks)
         void *page = vmm_alloc_page();
         if (!page) {
             serial_printf("liballoc: Failed to allocate page %d of %d\n", i, num_blocks);
-            // TODO: Free previously allocated pages
+            
+            // Free all previously allocated pages
+            for (int j = 0; j < i; j++) {
+                vmm_free_page((char*)virt_addr + (j * PAGE_SIZE));
+            }
             return NULL;
         }
         if (i == 0) virt_addr = page;

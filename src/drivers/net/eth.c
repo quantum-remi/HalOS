@@ -4,10 +4,12 @@
 #include "serial.h"
 #include "vmm.h"
 #include "paging.h"
-#include "e1000.h"
+#include "ne2k.h"
 
 void eth_init()
 {
-    e1000_init();
+    ne2k_init();
+    ne2k_handle_interrupt();
+    ne2k_send_packet("Hello, World!", 13);
 
 }

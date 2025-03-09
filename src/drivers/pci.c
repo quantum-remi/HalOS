@@ -193,10 +193,10 @@ pci_dev_t pci_scan_bus(uint16_t vendor_id, uint16_t device_id, uint32_t bus, int
     for (int device = 0; device < DEVICE_PER_BUS; device++) {
         pci_dev_t t = pci_scan_device(vendor_id, device_id, bus, device, device_type);
         if (t.bits) {
-            // Recursively scan bridges
+            // If the device is a bridge, scan its secondary bus
             if (get_device_type(t) == PCI_TYPE_BRIDGE) {
-                uint32_t secondary = get_secondary_bus(t);
-                pci_scan_bus(vendor_id, device_id, secondary, device_type);
+                uint32_t secondary_bus = get_secondary_bus(t);
+                pci_scan_bus(vendor_id, device_id, secondary_bus, device_type);
             }
             return t;
         }
@@ -268,6 +268,8 @@ void pci_print_devices()
                     console_printf("PCI Device: %x:%x:%x, Class: %x, Subclass: %x (%s)\n",
                                    dev.bus, dev.device, dev.function, class_code, subclass_code,
                                    get_subclass_name(class_code, subclass_code));
+                    console_printf("Vendor: %x, Device: %x\n",
+                                   pci_read(dev, PCI_VENDOR_ID), pci_read(dev, PCI_DEVICE_ID));
                 }
             }
         }

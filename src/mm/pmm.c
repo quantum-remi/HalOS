@@ -72,7 +72,7 @@ void pmm_mark_used_region(uint32_t base, uint32_t size)
 }
 
 // Allocate a single 4KB block
-void *pmm_alloc_block()
+void* pmm_alloc_block()
 {
     if (pmm_used_blocks >= pmm_max_blocks) {
         serial_printf("PMM: No free blocks available\n");
@@ -108,7 +108,7 @@ void *pmm_alloc_block()
     return NULL;
 }
 
-void *pmm_alloc_blocks(int num_blocks) {
+void* pmm_alloc_blocks(int num_blocks) {
     if (num_blocks <= 0) return NULL;
 
     // spin_lock(&pmm_lock);
