@@ -1,111 +1,138 @@
 #include "ne2k.h"
+#include "io.h"
 #include "serial.h"
-// #include "pci.h" // Ensure pci.h is included for pci_get_device and pci_dev_t
 
-static struct ne2k_dev dev;
+#define NE2K_RX_START 0x46
+#define NE2K_RX_END   0x60
+#define NE2K_TX_START 0x40
 
-// Static 64KB buffer (aligned to 4KB for QEMU)
-#define PCI_CLASS_NETWORK     0x02
-#define PCI_SUBCLASS_ETHERNET 0x00
-#define NE2K_BUF_PAGES 16
-static uint8_t nic_buffer[NE2K_BUF_PAGES * 256] __attribute__((aligned(4096)));
+bool ne2k_probe(pci_dev_t dev) {
+    uint32_t vendor = pci_read(dev, PCI_VENDOR_ID);
+    uint32_t device = pci_read(dev, PCI_DEVICE_ID);
+    
+    serial_printf("Probing device: vendor=0x%x, device=0x%x\n", vendor, device);
+    
+    bool result = (vendor == NE2K_VENDOR_ID) && (device == NE2K_DEVICE_ID);
+    
+    serial_printf("Probe result: %s\n", result ? "success" : "failure");
+    
+    return result;
+}
 
-void ne2k_init() {
-    serial_printf("Initializing NE2000...\n");
+bool ne2k_init(pci_dev_t pci_dev) {
+    if(!ne2k_probe(pci_dev)) return false;
 
-    pci_dev_t pci_dev = pci_get_device(NE2K_VENDOR, NE2K_DEVICE, PCI_CLASS_NETWORK << 8 | PCI_SUBCLASS_ETHERNET);
-    if (pci_dev.bits == 0) {
-        serial_printf("NE2000 not found\n");
-        return;
-    }
-    serial_printf("NE2000 found. Configuring...\n");
-
+    ne2k_device dev;
+    dev.pci_dev = pci_dev;
+    
     // Enable I/O and Bus Mastering
-    pci_write(pci_dev, PCI_COMMAND, 0x05);
+    pci_write(pci_dev, PCI_COMMAND, (1 << 0) | (1 << 2));
 
     // Get I/O base
     uint32_t bar0 = pci_read(pci_dev, PCI_BAR0);
-    dev.io_base = bar0 & 0xFFFC; // Align to 4-byte boundary
-    serial_printf("I/O base: 0x%x (BAR0=0x%x)\n", dev.io_base, bar0);
+    dev.iobase = bar0 & 0xFFFC;
+    
+    // Reset sequence
+    outportb(dev.iobase + NE2K_CR, 0x01);  // STOP
+    for(volatile int i = 0; i < 10000; i++); // Delay
+    outportb(dev.iobase + NE2K_CR, 0x02);  // START
 
-    // QEMU Workaround: Reset sequence
-    outportb(dev.io_base + NE2K_CMD, NE2K_CMD_STOP);
-    for (volatile int i = 0; i < 1000; i++); // Delay
-    outportb(dev.io_base + NE2K_CMD, NE2K_CMD_START);
-
+    // Configure registers
+    outportb(dev.iobase + NE2K_DCR, 0x49); 
+    outportb(dev.iobase + NE2K_RCR, 0x04);  // Accept broadcast
+    outportb(dev.iobase + NE2K_TCR, 0x00);  // Normal TX
+    
     // Set up receive buffer
-    outportb(dev.io_base + NE2K_PSTART, 0x40);
-    outportb(dev.io_base + NE2K_PSTOP, 0x80);
-    outportb(dev.io_base + NE2K_BNRY, 0x40);
-    serial_printf("RX buffer configured\n");
+    outportb(dev.iobase + NE2K_PSTART, NE2K_RX_START);
+    outportb(dev.iobase + NE2K_PSTOP, NE2K_RX_END);
+    outportb(dev.iobase + NE2K_BNRY, NE2K_RX_START);
 
-    // Configure NIC
-    outportb(dev.io_base + NE2K_RCR, RCR_MON); // Promiscuous mode
-    outportb(dev.io_base + NE2K_TCR, 0x00);    // Normal TX
-    outportb(dev.io_base + NE2K_DCR, 0x49);    // 16-bit DMA, FIFO=8
-
-    // Read MAC address via Remote DMA (correct method)
-    outportb(dev.io_base + NE2K_CMD, NE2K_CMD_STOP | 0x00); // Page 0, STOP mode
-
-    // Set Remote DMA start address to 0x0000 (PROM location)
-    outportb(dev.io_base + NE2K_RSAR0, 0x00);
-    outportb(dev.io_base + NE2K_RSAR1, 0x00);
-    outportb(dev.io_base + NE2K_RBCR0, 6); // Read 6 bytes (MAC length)
-    outportb(dev.io_base + NE2K_RBCR1, 0x00);
-
-    // Start DMA read
-    outportb(dev.io_base + NE2K_CMD, NE2K_CMD_STOP | 0x00 | 0x08); // RDMA read
-
-    // Read MAC from data port (0x10)
-    for (int i = 0; i < 6; i++) {
-        dev.mac[i] = inportb(dev.io_base + 0x10); // Read from data port
+    // Read MAC address
+    outportb(dev.iobase + NE2K_RSAR0, 0x00);
+    outportb(dev.iobase + NE2K_RSAR1, 0x00);
+    outportb(dev.iobase + NE2K_RBCR0, 6);
+    outportb(dev.iobase + NE2K_RBCR1, 0);
+    outportb(dev.iobase + NE2K_CR, 0x0A);  // Start DMA read
+    
+    for(int i = 0; i < 6; i++) {
+        dev.mac[i] = inportb(dev.iobase + NE2K_DATA);
     }
 
+    serial_printf("NE2000 initialized at 0x%x\n", dev.iobase);
     serial_printf("MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
-                  dev.mac[0], dev.mac[1], dev.mac[2], dev.mac[3], dev.mac[4], dev.mac[5]);
-    // Enable NIC
-    outportb(dev.io_base + NE2K_IMR, 0x1F); // Enable interrupts
-    outportb(dev.io_base + NE2K_CMD, NE2K_CMD_START);
-    serial_printf("NE2000 initialized\n");
+                 dev.mac[0], dev.mac[1], dev.mac[2],
+                 dev.mac[3], dev.mac[4], dev.mac[5]);
+    
+    return true;
 }
 
-int ne2k_send_packet(uint8_t* data, uint16_t len) {
-    // Wait for TX buffer
-    if (inportb(dev.io_base + NE2K_CMD) & 0x04) { // Check TX busy
-        return -1;
+void ne2k_send(ne2k_device *dev, void *data, uint16_t len) {
+    // 1. Stop NIC
+    outportb(dev->iobase + NE2K_CR, 0x01); // STOP command
+    
+    // 2. Setup DMA
+    outportb(dev->iobase + NE2K_RSAR0, 0x00);
+    outportb(dev->iobase + NE2K_RSAR1, 0x00);
+    outportb(dev->iobase + NE2K_RBCR0, len & 0xFF);
+    outportb(dev->iobase + NE2K_RBCR1, (len >> 8) & 0xFF);
+    
+    // 3. Start DMA write
+    outportb(dev->iobase + NE2K_CR, 0x12); // STRT + RDMA_WRITE
+    
+    // 4. Write data
+    uint8_t *p = data;
+    for(uint16_t i = 0; i < len; i++) {
+        outportb(dev->iobase + NE2K_DATA, p[i]);
     }
+    
+    // 5. Wait for DMA completion
+    while((inportb(dev->iobase + NE2K_ISR) & 0x40) == 0);
+    outportb(dev->iobase + NE2K_ISR, 0x40); // Clear DMA complete flag
 
-    // Set up DMA transfer
-    outportb(dev.io_base + NE2K_RSAR0, 0x00);     // Copy to NIC's TX buffer (page 0)
-    outportb(dev.io_base + NE2K_RSAR1, 0x00);
-    outportb(dev.io_base + NE2K_RBCR0, len & 0xFF);
-    outportb(dev.io_base + NE2K_RBCR1, (len >> 8) & 0xFF);
-
-    // Write data via DMA
-    for (uint16_t i = 0; i < len; i++) {
-        outportb(dev.io_base + 0x10, data[i]);
-    }
-
-    // Start transmission
-    outportb(dev.io_base + NE2K_TPSR, 0x00);      // TX starts at page 0
-    outportb(dev.io_base + NE2K_TBCR0, len & 0xFF);
-    outportb(dev.io_base + NE2K_TBCR1, (len >> 8) & 0xFF);
-    outportb(dev.io_base + NE2K_CMD, 0x22);       // Start TX
-
-    return 0;
+    // 6. Configure transmission
+    outportb(dev->iobase + NE2K_TPSR, NE2K_TX_START);
+    outportb(dev->iobase + NE2K_TBCR0, len & 0xFF);
+    outportb(dev->iobase + NE2K_TBCR1, (len >> 8) & 0xFF);
+    
+    // 7. Start transmission
+    outportb(dev->iobase + NE2K_CR, 0x06); // STRT + TXP
+    
+    // 8. Wait for TX completion
+    while((inportb(dev->iobase + NE2K_ISR) & 0x40) == 0);
+    outportb(dev->iobase + NE2K_ISR, 0x40); // Clear TX complete flag
 }
 
-void ne2k_handle_interrupt() {
-    uint8_t isr = inportb(dev.io_base + NE2K_ISR);
+void test_ne2k(ne2k_device *nic) {
+    /* Ethernet + ARP Packet (Broadcast) */
+    uint8_t arp_packet[] = {
+        // Ethernet Header (14 bytes)
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // Destination MAC (Broadcast)
+        nic->mac[0], nic->mac[1], nic->mac[2], // Source MAC
+        nic->mac[3], nic->mac[4], nic->mac[5], // (from NIC)
+        0x08, 0x06,                         // EtherType = ARP
 
-    if (isr & ISR_PRX) {  // Packet received
-        uint8_t curr = inportb(dev.io_base + NE2K_BNRY);
-        // Read packet from buffer (simplified)
-        // ... (process data from nic_buffer[curr * 256])
-        outportb(dev.io_base + NE2K_BNRY, curr + 1); // Advance boundary
-        outportb(dev.io_base + NE2K_ISR, ISR_PRX);   // Clear interrupt
-    }
+        // ARP Payload (28 bytes)
+        0x00, 0x01,                         // Hardware Type (Ethernet)
+        0x08, 0x00,                         // Protocol Type (IPv4)
+        0x06, 0x04,                         // MAC/IP Lengths
+        0x00, 0x01,                         // Operation (Request)
+        nic->mac[0], nic->mac[1], nic->mac[2], // Sender MAC
+        nic->mac[3], nic->mac[4], nic->mac[5], 
+        0xC0, 0xA8, 0x01, 0x02,             // Sender IP (192.168.1.2)
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target MAC
+        0xC0, 0xA8, 0x01, 0x01              // Target IP (192.168.1.1)
+    };
 
-    // Clear other interrupts
-    outportb(dev.io_base + NE2K_ISR, isr);
+
+    
+    ne2k_send(nic, arp_packet, sizeof(arp_packet));
+    uint8_t isr = inportb(nic->iobase + NE2K_ISR);
+    // After transmission
+    uint8_t tsr = inportb(nic->iobase + NE2K_TSR);
+    serial_printf("TX Status: %s%s%s\n",
+                (tsr & 0x01) ? "Collision " : "",
+                (tsr & 0x20) ? "FIFO Underrun " : "",
+                (tsr & 0x80) ? "OK" : "Failed");
+    serial_printf("ISR: 0x%x\n", isr); // Should show 0x40 after TX
+    serial_printf("ARP request sent!\n");
 }

@@ -8,8 +8,22 @@
 
 void eth_init()
 {
-    ne2k_init();
-    ne2k_handle_interrupt();
-    ne2k_send_packet("Hello, World!", 13);
+
+    pci_dev_t dev = pci_get_device(NE2K_VENDOR_ID, NE2K_DEVICE_ID, 
+        PCI_CLASS_NETWORK << 8 | PCI_SUBCLASS_ETHERNET);
+    
+    serial_printf("NE2000 found %d\n", dev);
+    if(ne2k_init(dev)) {
+        ne2k_device nic;
+        nic.pci_dev = dev;
+        nic.iobase = pci_read(dev, PCI_BAR0) & 0xFFFC;
+        
+        // Read MAC into struct
+        for(int i = 0; i < 6; i++) {
+            nic.mac[i] = inportb(nic.iobase + NE2K_DATA + i);
+        }
+        
+        test_ne2k(&nic);  // Send test packet
+    }
 
 }
