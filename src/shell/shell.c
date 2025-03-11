@@ -264,44 +264,30 @@ void haiku()
 
 int test_memory_allocation()
 {
-    // Test 1: Allocate a small block of memory
-    void *ptr1 = malloc(10);
-    if (ptr1 == NULL)
-    {
-        console_printf("Test 1 failed: unable to allocate memory\n");
+    void* ptr = malloc(64);
+    if (ptr == NULL) {
+        console_printf("Initial malloc allocation failed\n");
         return -1;
     }
-    console_printf("Test 1 passed: allocated %p\n", ptr1);
-    free(ptr1);
-
-    // Test 2: Allocate a large block of memory
-    void *ptr2 = malloc(1024); // 1MB
-    if (ptr2 == NULL)
-    {
-        console_printf("Test 2 failed: unable to allocate memory\n");
+    
+    // Expand
+    void* ptr2 = realloc(ptr, 128);
+    if (ptr2 == NULL) {
+        console_printf("Realloc expansion failed\n");
+        free(ptr);
         return -1;
     }
-    console_printf("Test 2 passed: allocated %p\n", ptr2);
-    free(ptr2);
-
-    // Test 3: Allocate multiple blocks of memory
-    void *ptr3[10];
-    for (int i = 0; i < 10; i++)
-    {
-        ptr3[i] = malloc(100);
-        if (ptr3[i] == NULL)
-        {
-            console_printf("Test 3 failed: unable to allocate memory\n");
-            return -1;
-        }
+    
+    // Shrink
+    void* ptr3 = realloc(ptr2, 32);
+    if (ptr3 == NULL) {
+        console_printf("Realloc shrink failed\n");
+        free(ptr2);
+        return -1;
     }
-    console_printf("Test 3 passed: allocated multiple blocks\n");
-    for (int i = 0; i < 10; i++)
-    {
-        free(ptr3[i]);
-    }
-
-    console_printf("All tests passed\n");
+    
+    free(ptr3);
+    console_printf("Memory allocation test passed\n");
     return 0;
 }
 

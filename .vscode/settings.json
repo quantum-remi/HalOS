@@ -6,6 +6,8 @@
         "string.h": "c",
         "vmm.h": "c",
         "serial.h": "c",
-        "pci.h": "c"
+        "pci.h": "c",
+        "cstdint": "cpp",
+        "stdint.h": "c"
     }
 }

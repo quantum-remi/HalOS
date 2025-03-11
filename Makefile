@@ -256,7 +256,7 @@ $(OBJ)/arp.o : $(SRC)/drivers/net/arp.c
 
 
 qemu:
-	qemu-system-i386 -m 4G -vga virtio -boot d -cdrom $(TARGET_ISO) -serial stdio -drive id=disk,if=none,format=raw,file=disk.img -device ide-hd,drive=disk -cpu qemu64,+fpu,+sse,+sse2 -net nic,model=ne2k_pci -net user
+	qemu-system-i386 -m 4G -vga virtio -boot d -cdrom $(TARGET_ISO) -serial stdio -drive id=disk,if=none,format=raw,file=disk.img -device ide-hd,drive=disk -cpu qemu64,+fpu,+sse,+sse2 -net nic,model=rtl8139 -net user
 
 disk:
 	qemu-img create disk.img 1G

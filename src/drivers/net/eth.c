@@ -2,12 +2,13 @@
 
 #include "pci.h"
 #include "serial.h"
-#include "vmm.h"
-#include "paging.h"
+#include "liballoc.h"
+#include "rtl8139.h"
+
 
 void eth_init()
 {
 
-
+    rtl8139_init();
 
 }
