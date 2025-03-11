@@ -91,21 +91,18 @@ void vmm_init() {
 }
 
 uint32_t virt_to_phys(void *virt_addr) {
-    if ((uint32_t)virt_addr >= KERNEL_VMEM_START) {
-        return (uint32_t)virt_addr - KERNEL_VMEM_START;
-    }
-    
-    // For identity-mapped regions
     uint32_t *pd = get_page_directory();
     uint32_t pd_index = (uint32_t)virt_addr >> 22;
     uint32_t pt_index = ((uint32_t)virt_addr >> 12) & 0x3FF;
     
     if (pd[pd_index] & PAGE_PRESENT) {
         uint32_t *pt = (uint32_t*)(pd[pd_index] & ~0xFFF);
-        return (pt[pt_index] & ~0xFFF) | ((uint32_t)virt_addr & 0xFFF);
+        if (pt[pt_index] & PAGE_PRESENT) {
+            return (pt[pt_index] & ~0xFFF) | ((uint32_t)virt_addr & 0xFFF);
+        }
     }
-    
-    return (uint32_t)virt_addr; // Fallback for identity-mapped
+    serial_printf("virt_to_phys(0x%x) failed!\n", virt_addr);
+    return 0; // Return 0 instead of virt_addr to trigger obvious faults
 }
 
 uint32_t phys_to_virt(uint32_t phys_addr) {

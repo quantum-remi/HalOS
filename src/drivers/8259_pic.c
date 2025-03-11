@@ -79,3 +79,10 @@ void pic8259_unmask(uint8_t irq)
     value = inportb(port) & ~(1 << irq);
     outportb(port, value);
 }
+
+uint16_t pic8259_get_mask()
+{
+    uint8_t mask1 = inportb(PIC1_DATA);
+    uint8_t mask2 = inportb(PIC2_DATA);
+    return (mask2 << 8) | mask1;
+}

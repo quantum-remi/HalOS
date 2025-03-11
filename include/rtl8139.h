@@ -28,6 +28,7 @@ enum RTL8139Registers {
     REG_CAPR        = 0x38,     // Current read pointer
     REG_IMR         = 0x3C,     // Interrupt mask
     REG_ISR         = 0x3E,     // Interrupt status
+    REG_TCR         = 0x40,     // Transmit configuration
     REG_RCR         = 0x44,     // Receive configuration
     REG_CONFIG1     = 0x52      // Configuration 1
 };

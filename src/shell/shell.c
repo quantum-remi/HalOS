@@ -24,6 +24,14 @@ KERNEL_MEMORY_MAP g_kmap;
 extern uint32_t g_width;
 extern uint32_t g_height;
 
+typedef struct {
+    int x, y;
+    int dx, dy;
+    uint32_t color;
+    int lifetime;
+} Particle;
+
+
 void __cpuid(uint32_t type, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx)
 {
     __asm__ volatile("cpuid"
@@ -480,6 +488,43 @@ void hwinfo()
     console_printf("Drives:\n");
     // drive_list();
 }
+void fireworks() {
+    Particle particles[500];
+    int active = 0;
+    
+    while(!kbhit()) {
+        // Launch new firework
+        if(active < 450) {
+            int base_x = rand() % g_width;
+            int base_y = g_height;
+            for(int i=0; i<50; i++) {
+                particles[active] = (Particle){
+                    base_x, base_y,
+                    (rand()%7)-3, -(rand()%5 + 5),
+                    (rand()%255<<16)|(rand()%255<<8)|rand()%255,
+                    50
+                };
+                active++;
+            }
+        }
+
+        // Update and draw particles
+        for(int i=0; i<active; i++) {
+            particles[i].x += particles[i].dx;
+            particles[i].y += particles[i].dy;
+            particles[i].dy += 1; // Gravity
+            particles[i].lifetime--;
+
+            vbe_putpixel(particles[i].x, particles[i].y, particles[i].color);
+            
+            if(particles[i].lifetime <= 0) {
+                particles[i] = particles[active-1];
+                active--;
+            }
+        }
+        usleep(50000);
+    }
+}
 
 void shell()
 {
@@ -517,6 +562,7 @@ void shell()
             console_printf("|   * hwinfo - Display hardware information   |\n");
             console_printf("|   * lspci - Display PCI information         |\n");
             console_printf("|   * malloc - Test memory allocation         |\n");
+            console_printf("|   * fireworks - Fireworks effect            |\n");
             console_printf("|   * memory - Display system memory          |\n");
             console_printf("|   * shutdown - Shut down the system         |\n");
             console_printf("|   * snake - Play a game of Snake            |\n");
@@ -589,6 +635,10 @@ void shell()
         else if (strcmp(buffer, "hwinfo") == 0)
         {
             hwinfo();
+        }
+        else if (strcmp(buffer, "fireworks") == 0)
+        {
+            fireworks();
         }
         else
         {

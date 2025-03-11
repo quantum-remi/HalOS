@@ -9,6 +9,9 @@
         "pci.h": "c",
         "cstdint": "cpp",
         "stdint.h": "c",
-        "arp.h": "c"
+        "arp.h": "c",
+        "condition_variable": "c",
+        "socket": "c",
+        "future": "c"
     }
 }

@@ -11,6 +11,8 @@
 /* for more, see https://wiki.osdev.org/8259_PIC */
 #define PIC1 0x20 /* IO base address for master PIC */
 #define PIC2 0xA0 /* IO base address for slave PIC */
+#define PIC1_CMD PIC1
+#define PIC2_CMD PIC2
 #define PIC1_COMMAND PIC1
 #define PIC1_DATA (PIC1 + 1) /* master data */
 #define PIC2_COMMAND PIC2
@@ -36,5 +38,7 @@ int pic8259_is_spurious(uint8_t irq);
 void pic8259_mask(uint8_t irq);
 
 void pic8259_unmask(uint8_t irq);
+
+uint16_t pic8259_get_mask();
 
 #endif

@@ -190,6 +190,7 @@ void kmain(unsigned long magic, unsigned long addr)
     serial_printf("System initialized successfully\n");
     console_printf("System initialized successfully\n");
 
+    __asm__ volatile("sti");
 
     serial_printf("Initializing Ethernet...\n");
     eth_init();
