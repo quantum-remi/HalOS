@@ -41,3 +41,41 @@ int pic8259_is_spurious(uint8_t irq)
         return (inportb(PIC2_COMMAND) & 0x80) == 0;
     return 1;
 }
+
+void pic8259_mask(uint8_t irq)
+{
+    uint16_t port;
+    uint8_t value;
+
+    if (irq < 8)
+    {
+        port = PIC1_DATA;
+    }
+    else
+    {
+        port = PIC2_DATA;
+        irq -= 8;
+    }
+
+    value = inportb(port) | (1 << irq);
+    outportb(port, value);
+}
+
+void pic8259_unmask(uint8_t irq)
+{
+    uint16_t port;
+    uint8_t value;
+
+    if (irq < 8)
+    {
+        port = PIC1_DATA;
+    }
+    else
+    {
+        port = PIC2_DATA;
+        irq -= 8;
+    }
+
+    value = inportb(port) & ~(1 << irq);
+    outportb(port, value);
+}

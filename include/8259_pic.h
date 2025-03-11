@@ -33,4 +33,8 @@ void pic8259_eoi(uint8_t irq);
 
 int pic8259_is_spurious(uint8_t irq);
 
+void pic8259_mask(uint8_t irq);
+
+void pic8259_unmask(uint8_t irq);
+
 #endif

@@ -108,6 +108,12 @@ void* pmm_alloc_block()
     return NULL;
 }
 
+/**
+ * Allocates a specified number of contiguous 4KB blocks.
+ * 
+ * @param num_blocks The number of contiguous blocks to allocate.
+ * @return A pointer to the start of the allocated blocks, or NULL if allocation fails.
+ */
 void* pmm_alloc_blocks(int num_blocks) {
     if (num_blocks <= 0) return NULL;
 

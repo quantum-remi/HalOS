@@ -2,32 +2,52 @@
 #define RTL8139_H
 
 #include <stdint.h>
-#include <stddef.h>
 #include "pci.h"
-#include "io.h"
-#include "serial.h"
-#include "liballoc.h"
 #include "vmm.h"
+#include "pmm.h"
 #include "isr.h"
+#include "io.h"
+#include "timer.h"
+#include "paging.h"
+#include "8259_pic.h"
 
-#define RTL8139_VENDOR_ID 0x10EC
-#define RTL8139_DEVICE_ID 0x8139
+#define RTL8139_VENDOR_ID  0x10EC
+#define RTL8139_DEVICE_ID  0x8139
+#define RX_BUFFER_SIZE     (8192 + 16 + 1500)
+#define NUM_TX_BUFFERS     4
+#define TX_BUFFER_SIZE     1792
+
+// Register offsets
+enum RTL8139Registers {
+    REG_MAC0        = 0x00,     // MAC address
+    REG_MAR0        = 0x08,     // Multicast filter
+    REG_TXSTATUS0   = 0x10,     // Transmit status (4 registers)
+    REG_TXADDR0     = 0x20,     // Transmit address (4 registers)
+    REG_RXBUF       = 0x30,     // Receive buffer start address
+    REG_CMD         = 0x37,     // Command register
+    REG_CAPR        = 0x38,     // Current read pointer
+    REG_IMR         = 0x3C,     // Interrupt mask
+    REG_ISR         = 0x3E,     // Interrupt status
+    REG_RCR         = 0x44,     // Receive configuration
+    REG_CONFIG1     = 0x52      // Configuration 1
+};
 
 struct rtl8139_dev {
-    uint32_t base_addr;    // I/O base address
-    uint8_t irq;           // Interrupt line
-    uint8_t mac[6];        // MAC address
-    uint8_t* rx_buffer;    // Receive buffer (virtual address)
-    uint32_t rx_phys;      // Receive buffer (physical address)
-    uint16_t cur_rx;       // Current RX read position
-    uint8_t tx_current;    // Current TX buffer index
-    uint8_t* tx_buffers[4];// TX buffer array
-    uint32_t tx_phys[4];   // Physical addresses of TX buffers
+    uint16_t iobase;
+    uint8_t  irq;
+    uint8_t  mac[6];
+    uint8_t* rx_buffer;
+    uint32_t rx_phys;
+    uint16_t rx_ptr;
+    uint8_t  tx_current;
+    uint8_t* tx_buffer;
+    uint32_t tx_phys;
 };
 
 extern struct rtl8139_dev nic;
 
 void rtl8139_init();
 void rtl8139_send_packet(uint8_t* data, uint16_t len);
+void rtl8139_irq_handler(REGISTERS *reg);
 
-#endif // RTL8139_H
+#endif

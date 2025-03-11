@@ -52,7 +52,7 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o $(ASM_OBJ)/load_tss.o \
 		$(OBJ)/serial.o $(OBJ)/printf.o \
 		$(OBJ)/tss.o $(OBJ)/liballoc.o $(OBJ)/liballoc_hook.o \
 		$(OBJ)/pci.o $(OBJ)/ide.o $(OBJ)/fat.o $(OBJ)/font.o \
-		$(OBJ)/rtl8139.o $(OBJ)/arp.o $(OBJ)/eth.o \
+		$(OBJ)/rtl8139.o $(OBJ)/arp.o $(OBJ)/eth.o $(OBJ)/network.o \
 		$(OBJ)/kernel.o
 
 .PHONY: all	
@@ -254,9 +254,18 @@ $(OBJ)/arp.o : $(SRC)/drivers/net/arp.c
 	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/net/arp.c -o $(OBJ)/arp.o
 	@printf "\n"
 
+$(OBJ)/network.o : $(SRC)/drivers/net/network.c
+	@printf "[ $(SRC)/drivers/net/network.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/net/network.c -o $(OBJ)/network.o
+	@printf "\n"
 
 qemu:
-	qemu-system-i386 -m 4G -vga virtio -boot d -cdrom $(TARGET_ISO) -serial stdio -drive id=disk,if=none,format=raw,file=disk.img -device ide-hd,drive=disk -cpu qemu64,+fpu,+sse,+sse2 -net nic,model=rtl8139 -net user
+	qemu-system-i386 -m 4G -vga virtio -boot d -cdrom $(TARGET_ISO) \
+	-serial stdio -drive id=disk,if=none,format=raw,file=disk.img \
+	-device ide-hd,drive=disk -cpu qemu64,+fpu,+sse,+sse2 \
+	-netdev user,id=net0 -device rtl8139,netdev=net0 \
+	-object filter-dump,id=f1,netdev=net0,file=network.pcap
+
 
 disk:
 	qemu-img create disk.img 1G

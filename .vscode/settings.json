@@ -8,6 +8,7 @@
         "serial.h": "c",
         "pci.h": "c",
         "cstdint": "cpp",
-        "stdint.h": "c"
+        "stdint.h": "c",
+        "arp.h": "c"
     }
 }

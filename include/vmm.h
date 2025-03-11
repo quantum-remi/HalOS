@@ -16,8 +16,12 @@ void vmm_free_page(void *addr);
 
 void* vmm_map_mmio(uintptr_t phys_addr, size_t size, uint32_t flags);
 
-uint32_t virt_to_phys(uint32_t virt_addr);
+uint32_t virt_to_phys(void *virt_addr);
 
 uint32_t phys_to_virt(uint32_t phys_addr);
+
+void* vmm_alloc_contiguous(size_t pages);
+
+void vmm_free_contiguous(void* addr, size_t pages);
 
 #endif
