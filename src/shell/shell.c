@@ -625,7 +625,7 @@ void shell()
         else if (strcmp(buffer, "version") == 0)
         {
             console_printf("--------------------------------------------------------------\n");
-            console_printf("Hal OS v0.11.0\n");
+            console_printf("Hal OS v0.12.1\n");
             console_printf("Built on: %s %s\n", __DATE__, __TIME__);
             console_printf("Built with: GCC %s\n", __VERSION__);
             console_printf("--------------------------------------------------------------\n");
