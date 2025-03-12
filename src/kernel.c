@@ -182,7 +182,7 @@ void kmain(unsigned long magic, unsigned long addr)
     fpu_enable();
 
     serial_printf("Initializing ATA...\n");
-    // ata_init();
+    ata_init();
 
     serial_printf("Initializing PCI...\n");
     pci_init();
