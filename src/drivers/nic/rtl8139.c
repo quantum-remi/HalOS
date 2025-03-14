@@ -38,14 +38,14 @@ void rtl8139_init() {
     }
 
     // Allocate DMA buffers
-    nic.rx_buffer = vmm_alloc_contiguous(RX_BUFFER_SIZE / PAGE_SIZE);
+    nic.rx_buffer = dma_alloc(RX_BUFFER_SIZE / PAGE_SIZE);
     if (!nic.rx_buffer) {
         serial_printf("RTL8139: Failed to allocate RX buffer\n");
         return;
     }
     nic.rx_phys = virt_to_phys(nic.rx_buffer);
     
-    nic.tx_buffer = vmm_alloc_contiguous(NUM_TX_BUFFERS * TX_BUFFER_SIZE / PAGE_SIZE);
+    nic.tx_buffer = dma_alloc(NUM_TX_BUFFERS * TX_BUFFER_SIZE / PAGE_SIZE);
     if (!nic.tx_buffer) {
         serial_printf("RTL8139: Failed to allocate TX buffer\n");
         vmm_free_contiguous(nic.rx_buffer, RX_BUFFER_SIZE / PAGE_SIZE);

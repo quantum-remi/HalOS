@@ -11,6 +11,7 @@ uint32_t pmm_get_total_memory();
 
 void pmm_init(size_t mem_size, uint8_t *bitmap); // changed type from uint32_t* to uint8_t*
 void pmm_mark_used_region(uint32_t base, uint32_t size);
+void pmm_mark_unused_region(uint32_t base, uint32_t size);
 void* pmm_alloc_block();
 void* pmm_alloc_blocks(int num_blocks);
 void pmm_free_block(void *p);

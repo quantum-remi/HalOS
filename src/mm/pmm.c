@@ -78,6 +78,29 @@ void pmm_mark_used_region(uint32_t base, uint32_t size)
     }
 }
 
+// Mark a physical memory region as free
+void pmm_mark_unused_region(uint32_t base, uint32_t size)
+{
+    uint32_t start_block = base / PMM_BLOCK_SIZE;
+    uint32_t num_blocks = (size + PMM_BLOCK_SIZE - 1) / PMM_BLOCK_SIZE; // Round up
+
+    for (uint32_t i = 0; i < num_blocks; i++)
+    {
+        uint32_t block = start_block + i;
+        if (block >= pmm_max_blocks)
+            break;
+
+        uint32_t byte_idx = block / PMM_BLOCKS_PER_BYTE;
+        uint32_t bit_idx = block % PMM_BLOCKS_PER_BYTE;
+
+        if (pmm_memory_map[byte_idx] & (1 << bit_idx))
+        {
+            pmm_memory_map[byte_idx] &= ~(1 << bit_idx);
+            pmm_used_blocks--;
+        }
+    }
+}
+
 // Allocate a single 4KB block
 void* pmm_alloc_block()
 {

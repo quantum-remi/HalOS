@@ -197,8 +197,9 @@ void kmain(unsigned long magic, unsigned long addr)
     
     serial_printf("Initializing PCI...\n");
     pci_init();
-    // serial_printf("Initializing Ethernet...\n");
-    // eth_init();
+
+    serial_printf("Initializing Ethernet...\n");
+    eth_init();
     
     serial_printf("Initializing Filesystem...\n");
 

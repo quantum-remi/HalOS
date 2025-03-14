@@ -220,6 +220,7 @@ void vmm_free_page(void *addr) {
 
     // Unmap the page
     paging_unmap_page(virt_addr);
+    pmm_mark_unused_region(phys_addr, PAGE_SIZE);
 
     // Mark the virtual page as free
     mark_page(page_index, false);
@@ -324,6 +325,8 @@ void vmm_free_contiguous(void* virt_addr, size_t pages) {
         return;
     }
     
+
+    serial_printf("VMM: Freeing %d pages at V:0x%x P:0x%x\n", pages, (uint32_t)virt_addr, phys_start);
     // Free the physical memory as a single block
     pmm_free_blocks((void*)phys_start, pages);
 
@@ -334,6 +337,7 @@ void vmm_free_contiguous(void* virt_addr, size_t pages) {
     for (size_t i = 0; i < pages; i++) {
         // Unmap the page from the virtual address space
         paging_unmap_page(virt_start + (i * PAGE_SIZE));
+        pmm_mark_unused_region(phys_start + (i * PAGE_SIZE), PAGE_SIZE);
         // Mark the page as free in the bitmap
         mark_page(start_index + i, false);
     }
@@ -388,9 +392,7 @@ void dma_free(void* addr, size_t size) {
         return;
     }
 
+    serial_printf("DMA: Freeing %d pages at 0x%x\n", pages, (uint32_t)addr);
+
     vmm_free_contiguous(addr, pages);
-    for (uint32_t i = 0; i < pages; i++) {
-        uint32_t virt_addr = (uint32_t)addr + i * PAGE_SIZE;
-        paging_unmap_page(virt_addr);
-    }
 }
