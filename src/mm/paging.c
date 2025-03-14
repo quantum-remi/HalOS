@@ -33,7 +33,7 @@ void paging_init(uint32_t mem_size)
     memset(first_page_table, 0, PAGE_SIZE);
 
     // Map first 4MB
-    for (uint32_t i = 0; i < 1024; i++)
+    for (uint32_t i = 0; i < 2048; i++)
     {
         first_page_table[i] = (i * PAGE_SIZE) | PAGE_PRESENT | PAGE_WRITABLE;
     }

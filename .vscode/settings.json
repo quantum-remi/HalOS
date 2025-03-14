@@ -12,6 +12,7 @@
         "arp.h": "c",
         "condition_variable": "c",
         "socket": "c",
-        "future": "c"
+        "future": "c",
+        "*.tcc": "c"
     }
 }

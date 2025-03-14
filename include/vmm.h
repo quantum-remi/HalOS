@@ -5,7 +5,7 @@
 #include <stddef.h>
 
 #define KERNEL_VMEM_START 0xC0000000
-#define VMM_MAX_PAGES     1024
+extern uint32_t vmm_max_pages; 
 
 // Initialize the Virtual Memory Manager and enable paging support.
 void vmm_init();
@@ -23,5 +23,9 @@ uint32_t phys_to_virt(uint32_t phys_addr);
 void* vmm_alloc_contiguous(size_t pages);
 
 void vmm_free_contiguous(void* addr, size_t pages);
+
+void* dma_alloc(size_t size);
+
+void dma_free(void* addr, size_t size);
 
 #endif

@@ -488,7 +488,7 @@ void hwinfo()
     console_printf("Memory: %d MB\n", g_kmap.system.total_memory / 1024);
     console_printf("Screen Resolution: %dx%d\n", g_width, g_height);
     console_printf("Drives:\n");
-    // drive_list();
+    drive_list();
 }
 void fireworks() {
     Particle particles[500];
@@ -530,7 +530,10 @@ void fireworks() {
 
 void shell()
 {
+    serial_printf("[SHELL] Starting shell...\n");
+
     console_clear();
+    // console_printf("DEBUG: Console initialized\n");  // Check if this appears
     char buffer[255];
     const char *shell = "kernel> ";
 

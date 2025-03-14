@@ -3,6 +3,9 @@
 #include "serial.h"
 #include "isr.h"
 #include "console.h"
+#include "vmm.h"
+#include "paging.h"
+#include "pmm.h"
 
 uint32_t g_width = 0, g_height = 0, g_pitch = 0, g_bpp = 0;
 uint32_t *g_vbe_buffer = NULL;

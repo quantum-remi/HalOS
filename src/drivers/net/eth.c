@@ -11,7 +11,7 @@ void eth_init()
 {
     __asm__ volatile("cli");  // Disable interrupts globally
     rtl8139_init();
-    __asm__ volatile("sti");  // Enable after setup
+    // __asm__ volatile("sti");  // Enable after setup
     
     // Send test ARP request
     uint8_t src_ip[4] = {10, 0, 2, 15};

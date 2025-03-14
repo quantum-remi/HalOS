@@ -22,6 +22,7 @@
 #include "vesa.h"
 #include "vmm.h"
 #include "eth.h"
+#include "fat.h"
 
 int get_kernel_memory_map(KERNEL_MEMORY_MAP *kmap, multiboot_info_t *mboot_info)
 {
@@ -153,6 +154,7 @@ void kmain(unsigned long magic, unsigned long addr)
 
     // Update framebuffer pointer to virtual address
     framebuffer = (uint32_t*)fb_virt;
+    serial_printf("[VESA] Framebuffer mapped to virtual address 0x%x\n", fb_virt);
 
     // Initialize VESA graphics
     if (vesa_init(framebuffer, width, height, pitch, bpp) < 0)
@@ -174,31 +176,54 @@ void kmain(unsigned long magic, unsigned long addr)
     // Initialize remaining subsystems
     serial_printf("Initializing timer...\n");
     timer_init();
-
+    
     serial_printf("Initializing keyboard...\n");
     keyboard_init();
-
+    
     serial_printf("Enabling FPU...\n");
     fpu_enable();
-
+    
     serial_printf("Initializing ATA...\n");
     ata_init();
-
+    
+    uint8_t test_buffer[SECTOR_SIZE];
+    if (ide_read_sectors(1, 1, 0, (uint32_t)test_buffer) == 0) {
+        serial_printf("[IDE] Sector 0 read OK\n");
+        // Dump signature bytes
+        serial_printf("Signature: 0x%x 0x%x\n", test_buffer[510], test_buffer[511]);
+    } else {
+        serial_printf("[IDE] Sector 0 read failed\n");
+    }
+    
     serial_printf("Initializing PCI...\n");
     pci_init();
-
+    // serial_printf("Initializing Ethernet...\n");
+    // eth_init();
+    
+    serial_printf("Initializing Filesystem...\n");
+    FAT32_Volume vol;
+    FAT32_File root;
+    fat32_init_volume(&vol);
+    if (fat32_find_file(&vol, "/", &root)) {
+        FAT32_DirList list;
+        char name[256];
+        FAT32_File entry;
+        fat32_list_dir(&vol, &root, &list);
+        while (fat32_next_dir_entry(&vol, &list, &entry, name)) {
+            serial_printf("Found: %s\n", name);
+        }
+    }
+    
     serial_printf("System initialized successfully\n");
     console_printf("System initialized successfully\n");
-
+    
     __asm__ volatile("sti");
-
-    serial_printf("Initializing Ethernet...\n");
-    eth_init();
-
     // Start shell
     shell();
-
+    
+    console_printf("you should not be here\n");
     for (;;)
-        console_printf("you should not be here\n");
-    __asm__ volatile("hlt");
+    {
+        __asm__ volatile("hlt");
+    }
 }

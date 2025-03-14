@@ -38,8 +38,8 @@ void *liballoc_alloc(int num_blocks)
         if (i == 0) virt_addr = page;
     }
     
-    // serial_printf("liballoc: Allocated %d pages at virtual address 0x%x\n", 
-                //  num_blocks, (uint32_t)virt_addr);
+    serial_printf("liballoc: Allocated %d pages at virtual address 0x%x\n", 
+                num_blocks, (uint32_t)virt_addr);
     return virt_addr;
 }
 

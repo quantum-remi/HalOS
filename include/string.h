@@ -37,4 +37,8 @@ void *memmove(void *dest, const void *src, size_t n);
 
 int atoi(const char *str);
 
+void assert(int condition);
+
+char* strncat(char *dest, const char *src, size_t n);
+
 #endif
