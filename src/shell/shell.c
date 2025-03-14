@@ -15,6 +15,7 @@
 #include "pmm.h"
 #include "pci.h"
 #include "ide.h"
+#include "fat.h"
 
 #define BRAND_QEMU 1
 #define BRAND_VBOX 2
@@ -528,6 +529,20 @@ void fireworks() {
     }
 }
 
+void ls()
+{
+    // FAT32_File root;
+    // if (fat32_find_file(, "/", &root)) {
+    //     FAT32_DirList list;
+    //     char name[256];
+    //     FAT32_File entry;
+    //     fat32_list_dir(, &root, &list);
+    //     while (fat32_next_dir_entry(, &list, &entry, name)) {
+    //         serial_printf("Found: %s\n", name);
+    //     }
+    // }
+}
+
 void shell()
 {
     serial_printf("[SHELL] Starting shell...\n");
@@ -565,6 +580,7 @@ void shell()
             console_printf("|   * haiku - Display a haiku                 |\n");
             console_printf("|   * help - Display this help message        |\n");
             console_printf("|   * hwinfo - Display hardware information   |\n");
+            console_printf("|   * ls - List files in the root directory   |\n");
             console_printf("|   * lspci - Display PCI information         |\n");
             console_printf("|   * malloc - Test memory allocation         |\n");
             console_printf("|   * fireworks - Fireworks effect            |\n");
@@ -588,6 +604,10 @@ void shell()
         else if (strcmp(buffer, "drive") == 0)
         {
             drive();
+        }
+        else if (strcmp(buffer, "ls") == 0)
+        {
+            ls();
         }
         else if (strcmp(buffer, "shutdown") == 0)
         {

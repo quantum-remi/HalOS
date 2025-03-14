@@ -201,6 +201,7 @@ void kmain(unsigned long magic, unsigned long addr)
     // eth_init();
     
     serial_printf("Initializing Filesystem...\n");
+
     FAT32_Volume vol;
     FAT32_File root;
     fat32_init_volume(&vol);
@@ -208,6 +209,7 @@ void kmain(unsigned long magic, unsigned long addr)
         FAT32_DirList list;
         char name[256];
         FAT32_File entry;
+        serial_printf("Initializing FAT32 volume...%d\n", vol);
         fat32_list_dir(&vol, &root, &list);
         while (fat32_next_dir_entry(&vol, &list, &entry, name)) {
             serial_printf("Found: %s\n", name);
