@@ -1,6 +1,4 @@
-fat32
 ext2
-networking
 Multitasking
 userspace 
 elf loader

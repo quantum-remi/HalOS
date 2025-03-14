@@ -113,7 +113,22 @@ void paging_unmap_page(uint32_t virt_addr)
     uint32_t pd_index = virt_addr >> 22;
     uint32_t pt_index = (virt_addr >> 12) & 0x3FF;
 
-    uint32_t *pt = (uint32_t *)(get_page_directory()[pd_index] & ~0xFFF);
+    // Check if page directory entry is present
+    if (!(page_directory[pd_index] & PAGE_PRESENT))
+    {
+        serial_printf("Paging: Page directory entry not present for virtual address 0x%x\n", virt_addr);
+        return;
+    }
+
+    uint32_t *pt = (uint32_t *)(page_directory[pd_index] & ~0xFFF);
+
+    // Check if page table entry is present
+    if (!(pt[pt_index] & PAGE_PRESENT))
+    {
+        // serial_printf("Paging: Page table entry not present for virtual address 0x%x\n", virt_addr);
+        return;
+    }
+
     pt[pt_index] = 0; // Clear page table entry
 
     // Invalidate TLB entry using inline assembly

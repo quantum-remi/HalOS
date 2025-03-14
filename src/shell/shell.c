@@ -104,12 +104,7 @@ void memory()
 {
 
     console_printf("total_memory: %d MB, %d Bytes\n", g_kmap.system.total_memory / 1024, g_kmap.available.size);
-    console_printf("start_addr: 0x%x, end_addr: 0x%x\n", g_kmap.available.start_addr, g_kmap.available.end_addr);
-    console_printf("kstart_addr: 0x%x, kend_addr: 0x%x\n", g_kmap.kernel.k_start_addr, g_kmap.kernel.data_end_addr);
-    console_printf("text_start_addr: 0x%x, text_end_addr: 0x%x\n", g_kmap.kernel.text_start_addr, g_kmap.kernel.text_end_addr);
-    console_printf("data_start_addr: 0x%x, data_end_addr: 0x%x\n", g_kmap.kernel.data_start_addr, g_kmap.kernel.data_end_addr);
-    console_printf("rodata_start_addr: 0x%x, rodata_end_addr: 0x%x\n", g_kmap.kernel.rodata_start_addr, g_kmap.kernel.rodata_end_addr);
-    console_printf("bss_start_addr: 0x%x, bss_end_addr: 0x%x\n", g_kmap.kernel.bss_start_addr, g_kmap.kernel.bss_end_addr);
+    console_printf("kernel: %d MB, %d Bytes\n", g_kmap.kernel.k_len / 1024, g_kmap.kernel.k_len);
 }
 
 void ftoa(char *buf, float f)

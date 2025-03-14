@@ -147,12 +147,12 @@ uint32_t virt_to_phys(void *virt_addr) {
     uint32_t pt_index = ((uint32_t)virt_addr >> 12) & 0x3FF;
 
     if (pd[pd_index] & PAGE_PRESENT) {
-        uint32_t *pt = (uint32_t*)(pd[pd_index] & ~0xFFF);
+        uint32_t *pt = (uint32_t*)((pd[pd_index] & ~0xFFF) + KERNEL_VMEM_START);
         if (pt[pt_index] & PAGE_PRESENT) {
             return (pt[pt_index] & ~0xFFF) | ((uint32_t)virt_addr & 0xFFF);
         }
     }
-    serial_printf("virt_to_phys(0x%x) failed!\n", virt_addr);
+    serial_printf("virt_to_phys(0x%x) failed!\n", (uint32_t)virt_addr);
     return 0;
 }
 
@@ -183,11 +183,46 @@ void *vmm_alloc_page() {
 }
 
 void vmm_free_page(void *addr) {
-    if (!addr) return;
+    // Check for null pointer
+    if (!addr) {
+        serial_printf("VMM: Attempted to free NULL address\n");
+        return;
+    }
+
     uint32_t virt_addr = (uint32_t)addr;
-    if (virt_addr < KERNEL_VMEM_START) return;
+
+    // Check if address is page-aligned
+    if (virt_addr & (PAGE_SIZE - 1)) {
+        serial_printf("VMM: Address 0x%x is not page-aligned\n", virt_addr);
+        return;
+    }
+
+    // Check if address is in valid kernel virtual memory range
+    if (virt_addr < KERNEL_VMEM_START) {
+        serial_printf("VMM: Invalid virtual address 0x%x\n", virt_addr);
+        return;
+    }
+
+    // Calculate page index
     int page_index = (virt_addr - KERNEL_VMEM_START) / PAGE_SIZE;
-    mark_page(page_index, false); // <-- Replaced set_page_free(page_index)
+
+    // Check if page index is within bounds
+    if (page_index >= vmm_max_pages) {
+        serial_printf("VMM: Page index %d out of bounds\n", page_index);
+        return;
+    }
+
+    // Free the physical memory
+    uint32_t phys_addr = virt_to_phys(addr);
+    if (phys_addr != 0) {
+        pmm_free_block((void*)phys_addr);
+    }
+
+    // Unmap the page
+    paging_unmap_page(virt_addr);
+
+    // Mark the virtual page as free
+    mark_page(page_index, false);
 }
 
 void* vmm_map_mmio(uintptr_t phys_addr, size_t size, uint32_t flags) {
@@ -275,20 +310,31 @@ void* vmm_alloc_contiguous(size_t pages) {
 }
 
 void vmm_free_contiguous(void* virt_addr, size_t pages) {
-    if (!virt_addr || pages == 0) return;
+    // Check if the virtual address is valid and the number of pages is greater than 0
+    if (!virt_addr || pages == 0)
+    {
+        serial_printf("VMM: Invalid virtual address or page count\n");
+        return;
+    } 
 
-    // Get starting physical address from first page
+    // Get the starting physical address from the first page
     uint32_t phys_start = virt_to_phys(virt_addr);
+    if (phys_start == UINT32_MAX) {
+        serial_printf("VMM: Failed to get physical address for virtual address 0x%x\n", virt_addr);
+        return;
+    }
     
-    // Free physical memory as single block
+    // Free the physical memory as a single block
     pmm_free_blocks((void*)phys_start, pages);
 
-    // Unmap and free virtual pages
+    // Unmap and free the virtual pages
     uint32_t virt_start = (uint32_t)virt_addr;
     int start_index = (virt_start - KERNEL_VMEM_START) / PAGE_SIZE;
     
     for (size_t i = 0; i < pages; i++) {
+        // Unmap the page from the virtual address space
         paging_unmap_page(virt_start + (i * PAGE_SIZE));
+        // Mark the page as free in the bitmap
         mark_page(start_index + i, false);
     }
 }
@@ -322,6 +368,29 @@ void* dma_alloc(size_t size) {
 }
 
 void dma_free(void* addr, size_t size) {
+    // Check for null pointer and size
+    if (!addr || size == 0) {
+        serial_printf("DMA: Invalid address or size\n");
+        return;
+    }
+
+    // Check alignment
+    if (((uintptr_t)addr & (PAGE_SIZE - 1)) != 0) {
+        serial_printf("DMA: Address not page aligned\n");
+        return;
+    }
+
     uint32_t pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
+
+    // Check for overflow
+    if (pages > vmm_max_pages) {
+        serial_printf("DMA: Size too large\n");
+        return;
+    }
+
     vmm_free_contiguous(addr, pages);
+    for (uint32_t i = 0; i < pages; i++) {
+        uint32_t virt_addr = (uint32_t)addr + i * PAGE_SIZE;
+        paging_unmap_page(virt_addr);
+    }
 }

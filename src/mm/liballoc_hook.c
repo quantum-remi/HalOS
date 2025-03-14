@@ -56,6 +56,6 @@ int liballoc_free(void *ptr, int num_blocks)
         vmm_free_page((char*)ptr + (i * PAGE_SIZE));
     }
     
-    // serial_printf("liballoc: Successfully freed %d blocks at address 0x%x\n", num_blocks, (uint32_t)ptr);
+    serial_printf("liballoc: Successfully freed %d blocks at address 0x%x\n", num_blocks, (uint32_t)ptr);
     return 0;
 }

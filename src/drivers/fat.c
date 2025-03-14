@@ -551,8 +551,19 @@ bool fat32_next_dir_entry(FAT32_Volume *volume, FAT32_DirList *dir_list,
 }
 
 void fat32_unmount_volume(FAT32_Volume* volume) {
+    if (!volume) {
+        serial_printf("[FAT32] Invalid volume pointer in unmount\n");
+        return;
+    }
+
     if (volume->fat) {
+        if (volume->fat_size_in_sectors == 0) {
+            serial_printf("[FAT32] Invalid FAT size in unmount\n");
+            return;
+        }
         dma_free(volume->fat, volume->fat_size_in_sectors * SECTOR_SIZE);
         volume->fat = NULL;
     }
+
+    memset(volume, 0, sizeof(FAT32_Volume));
 }

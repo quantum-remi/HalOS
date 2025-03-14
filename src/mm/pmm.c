@@ -153,37 +153,58 @@ void* pmm_alloc_blocks(int num_blocks) {
 void pmm_free_block(void *p)
 {
     if (p == NULL)
+        serial_printf("PMM: Invalid free address (NULL)\n");
         return;
 
     uint32_t addr = (uint32_t)p;
+    if (addr % PMM_BLOCK_SIZE != 0)
+    {
+        serial_printf("PMM: Invalid free address 0x%x (not aligned)\n", addr);
+        return;
+    }
+
     uint32_t block = addr / PMM_BLOCK_SIZE;
 
     if (block >= pmm_max_blocks)
     {
-        serial_printf("PMM: Invalid free address 0x%x\n", addr);
+        serial_printf("PMM: Invalid free address 0x%x (out of bounds)\n", addr);
         return;
     }
 
     uint32_t byte_idx = block / PMM_BLOCKS_PER_BYTE;
     uint32_t bit_idx = block % PMM_BLOCKS_PER_BYTE;
 
-    // spin_lock(&pmm_lock);
     if (pmm_memory_map[byte_idx] & (1 << bit_idx))
     {
         pmm_memory_map[byte_idx] &= ~(1 << bit_idx);
         pmm_used_blocks--;
+        serial_printf("PMM: Freed block at physical address 0x%x\n", addr);
     }
     else
     {
         serial_printf("PMM: Double-free at 0x%x\n", addr);
     }
-    // spin_unlock(&pmm_lock);
 }
 
+/**
+ * Frees a specified number of contiguous 4KB blocks.
+ * 
+ * @param p The pointer to the start of the blocks to free.
+ * @param num_blocks The number of contiguous blocks to free.
+ */
 void pmm_free_blocks(void *p, int num_blocks)
 {
     if (!p || num_blocks <= 0)
         return;
+
+    uint32_t addr = (uint32_t)p;
+    uint32_t start_block = addr / PMM_BLOCK_SIZE;
+
+    if (start_block + num_blocks > pmm_max_blocks)
+    {
+        serial_printf("PMM: Invalid free request for %d blocks starting at 0x%x\n", num_blocks, addr);
+        return;
+    }
 
     for (int i = 0; i < num_blocks; i++)
     {
