@@ -215,6 +215,7 @@ void kmain(unsigned long magic, unsigned long addr)
             serial_printf("Found: %s\n", name);
         }
     }
+    fat32_unmount_volume(&vol);
     
     serial_printf("System initialized successfully\n");
     console_printf("System initialized successfully\n");

@@ -3,6 +3,7 @@
 #include "string.h"
 #include "serial.h"
 #include "vmm.h"
+#include <stdbool.h>
 
 extern uint32_t __kernel_physical_start;
 extern uint32_t __kernel_physical_end;

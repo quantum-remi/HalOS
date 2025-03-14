@@ -531,16 +531,33 @@ void fireworks() {
 
 void ls()
 {
-    // FAT32_File root;
-    // if (fat32_find_file(, "/", &root)) {
-    //     FAT32_DirList list;
-    //     char name[256];
-    //     FAT32_File entry;
-    //     fat32_list_dir(, &root, &list);
-    //     while (fat32_next_dir_entry(, &list, &entry, name)) {
-    //         serial_printf("Found: %s\n", name);
-    //     }
-    // }
+    FAT32_Volume volume;
+    fat32_init_volume(&volume);  // Initialize the volume
+
+    FAT32_File root;
+    // Find the root directory ("/")
+    if (fat32_find_file(&volume, "/", &root)) {
+        FAT32_DirList dir_list;
+        char name[256];
+        FAT32_File entry;
+        
+        // Start directory listing
+        fat32_list_dir(&volume, &root, &dir_list);
+        
+        // Iterate through directory entries
+        console_printf("Contents of root directory:\n");
+        while (fat32_next_dir_entry(&volume, &dir_list, &entry, name)) {
+            // Display entry type (file/directory) and name
+            console_printf(" [%s] %s (%d bytes)\n", 
+                (entry.attrib & FAT32_IS_DIR) ? "DIR" : "FILE",
+                name, 
+                entry.size);
+        }
+    } else {
+        console_printf("Error: Could not find root directory\n");
+    }
+    
+    fat32_unmount_volume(&volume);  // Cleanup
 }
 
 void shell()

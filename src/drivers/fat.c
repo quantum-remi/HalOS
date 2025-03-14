@@ -17,10 +17,21 @@ extern IDE_DEVICE g_ide_devices[MAXIMUM_IDE_DEVICES];
 // Drive number for FAT32 filesystem
 static uint8_t g_fat32_drive = 0;
 
+static FAT32_Directory_Entry *read_next_entry(FAT32_Volume *volume, FAT32_DirList *dir_list);
+
+static int toupper(int c)
+{
+    return (c >= 'a' && c <= 'z') ? (c & ~32) : c;
+}
+
+static int tolower(int c)
+{
+    return (c >= 'A' && c <= 'Z') ? (c | 32) : c;
+}
 int fat32_strcasecmp(const char *s1, const char *s2) {
     while (1) {
-        unsigned char c1 = upper(*s1);
-        unsigned char c2 = upper(*s2);
+        unsigned char c1 = toupper(*s1);
+        unsigned char c2 = toupper(*s2);
         if (c1 != c2) return c1 - c2;
         if (c1 == '\0') return 0;
         s1++;
@@ -54,20 +65,42 @@ static bool disk_write_sector(uint8_t *buffer, uint32_t sector)
     return true;
 }
 
+static void split_path(const char* path, char* parent, char* filename) {
+    const char* last_slash = strrchr(path, '/');
+    if (!last_slash) {
+        strcpy(parent, "/");
+        strcpy(filename, path);
+        return;
+    }
+
+    strncpy(parent, path, last_slash - path);
+    parent[last_slash - path] = '\0';
+    strcpy(filename, last_slash + 1);
+}
+
+static void to_short_filename(const char* name, char* short_name, char* short_ext) {
+    memset(short_name, ' ', 8);
+    memset(short_ext, ' ', 3);
+
+    const char* dot = strchr(name, '.');
+    if (!dot) {
+        strncpy(short_name, name, 8);
+        return;
+    }
+
+    strncpy(short_name, name, dot - name < 8 ? dot - name : 8);
+    strncpy(short_ext, dot + 1, strlen(dot + 1) < 3 ? strlen(dot + 1) : 3);
+
+    // Convert to uppercase
+    for (int i = 0; i < 8; i++) short_name[i] = toupper(short_name[i]);
+    for (int i = 0; i < 3; i++) short_ext[i] = toupper(short_ext[i]);
+}
+
 static uint32_t cluster_to_sector(const FAT32_Volume *volume, uint32_t cluster)
 {
     return volume->data_start_sector + (cluster - 2) * volume->header.sectors_per_cluster;
 }
 
-static int toupper(int c)
-{
-    return (c >= 'a' && c <= 'z') ? (c & ~32) : c;
-}
-
-static int tolower(int c)
-{
-    return (c >= 'A' && c <= 'Z') ? (c | 32) : c;
-}
 
 void fat32_read_file(FAT32_Volume *volume, FAT32_File *file, uint8_t *out_buffer, uint32_t num_bytes, uint32_t start_offset)
 {
