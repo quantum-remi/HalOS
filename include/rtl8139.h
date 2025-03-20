@@ -13,9 +13,11 @@
 
 #define RTL8139_VENDOR_ID  0x10EC
 #define RTL8139_DEVICE_ID  0x8139
-#define RX_BUFFER_SIZE     (8192 + 16 + 1500)
+#define RX_BUFFER_PAGES 3
+#define RX_BUFFER_SIZE (RX_BUFFER_PAGES * PAGE_SIZE)
 #define NUM_TX_BUFFERS     4
-#define TX_BUFFER_SIZE     1792
+#define TX_BUFFER_SIZE     1792  // Max size per RTL8139 datasheet
+#define TX_PACKET_ALIGN    4     // Align packets to 4 bytes
 
 // Register offsets
 enum RTL8139Registers {
@@ -43,6 +45,7 @@ struct rtl8139_dev {
     uint8_t  tx_current;
     uint8_t* tx_buffer;
     uint32_t tx_phys;
+    uint32_t ip_addr;
 };
 
 extern struct rtl8139_dev nic;

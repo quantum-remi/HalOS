@@ -28,12 +28,16 @@ static int tolower(int c)
 {
     return (c >= 'A' && c <= 'Z') ? (c | 32) : c;
 }
-int fat32_strcasecmp(const char *s1, const char *s2) {
-    while (1) {
+int fat32_strcasecmp(const char *s1, const char *s2)
+{
+    while (1)
+    {
         unsigned char c1 = toupper(*s1);
         unsigned char c2 = toupper(*s2);
-        if (c1 != c2) return c1 - c2;
-        if (c1 == '\0') return 0;
+        if (c1 != c2)
+            return c1 - c2;
+        if (c1 == '\0')
+            return 0;
         s1++;
         s2++;
     }
@@ -41,7 +45,7 @@ int fat32_strcasecmp(const char *s1, const char *s2) {
 static bool disk_read_sector(uint8_t *buffer, uint32_t sector)
 {
     uint32_t timeout = 100000;
-    while(timeout-- > 0)
+    while (timeout-- > 0)
     {
 
         if (ide_read_sectors(g_fat32_drive, 1, sector, (uint32_t)buffer) != 0)
@@ -65,9 +69,11 @@ static bool disk_write_sector(uint8_t *buffer, uint32_t sector)
     return true;
 }
 
-static void split_path(const char* path, char* parent, char* filename) {
-    const char* last_slash = strrchr(path, '/');
-    if (!last_slash) {
+static void split_path(const char *path, char *parent, char *filename)
+{
+    const char *last_slash = strrchr(path, '/');
+    if (!last_slash)
+    {
         strcpy(parent, "/");
         strcpy(filename, path);
         return;
@@ -78,12 +84,14 @@ static void split_path(const char* path, char* parent, char* filename) {
     strcpy(filename, last_slash + 1);
 }
 
-static void to_short_filename(const char* name, char* short_name, char* short_ext) {
+static void to_short_filename(const char *name, char *short_name, char *short_ext)
+{
     memset(short_name, ' ', 8);
     memset(short_ext, ' ', 3);
 
-    const char* dot = strchr(name, '.');
-    if (!dot) {
+    const char *dot = strchr(name, '.');
+    if (!dot)
+    {
         strncpy(short_name, name, 8);
         return;
     }
@@ -92,15 +100,16 @@ static void to_short_filename(const char* name, char* short_name, char* short_ex
     strncpy(short_ext, dot + 1, strlen(dot + 1) < 3 ? strlen(dot + 1) : 3);
 
     // Convert to uppercase
-    for (int i = 0; i < 8; i++) short_name[i] = toupper(short_name[i]);
-    for (int i = 0; i < 3; i++) short_ext[i] = toupper(short_ext[i]);
+    for (int i = 0; i < 8; i++)
+        short_name[i] = toupper(short_name[i]);
+    for (int i = 0; i < 3; i++)
+        short_ext[i] = toupper(short_ext[i]);
 }
 
 static uint32_t cluster_to_sector(const FAT32_Volume *volume, uint32_t cluster)
 {
     return volume->data_start_sector + (cluster - 2) * volume->header.sectors_per_cluster;
 }
-
 
 void fat32_read_file(FAT32_Volume *volume, FAT32_File *file, uint8_t *out_buffer, uint32_t num_bytes, uint32_t start_offset)
 {
@@ -418,7 +427,8 @@ bool fat32_find_file(FAT32_Volume *volume, const char *path, FAT32_File *out_fil
         fat32_list_dir(volume, &current, &list);
         while (fat32_next_dir_entry(volume, &list, &entry, name))
         {
-            if (fat32_strcasecmp(name, component) == 0) {
+            if (fat32_strcasecmp(name, component) == 0)
+            {
                 current = entry;
                 found = true;
                 break;
@@ -550,14 +560,18 @@ bool fat32_next_dir_entry(FAT32_Volume *volume, FAT32_DirList *dir_list,
     }
 }
 
-void fat32_unmount_volume(FAT32_Volume* volume) {
-    if (!volume) {
+void fat32_unmount_volume(FAT32_Volume *volume)
+{
+    if (!volume)
+    {
         serial_printf("[FAT32] Invalid volume pointer in unmount\n");
         return;
     }
 
-    if (volume->fat) {
-        if (volume->fat_size_in_sectors == 0) {
+    if (volume->fat)
+    {
+        if (volume->fat_size_in_sectors == 0)
+        {
             serial_printf("[FAT32] Invalid FAT size in unmount\n");
             return;
         }

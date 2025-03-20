@@ -35,7 +35,7 @@ void timer_init();
 void sleep(int sec);
 void usleep(int usec);
 void uptime();
-
+uint32_t get_ticks(void);
 int rand(void);
 
 void timer_register_function(TIMER_FUNCTION function, TIMER_FUNC_ARGS *args);

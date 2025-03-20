@@ -99,3 +99,7 @@ int rand(void)
     seed = (seed * 1103515245 + 12345) ^ (g_ticks); // XOR with current ticks
     return (seed >> 16) & 0x7FFF;
 }
+uint32_t get_ticks(void)
+{
+    return g_ticks;
+}

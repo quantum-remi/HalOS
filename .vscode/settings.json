@@ -13,6 +13,7 @@
         "condition_variable": "c",
         "socket": "c",
         "future": "c",
-        "*.tcc": "c"
+        "*.tcc": "c",
+        "idt.h": "c"
     }
 }

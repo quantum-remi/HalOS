@@ -23,6 +23,8 @@
 #include "vmm.h"
 #include "eth.h"
 #include "fat.h"
+#include "icmp.h"
+#include "8259_pic.h"
 
 int get_kernel_memory_map(KERNEL_MEMORY_MAP *kmap, multiboot_info_t *mboot_info)
 {
@@ -82,6 +84,9 @@ void kmain(unsigned long magic, unsigned long addr)
 
     serial_printf("Initializing IDT...\n");
     idt_init();
+
+    pic8259_unmask(1);
+    pic8259_unmask(2);
 
     tss_init();
 
@@ -198,30 +203,33 @@ void kmain(unsigned long magic, unsigned long addr)
     serial_printf("Initializing PCI...\n");
     pci_init();
 
+    // __asm__ volatile("sti");
     serial_printf("Initializing Ethernet...\n");
     eth_init();
-    
+
+    // serial_printf("Send ping\n");
+    // icmp_send_echo_request(0x0A000202);
+
     serial_printf("Initializing Filesystem...\n");
 
-    FAT32_Volume vol;
-    FAT32_File root;
-    fat32_init_volume(&vol);
-    if (fat32_find_file(&vol, "/", &root)) {
-        FAT32_DirList list;
-        char name[256];
-        FAT32_File entry;
-        serial_printf("Initializing FAT32 volume...%d\n", vol);
-        fat32_list_dir(&vol, &root, &list);
-        while (fat32_next_dir_entry(&vol, &list, &entry, name)) {
-            serial_printf("Found: %s\n", name);
-        }
-    }
-    fat32_unmount_volume(&vol);
+    // FAT32_Volume vol;
+    // FAT32_File root;
+    // fat32_init_volume(&vol);
+    // if (fat32_find_file(&vol, "/", &root)) {
+    //     FAT32_DirList list;
+    //     char name[256];
+    //     FAT32_File entry;
+    //     serial_printf("Initializing FAT32 volume...%d\n", vol);
+    //     fat32_list_dir(&vol, &root, &list);
+    //     while (fat32_next_dir_entry(&vol, &list, &entry, name)) {
+    //         serial_printf("Found: %s\n", name);
+    //     }
+    // }
+    // fat32_unmount_volume(&vol);
     
     serial_printf("System initialized successfully\n");
     console_printf("System initialized successfully\n");
     
-    __asm__ volatile("sti");
     // Start shell
     shell();
     

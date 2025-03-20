@@ -39,9 +39,9 @@ char *exception_messages[32] = {
     "Reserved",
     "Reserved"};
 
-void isr_register_interrupt_handler(size_t num, ISR handler)
-{
-    serial_printf("IRQ %zu registered\n", num);
+void isr_register_interrupt_handler(size_t num, ISR handler) {
+    serial_printf("Registering IRQ %zu (IDT %zu) → Handler 0x%x\n", 
+                    num - IRQ_BASE, num, handler);
     if (num < NO_INTERRUPT_HANDLERS)
         g_interrupt_handlers[num] = handler;
 }
@@ -54,6 +54,8 @@ void isr_end_interrupt(size_t num)
 void isr_irq_handler(REGISTERS *reg) {
     uint8_t irq = reg->int_no - 32;
     
+    serial_printf("IRQ %d triggered\n", irq);
+
     // Handle spurious IRQs first
     if ((irq == 7 && !pic8259_is_spurious(7)) ||
         (irq == 15 && !pic8259_is_spurious(15))) {
@@ -66,7 +68,7 @@ void isr_irq_handler(REGISTERS *reg) {
     }
     
     // Send EOI even for spurious IRQs
-    pic8259_eoi(irq);
+    pic8259_eoi(irq); 
 }
 static void print_registers(REGISTERS *reg)
 {

@@ -9,7 +9,7 @@ uint8_t inportb(uint16_t port)
 
 void outportb(uint16_t port, uint8_t val)
 {
-    __asm__ volatile("outb %1, %0" ::"dN"(port), "a"(val));
+    __asm__ volatile("outb %0, %1" : : "a"(val), "d"(port)); // Use "d" constraint for DX
 }
 
 uint16_t inportw(uint16_t port)
@@ -38,9 +38,9 @@ void outports(uint16_t port, uint16_t data)
 
 uint32_t inportl(uint16_t port)
 {
-    uint32_t rv;
-    __asm__ volatile("inl %%dx, %%eax" : "=a"(rv) : "dN"(port));
-    return rv;
+    uint32_t ret;
+    __asm__ volatile("inl %1, %0" : "=a"(ret) : "Nd"(port));
+    return ret;
 }
 
 void outportl(uint16_t port, uint32_t data)

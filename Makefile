@@ -52,7 +52,7 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o $(ASM_OBJ)/load_tss.o \
 		$(OBJ)/serial.o $(OBJ)/printf.o \
 		$(OBJ)/tss.o $(OBJ)/liballoc.o $(OBJ)/liballoc_hook.o \
 		$(OBJ)/pci.o $(OBJ)/ide.o $(OBJ)/fat.o $(OBJ)/font.o \
-		$(OBJ)/rtl8139.o $(OBJ)/arp.o $(OBJ)/eth.o $(OBJ)/network.o \
+		$(OBJ)/rtl8139.o $(OBJ)/arp.o $(OBJ)/eth.o $(OBJ)/network.o $(OBJ)/ipv4.o $(OBJ)/icmp.o \
 		$(OBJ)/kernel.o
 
 .PHONY: all	
@@ -257,6 +257,16 @@ $(OBJ)/arp.o : $(SRC)/drivers/net/arp.c
 $(OBJ)/network.o : $(SRC)/drivers/net/network.c
 	@printf "[ $(SRC)/drivers/net/network.c ]\n"
 	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/net/network.c -o $(OBJ)/network.o
+	@printf "\n"
+
+$(OBJ)/ipv4.o : $(SRC)/drivers/net/ipv4.c
+	@printf "[ $(SRC)/drivers/net/ipv4.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/net/ipv4.c -o $(OBJ)/ipv4.o
+	@printf "\n"
+
+$(OBJ)/icmp.o : $(SRC)/drivers/net/icmp.c
+	@printf "[ $(SRC)/drivers/net/icmp.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/net/icmp.c -o $(OBJ)/icmp.o
 	@printf "\n"
 
 qemu:
