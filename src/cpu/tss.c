@@ -1,19 +1,39 @@
 #include "tss.h"
 #include "gdt.h"
-#include <stdarg.h>
+#include "string.h"
+#include "serial.h"
+
+// Aligned TSS instance with kernel stack
+__attribute__((aligned(4096))) static TSS tss;
 
 void tss_init()
 {
-    // Get virtual address for TSS
-    uint32_t tss_base = KERNEL_VMEM_START + ((uint32_t)&tss);
-    
-    // Set up TSS descriptor in GDT
-    gdt_set_entry(5, tss_base, sizeof(TSS), 0x89, 0x40);
-    
-    // Load TSS
-    tss.ss0 = 0x10;  // Kernel data segment
-    tss.esp0 = KERNEL_VMEM_START + KERNEL_STACK_SIZE; // Virtual stack address
-    
-    // Load TSS selector
-    asm volatile("ltr %%ax" : : "a"(0x28));  // 0x28 = 5th GDT entry
+    // Initialize TSS structure
+    memset(&tss, 0, sizeof(TSS));
+    tss.ss0 = 0x10; // Kernel data segment
+    tss.esp0 = 0xC0000000 + 0x9000; // Example virtual stack address
+
+    // Add TSS descriptor to GDT at index 5
+    uint32_t base = (uint32_t)&tss;
+    uint32_t limit = sizeof(TSS) - 1;
+
+    // Flags:
+    // - Present = 1 (0x80)
+    // - DPL = 0 (0x00)
+    // - Type = 32-bit Available TSS (0x9)
+    gdt_set_entry(5, base, limit, 0x89, 0x00);
+
+
+    uint8_t *iomap = (uint8_t*)&tss + tss.iomap_base;
+    iomap[0x3F8 / 8] &= ~(1 << (0x3F8 % 8)); 
+
+    // Load TSS into task register (0x28 = 5th entry * 8)
+    __asm__ volatile("ltr %%ax" : : "a"(0x28));
+    serial_printf("TSS initialized at 0x%x\n", base);
+}
+
+void tss_set_stack(uint32_t esp0)
+{
+    tss.esp0 = esp0;
+    serial_printf("TSS kernel stack updated to 0x%x\n", esp0);
 }

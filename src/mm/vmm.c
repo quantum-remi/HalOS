@@ -452,3 +452,41 @@ void dma_free(void *addr, size_t size)
 
     vmm_free_contiguous(addr, pages);
 }
+
+bool vmm_map_userspace(uint32_t virt_addr, uint32_t phys_addr, uint32_t flags) {
+    // Validate userspace address
+    if(virt_addr < USER_SPACE_START || virt_addr >= KERNEL_VMEM_START) {
+        serial_printf("VMM: Invalid userspace address 0x%x\n", virt_addr);
+        return false;
+    }
+
+    // Ensure we have PRESENT flag
+    flags |= PAGE_PRESENT;
+    
+    // Set user-accessible flag
+    flags |= PAGE_USER;
+
+    return paging_map_page(phys_addr, virt_addr, flags) == 1;
+}
+
+void* vmm_alloc_userspace_pages(size_t pages) {
+    uint32_t virt_addr = USER_SPACE_END - pages * PAGE_SIZE;
+    void* phys = pmm_alloc_blocks(pages);
+    if(!phys) return NULL;
+
+    for(int i = 0; i < pages; i++) {
+        if (!paging_map_page(
+            (uint32_t)phys + i * PAGE_SIZE,
+            virt_addr + i * PAGE_SIZE,
+            PAGE_PRESENT | PAGE_WRITABLE | PAGE_USER
+        )) {
+            // Cleanup if mapping fails
+            for (int j = 0; j < i; j++) {
+                paging_unmap_page(virt_addr + j * PAGE_SIZE);
+            }
+            pmm_free_blocks(phys, pages);
+            return NULL;
+        }
+    }
+    return (void*)virt_addr;
+}

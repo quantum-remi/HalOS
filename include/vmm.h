@@ -3,8 +3,12 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 #define KERNEL_VMEM_START 0xC0000000
+#define USER_SPACE_START  0x00000000
+#define USER_SPACE_END    0xBFFFFFFF
+
 extern uint32_t vmm_max_pages; 
 
 // Initialize the Virtual Memory Manager and enable paging support.
@@ -27,5 +31,9 @@ void vmm_free_contiguous(void* addr, size_t pages);
 void* dma_alloc(size_t size);
 
 void dma_free(void* addr, size_t size);
+
+bool vmm_map_userspace(uint32_t virt_addr, uint32_t phys_addr, uint32_t flags);
+
+void* vmm_alloc_userspace_pages(size_t pages);
 
 #endif

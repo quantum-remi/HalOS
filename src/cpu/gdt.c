@@ -22,18 +22,26 @@ void gdt_set_entry(int index, uint32_t base, uint32_t limit, uint8_t access, uin
 }
 
 // initialize GDT
-void gdt_init()
-{
+void gdt_init() {
     g_gdt_ptr.limit = sizeof(g_gdt) - 1;
     g_gdt_ptr.base_address = (uintptr_t)g_gdt;
 
+    // Null descriptor
     gdt_set_entry(0, 0, 0, 0, 0);
+    
+    // Kernel code (0x08)
     gdt_set_entry(1, 0, 0xFFFFFFFF, 0x9A, 0xCF);
+    
+    // Kernel data (0x10)
     gdt_set_entry(2, 0, 0xFFFFFFFF, 0x92, 0xCF);
+    
+    // User code (0x18 | RPL3 = 0x1B)
     gdt_set_entry(3, 0, 0xFFFFFFFF, 0xFA, 0xCF);
+    
+    // User data (0x20 | RPL3 = 0x23)
     gdt_set_entry(4, 0, 0xFFFFFFFF, 0xF2, 0xCF);
-    // Added new GDT entry at index 5 for paging (code segment)
-    gdt_set_entry(5, 0, 0xFFFFFFFF, 0x9A, 0xCF);
-
+    
+    // TSS descriptor will be initialized later (index 5)
+    
     load_gdt((uint32_t)&g_gdt_ptr);
 }

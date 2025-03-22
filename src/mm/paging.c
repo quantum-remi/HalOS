@@ -86,26 +86,25 @@ void paging_enable(uint32_t page_directory_addr)
     serial_printf("Paging: Enabled successfully\n");
 }
 
-void paging_map_page(uint32_t phys_addr, uint32_t virt_addr, uint32_t flags)
-{
+bool paging_map_page(uint32_t phys_addr, uint32_t virt_addr, uint32_t flags) {
     uint32_t pd_index = virt_addr >> 22;
     uint32_t pt_index = (virt_addr >> 12) & 0x3FF;
 
-    // Check if page table exists
-    if (!(page_directory[pd_index] & PAGE_PRESENT))
-    {
-        // Create new page table
+    if (!(page_directory[pd_index] & PAGE_PRESENT)) {
         uint32_t *new_table = pmm_alloc_block();
-        if (!new_table)
-            return;
         memset(new_table, 0, PAGE_SIZE);
-        page_directory[pd_index] = ((uint32_t)new_table) | PAGE_PRESENT | PAGE_WRITABLE;
+        
+        // Set PDE flags for userspace
+        uint32_t pde_flags = PAGE_PRESENT | PAGE_WRITABLE;
+        if (virt_addr < KERNEL_VMEM_START) {
+            pde_flags |= PAGE_USER; // <-- Critical for user access
+        }
+        page_directory[pd_index] = (uint32_t)new_table | pde_flags;
     }
 
-    // Get page table
-    uint32_t *page_table = (uint32_t *)(page_directory[pd_index] & ~0xFFF);
-    // Map the page
-    page_table[pt_index] = (phys_addr & ~0xFFF) | flags | ((flags & PAGE_UNCACHED) ? (1 << 4) : 0);
+    uint32_t *page_table = (uint32_t*)(page_directory[pd_index] & ~0xFFF);
+    page_table[pt_index] = (phys_addr & ~0xFFF) | flags | PAGE_PRESENT;
+    return true;
 }
 
 void paging_unmap_page(uint32_t virt_addr)

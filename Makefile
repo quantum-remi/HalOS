@@ -40,7 +40,7 @@ TARGET_ISO=$(OUT)/os.iso
 ISO_DIR=$(OUT)/isodir
 
 OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o $(ASM_OBJ)/load_tss.o \
-		$(ASM_OBJ)/load_idt.o $(ASM_OBJ)/exception.o $(ASM_OBJ)/irq.o $(ASM_OBJ)/bios32_call.o\
+		$(ASM_OBJ)/load_idt.o $(ASM_OBJ)/exception.o $(ASM_OBJ)/irq.o $(ASM_OBJ)/bios32_call.o $(ASM_OBJ)/tasks.o \
 		$(OBJ)/io.o \
 		$(OBJ)/string.o $(OBJ)/console.o\
 		$(OBJ)/gdt.o $(OBJ)/idt.o $(OBJ)/isr.o $(OBJ)/8259_pic.o\
@@ -53,7 +53,7 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o $(ASM_OBJ)/load_tss.o \
 		$(OBJ)/tss.o $(OBJ)/liballoc.o $(OBJ)/liballoc_hook.o \
 		$(OBJ)/pci.o $(OBJ)/ide.o $(OBJ)/fat.o $(OBJ)/font.o \
 		$(OBJ)/rtl8139.o $(OBJ)/arp.o $(OBJ)/eth.o $(OBJ)/network.o $(OBJ)/ipv4.o $(OBJ)/icmp.o \
-		$(OBJ)/math.o \
+		$(OBJ)/math.o $(OBJ)/elf.o \
 		$(OBJ)/kernel.o
 
 .PHONY: all	
@@ -109,6 +109,11 @@ $(ASM_OBJ)/irq.o : $(ASM_SRC)/irq.asm
 $(ASM_OBJ)/bios32_call.o : $(ASM_SRC)/bios32_call.asm
 	@printf "[ $(ASM_SRC)/bios32_call.asm ]\n"
 	$(ASM) $(ASM_FLAGS) $(ASM_SRC)/bios32_call.asm -o $(ASM_OBJ)/bios32_call.o
+	@printf "\n"
+
+$(ASM_OBJ)/tasks.o : $(ASM_SRC)/tasks.asm
+	@printf "[ $(ASM_SRC)/tasks.asm ]\n"
+	$(ASM) $(ASM_FLAGS) $(ASM_SRC)/tasks.asm -o $(ASM_OBJ)/tasks.o
 	@printf "\n"
 
 $(OBJ)/io.o : $(SRC)/libs/io.c
@@ -200,6 +205,11 @@ $(OBJ)/shell.o : $(SRC)/shell/shell.c
 	$(CC) $(CC_FLAGS) -c $(SRC)/shell/shell.c -o $(OBJ)/shell.o
 	@printf "\n"
 
+$(OBJ)/elf.o : $(SRC)/shell/elf.c
+	@printf "[ $(SRC)/shell/elf.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/shell/elf.c -o $(OBJ)/elf.o
+	@printf "\n"
+
 $(OBJ)/serial.o : $(SRC)/drivers/serial.c
 	@printf "[ $(SRC)/drivers/serial.c ]\n"
 	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/serial.c -o $(OBJ)/serial.o
@@ -215,9 +225,9 @@ $(OBJ)/math.o : $(SRC)/libs/math.c
 	$(CC) $(CC_FLAGS) -c $(SRC)/libs/math.c -o $(OBJ)/math.o
 	@printf "\n"
 
-$(OBJ)/tss.o : $(SRC)/mm/tss.c
-	@printf "[ $(SRC)/mm/tss.c ]\n"
-	$(CC) $(CC_FLAGS) -c $(SRC)/mm/tss.c -o $(OBJ)/tss.o
+$(OBJ)/tss.o : $(SRC)/cpu/tss.c
+	@printf "[ $(SRC)/cpu/tss.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/cpu/tss.c -o $(OBJ)/tss.o
 	@printf "\n"
 
 $(OBJ)/liballoc.o : $(SRC)/mm/liballoc.c

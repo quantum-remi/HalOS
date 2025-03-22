@@ -10,7 +10,6 @@
 #include "snake.h"
 #include "vesa.h"
 #include "keyboard.h"
-#include "tss.h"
 #include "liballoc.h"
 #include "pmm.h"
 #include "pci.h"
@@ -18,6 +17,8 @@
 #include "fat.h"
 #include "arp.h"
 #include "math.h"
+#include "elf.h"
+#include "tasks.h"
 
 #define BRAND_QEMU 1
 #define BRAND_VBOX 2
@@ -29,7 +30,7 @@ extern uint32_t g_height;
 
 extern IDE_DEVICE g_ide_devices[MAXIMUM_IDE_DEVICES];
 
-static FAT32_Volume fat_volume;
+FAT32_Volume fat_volume;
 static FAT32_File fat_root;
 
 static char current_path[256] = "/";
@@ -588,6 +589,7 @@ void shell()
             console_printf("|   * clear - Clear the console screen        |\n");
             console_printf("|   * cpuid - Display CPU information         |\n");
             console_printf("|   * echo - Echo a message to the console    |\n");
+            console_printf("|   * elf - Execute ELF file                  |\n");
             console_printf("|   * haiku - Display a haiku                 |\n");
             console_printf("|   * help - Display this help message        |\n");
             console_printf("|   * hwinfo - Display hardware information   |\n");
@@ -600,18 +602,31 @@ void shell()
             console_printf("|   * shutdown - Shut down the system         |\n");
             console_printf("|   * snake - Play a game of Snake            |\n");
             console_printf("|   * timer - Display system timer            |\n");
-            console_printf("|   * tss - Display TSS information           |\n");
             console_printf("|   * vesa - Display VESA graphics            |\n");
             console_printf("|   * version - Display Hal OS version        |\n");
             console_printf("===============================================\n");
         }
         else if (strcmp(buffer, "help /f") == 0)
         {
-            console_printf("arp, cd, clear, cpuid, echo, haiku, help, hwinfo, ls, lspci, malloc, memory, shutdown, snake, timer, tss, vesa, version\n");
+            console_printf("arp, cd, clear, cpuid, echo, elf, haiku, help, hwinfo, ls, lspci, malloc, memory, shutdown, snake, timer, vesa, version\n");
         }
         else if (strncmp(buffer, "cd ", 3) == 0)
         {
             cd(buffer + 3);
+        }
+        else if (strncmp(buffer, "elf ", 4) == 0) {
+            char *filename = buffer + 4;
+            uint32_t entry, stack;
+            
+            if(elf_load(filename, &entry, &stack) == 0) {
+                console_printf("Launching %s at 0x%x\n", filename, entry);
+                switch_to_userspace(entry, stack);  // Should be called AFTER successful load
+                
+                // If we return here, the switch failed
+                serial_printf("Failed to switch to userspace\n");
+            } else {
+                console_printf("Failed to load ELF\n");
+            }
         }
         else if (strcmp(buffer, "echo") == 0)
         {
@@ -656,10 +671,6 @@ void shell()
         else if (strcmp(buffer, "snake") == 0)
         {
             snake_game();
-        }
-        else if (strcmp(buffer, "tss") == 0)
-        {
-            tss_print();
         }
         else if (strcmp(buffer, "vesa") == 0)
         {
