@@ -7,6 +7,8 @@
 #define PMM_BLOCK_SIZE 4096   // 4KB blocks
 #define PMM_BLOCKS_PER_BYTE 8 // 8 blocks per byte (1 bit per block)
 
+extern uint32_t pmm_used_blocks;
+
 uint32_t pmm_get_total_memory();
 
 void pmm_init(size_t mem_size, uint8_t *bitmap); // changed type from uint32_t* to uint8_t*

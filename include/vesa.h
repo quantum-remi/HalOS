@@ -9,6 +9,7 @@ uint32_t vbe_rgb(uint8_t red, uint8_t green, uint8_t blue);
 static inline uint32_t *pixel_address(int x, int y);
 void vbe_putpixel(int x, int y, int color);
 uint32_t vbe_getpixel(int x, int y);
+void vesa_swap_buffers();
 
 #define VBE_RGB(r, g, b) vbe_rgb(r, g, b)
 

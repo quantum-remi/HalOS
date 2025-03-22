@@ -30,6 +30,7 @@ extern uint32_t g_width;
 extern uint32_t g_height;
 extern uint32_t g_pitch;
 extern uint32_t *g_vbe_buffer;
+extern uint32_t *g_back_buffer; // Added declaration for back buffer
 
 // font data
 extern char _binary___config_ter_powerline_v20b_psf_start;
@@ -77,40 +78,40 @@ void draw_char(int x, int y, char c)
                 int font_x = byte * 8 + bit;
                 if (font_x >= console.font->width)
                     break;
-
                 uint32_t color = (font_byte & (0x80 >> bit)) ? console.fg : console.bg;
                 vbe_putpixel(screen_x + font_x, screen_y + font_y, color);
             }
         }
     }
+    // Removed: vesa_swap_buffers(); to avoid costly per-character buffer swapping
 }
 
 void console_clear(void)
 {
+    // Clear back buffer instead of front buffer
     for (uint32_t y = 0; y < g_height; y++)
     {
         for (uint32_t x = 0; x < g_width; x++)
         {
-            vbe_putpixel(x, y, console.bg);
+            vbe_putpixel(x, y, console.bg); // Uses back buffer now
         }
     }
     memset(console.buffer, 0, console.rows * console.cols);
     console.cursor_x = console.cursor_y = 0;
+    vesa_swap_buffers(); // Added to update the screen after clearing
 }
 
 void console_scroll(int lines)
 {
-    // Scroll using memmove with pitch-aware access
     const uint32_t scroll_pixels = lines * console.font->height;
     const uint32_t pitch_pixels = g_pitch / sizeof(uint32_t);
-    const size_t scroll_bytes = scroll_pixels * pitch_pixels * sizeof(uint32_t);
 
-    // Scroll framebuffer
-    memmove(g_vbe_buffer,
-            g_vbe_buffer + scroll_pixels * pitch_pixels,
+    // Scroll the back buffer (instead of front buffer)
+    memmove(g_back_buffer,
+            g_back_buffer + scroll_pixels * pitch_pixels,
             (g_height - scroll_pixels) * pitch_pixels * sizeof(uint32_t));
 
-    // Clear scrolled area using putpixel
+    // Clear scrolled area in the back buffer
     for (uint32_t y = g_height - scroll_pixels; y < g_height; y++)
     {
         for (uint32_t x = 0; x < g_width; x++)
@@ -118,6 +119,7 @@ void console_scroll(int lines)
             vbe_putpixel(x, y, console.bg);
         }
     }
+    vesa_swap_buffers(); // Update the screen after scrolling
 }
 
 void console_putchar(char c)
@@ -163,6 +165,7 @@ void console_ungetchar(void)
             }
         }
     }
+    vesa_swap_buffers(); // Update the screen after ungetting a character
 }
 
 void console_ungetchar_bound(uint8_t n)
@@ -189,42 +192,45 @@ void console_putstr(const char *str)
         console_putchar(*str++);
     }
 }
-
 void console_refresh(void)
 {
-    uint32_t screen_x = console.cursor_x * console.font->width;
-    uint32_t screen_y = console.cursor_y * console.font->height;
-    char c = console.buffer[console.cursor_y * console.cols + console.cursor_x];
-    bool needs_redraw = false;
-    int bytes_per_row = (console.font->width + 7) / 8;
-    const unsigned char *glyph = (const unsigned char *)console.font + console.font->headersize + (unsigned char)c * console.font->bytesperglyph;
-
-    for (int fy = 0; fy < console.font->height; fy++)
-    {
-        for (int byte = 0; byte < bytes_per_row; byte++)
-        {
-            unsigned char font_byte = glyph[fy * bytes_per_row + byte];
-            for (int bit = 0; bit < 8; bit++)
-            {
-                int fx_pixel = byte * 8 + bit;
-                if (fx_pixel >= console.font->width)
-                    break;
-
-                uint32_t expected = (font_byte & (0x80 >> bit)) ? console.fg : console.bg;
-                uint32_t actual = vbe_getpixel(screen_x + fx_pixel, screen_y + fy);
-                if (actual != expected)
-                {
-                    needs_redraw = true;
-                    break;
-                }
-            }
-            if (needs_redraw)
-                break;
-        }
-        if (needs_redraw)
-            break;
-    }
+    vesa_swap_buffers(); // Swap buffers to update the screen
 }
+// void console_refresh(void)
+// {
+//     uint32_t screen_x = console.cursor_x * console.font->width;
+//     uint32_t screen_y = console.cursor_y * console.font->height;
+//     char c = console.buffer[console.cursor_y * console.cols + console.cursor_x];
+//     bool needs_redraw = false;
+//     int bytes_per_row = (console.font->width + 7) / 8;
+//     const unsigned char *glyph = (const unsigned char *)console.font + console.font->headersize + (unsigned char)c * console.font->bytesperglyph;
+
+//     for (int fy = 0; fy < console.font->height; fy++)
+//     {
+//         for (int byte = 0; byte < bytes_per_row; byte++)
+//         {
+//             unsigned char font_byte = glyph[fy * bytes_per_row + byte];
+//             for (int bit = 0; bit < 8; bit++)
+//             {
+//                 int fx_pixel = byte * 8 + bit;
+//                 if (fx_pixel >= console.font->width)
+//                     break;
+
+//                 uint32_t expected = (font_byte & (0x80 >> bit)) ? console.fg : console.bg;
+//                 uint32_t actual = vbe_getpixel(screen_x + fx_pixel, screen_y + fy);
+//                 if (actual != expected)
+//                 {
+//                     needs_redraw = true;
+//                     break;
+//                 }
+//             }
+//             if (needs_redraw)
+//                 break;
+//         }
+//         if (needs_redraw)
+//             break;
+//     }
+// }
 
 void getstr(char *buffer, uint32_t max_size)
 {
@@ -243,6 +249,7 @@ void getstr(char *buffer, uint32_t max_size)
         else if (c == '\n')
         {
             console_putchar('\n');
+            vesa_swap_buffers();
             buffer[i] = '\0';
             return;
         }
@@ -250,12 +257,16 @@ void getstr(char *buffer, uint32_t max_size)
         { // Printable ASCII only
             buffer[i++] = c;
             console_putchar(c);
+            vesa_swap_buffers();
+
         }
 
         // Prevent overflow
         if (console.cursor_x >= console.cols)
         {
             console_putchar('\n');
+            vesa_swap_buffers();
+
         }
     }
     buffer[i] = '\0';
@@ -267,6 +278,9 @@ void getstr_bound(char *buffer, uint8_t bound)
         return;
     uint8_t idx = 0;
 
+    // Draw initial state
+    vesa_swap_buffers();
+
     while (idx < bound - 1)
     {
         char c = kb_getchar();
@@ -275,6 +289,7 @@ void getstr_bound(char *buffer, uint8_t bound)
         {
             console_putchar('\n');
             buffer[idx] = 0;
+            vesa_swap_buffers(); // Update screen on enter
             return;
         }
 
@@ -283,6 +298,7 @@ void getstr_bound(char *buffer, uint8_t bound)
             idx--;
             buffer[idx] = 0;
             console_ungetchar();
+            vesa_swap_buffers(); // Update screen after backspace
             continue;
         }
 
@@ -290,14 +306,17 @@ void getstr_bound(char *buffer, uint8_t bound)
         { // Printable ASCII only
             buffer[idx++] = c;
             console_putchar(c);
+            vesa_swap_buffers(); // Update screen after each character
         }
 
         if (console.cursor_x >= console.cols)
         {
             console_putchar('\n');
+            vesa_swap_buffers(); // Update screen after newline
         }
     }
     buffer[idx] = 0;
+    vesa_swap_buffers(); // Final screen update
 }
 
 static void format_number(char *buf, unsigned int val, int base,
@@ -415,4 +434,5 @@ void console_printf(const char *format, ...)
     va_start(args, format);
     console_vprintf(format, args);
     va_end(args);
+    vesa_swap_buffers();
 }

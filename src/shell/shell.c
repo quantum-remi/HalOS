@@ -27,6 +27,7 @@ KERNEL_MEMORY_MAP g_kmap;
 extern uint32_t g_width;
 extern uint32_t g_height;
 
+
 extern IDE_DEVICE g_ide_devices[MAXIMUM_IDE_DEVICES];
 
 typedef struct
@@ -107,6 +108,8 @@ void memory()
 
     console_printf("total_memory: %d MB, %d Bytes\n", g_kmap.system.total_memory / 1024, g_kmap.available.size);
     console_printf("kernel: %d MB, %d Bytes\n", g_kmap.kernel.k_len / 1024, g_kmap.kernel.k_len);
+    console_printf("Used: %d MB, %d Bytes\n", pmm_used_blocks * PMM_BLOCK_SIZE / 1024 / 1024, pmm_used_blocks * PMM_BLOCK_SIZE);
+    console_printf("Free: %d MB, %d Bytes\n", (g_kmap.available.size - pmm_used_blocks * PMM_BLOCK_SIZE) / 1024 / 1024, g_kmap.available.size - pmm_used_blocks * PMM_BLOCK_SIZE);
 }
 
 void ftoa(char *buf, float f)
@@ -230,6 +233,8 @@ static void test_vesa()
             }
         }
 
+        // Swap buffers so that the frame becomes visible
+        vesa_swap_buffers();
         usleep(20000); // Add a small delay
     }
 
@@ -492,36 +497,33 @@ void hwinfo()
 }
 void fireworks()
 {
-    Particle particles[1000];  // Increased particle count
+    Particle particles[1000];
     int active = 0;
 
     while (!kbhit())
     {
-        // Launch new firework
-        if (active < 900 && (rand() % 10 == 0))  // Random timing for launches
+        if (active < 900 && (rand() % 10 == 0))
         {
             int base_x = rand() % g_width;
             int base_y = g_height;
             uint32_t color = (rand() % 255 << 16) | (rand() % 255 << 8) | rand() % 255;
             
-            // Create explosion pattern
-            for (int i = 0; i < 100; i++)  // More particles per explosion
+            for (int i = 0; i < 100; i++)
             {
                 float angle = (float)i * 3.14159 * 2 / 50;
-                float speed = (rand() % 1000) / 100.0f + 3;  // Varied speeds
+                float speed = (rand() % 1000) / 100.0f + 3;
                 
                 particles[active] = (Particle){
                     base_x, base_y,
                     (int)(cos(angle) * speed),
-                    (int)(sin(angle) * speed) - 10,  // Initial upward velocity
+                    (int)(sin(angle) * speed) - 10,
                     color,
-                    70 + (rand() % 30)  // Varied lifetimes
+                    70 + (rand() % 30)
                 };
                 active++;
             }
         }
 
-        // Clear previous frame
         for (int i = 0; i < active; i++)
         {
             if (particles[i].x >= 0 && particles[i].x < g_width &&
@@ -531,18 +533,16 @@ void fireworks()
             }
         }
 
-        // Update and draw particles
         for (int i = 0; i < active; i++)
         {
             particles[i].x += particles[i].dx;
             particles[i].y += particles[i].dy;
-            particles[i].dy += 0.2;  // Reduced gravity for more floating effect
+            particles[i].dy += 0.2;
             particles[i].lifetime--;
 
-            // Fade out color
-            uint32_t r = ((particles[i].color >> 16) & 0xFF) * particles[i].lifetime / 100;
-            uint32_t g = ((particles[i].color >> 8) & 0xFF) * particles[i].lifetime / 100;
-            uint32_t b = (particles[i].color & 0xFF) * particles[i].lifetime / 100;
+            uint32_t r = ((particles[i].color >> 16) & 0xFF) * particles[i].lifetime / 50;
+            uint32_t g = ((particles[i].color >> 8) & 0xFF) * particles[i].lifetime / 50;
+            uint32_t b = (particles[i].color & 0xFF) * particles[i].lifetime / 50;
             uint32_t fade_color = (r << 16) | (g << 8) | b;
 
             if (particles[i].x >= 0 && particles[i].x < g_width &&
@@ -558,7 +558,8 @@ void fireworks()
                 i--;
             }
         }
-        usleep(20000);  // Faster animation
+        usleep(20000);
+        vesa_swap_buffers();
     }
     console_clear();
 }
@@ -566,7 +567,7 @@ void fireworks()
 void ls()
 {
     FAT32_Volume volume;
-    fat32_init_volume(&volume); // Initialize the volume
+    fat32_init_volume(&volume);
 
     FAT32_File root;
     // Find the root directory ("/")
@@ -638,7 +639,7 @@ void shell()
 
     console_clear();
     // console_printf("DEBUG: Console initialized\n");  // Check if this appears
-    console_printf("Hal OS v0.12.1\n");
+    console_printf("Hal OS v0.13.0\n");
     console_printf("Type 'help' for a list of commands\n");
     char buffer[255];
     const char *shell = "kernel> ";
@@ -646,6 +647,7 @@ void shell()
     while (1)
     {
         console_printf(shell);
+        console_refresh();
         memset(buffer, 0, sizeof(buffer));
         getstr(buffer, sizeof(buffer));
         if (strlen(buffer) == 0)
@@ -743,7 +745,7 @@ void shell()
         else if (strcmp(buffer, "version") == 0)
         {
             console_printf("--------------------------------------------------------------\n");
-            console_printf("Hal OS v0.12.1\n");
+            console_printf("Hal OS v0.13.0\n");
             console_printf("Built on: %s %s\n", __DATE__, __TIME__);
             console_printf("Built with: GCC %s\n", __VERSION__);
             console_printf("--------------------------------------------------------------\n");

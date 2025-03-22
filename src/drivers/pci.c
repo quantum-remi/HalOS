@@ -268,8 +268,8 @@ void pci_print_devices()
                     console_printf("PCI Device: %x:%x:%x, Class: %x, Subclass: %x (%s)\n",
                                    dev.bus, dev.device, dev.function, class_code, subclass_code,
                                    get_subclass_name(class_code, subclass_code));
-                    console_printf("Vendor: %x, Device: %x\n",
-                                   pci_read(dev, PCI_VENDOR_ID), pci_read(dev, PCI_DEVICE_ID));
+                    // console_printf("Vendor: %x, Device: %x\n",
+                    //                pci_read(dev, PCI_VENDOR_ID), pci_read(dev, PCI_DEVICE_ID));
                 }
             }
         }

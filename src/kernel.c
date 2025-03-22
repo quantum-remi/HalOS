@@ -132,8 +132,6 @@ void kmain(unsigned long magic, unsigned long addr)
     // Fixed bitmap size for up to 4GB of memory (4GB / 4KB / 8 = 128KB)
     #define PMM_BITMAP_SIZE (128 * 1024)  // 128KB bitmap can handle 4GB
     static uint8_t pmm_bitmap[PMM_BITMAP_SIZE] __attribute__((aligned(4096)));
-    
-    serial_printf("PMM: Bitmap size: %d bytes at 0x%x\n", PMM_BITMAP_SIZE, (uint32_t)pmm_bitmap);
     pmm_init(total_memory_bytes, pmm_bitmap);
 
     // Initialize virtual memory manager for paging support
@@ -148,7 +146,7 @@ void kmain(unsigned long magic, unsigned long addr)
     uint32_t fb_size = height * pitch;
     uint32_t fb_pages = (fb_size + PAGE_SIZE - 1) / PAGE_SIZE;
     uint32_t fb_phys = (uint32_t)framebuffer;
-    uint32_t fb_virt = KERNEL_VMEM_START + 0x1000000; // Map 16MB after kernel start
+    uint32_t fb_virt = KERNEL_VMEM_START + 0x2000000; // Map 16MB after kernel start
 
     // Map each page of the framebuffer
     for (uint32_t i = 0; i < fb_pages; i++) {

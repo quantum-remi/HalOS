@@ -190,7 +190,7 @@ void *vmm_alloc_page()
         serial_printf("VMM: No free virtual pages available\n");
         return 0;
     }
-    mark_page(page_index, true); // <-- Replaced set_page_used(page_index)
+    mark_page(page_index, true);
     uint32_t virt_addr = KERNEL_VMEM_START + page_index * PAGE_SIZE;
 
     // Allocate a physical page for mapping
@@ -198,7 +198,7 @@ void *vmm_alloc_page()
     if (!phys_addr)
     {
         serial_printf("VMM: Failed to allocate physical page\n");
-        mark_page(page_index, false); // <-- Replaced set_page_free(page_index)
+        mark_page(page_index, false);
         return 0;
     }
 

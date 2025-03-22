@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 static uint32_t pmm_memory_size = 0;
-static uint32_t pmm_used_blocks = 0;
+uint32_t pmm_used_blocks = 0;
 static uint32_t pmm_max_blocks = 0;
 static uint8_t *pmm_memory_map = 0; // changed type from uint32_t* to uint8_t*
 
