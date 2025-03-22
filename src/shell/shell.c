@@ -29,6 +29,11 @@ extern uint32_t g_height;
 
 extern IDE_DEVICE g_ide_devices[MAXIMUM_IDE_DEVICES];
 
+static FAT32_Volume fat_volume;
+static FAT32_File fat_root;
+
+static char current_path[256] = "/";
+
 typedef struct
 {
     int x, y;
@@ -305,185 +310,6 @@ int test_memory_allocation()
     return 0;
 }
 
-// void drive_read(int drive, uint32_t num_sectors, uint32_t lba, char *buffer)
-// {
-//     ide_read_sectors(drive, num_sectors, lba, (uint32_t)buffer);
-//     console_printf("Reading %u sectors from drive %d at LBA %u\n", num_sectors, drive, lba);
-// }
-
-// void drive_write(int drive, uint32_t num_sectors, uint32_t lba, char *buffer)
-// {
-//     ide_write_sectors(drive, num_sectors, lba, (uint32_t)buffer);
-//     console_printf("Writing %u sectors to drive %d at LBA %u from buffer %s\n", num_sectors, drive, lba, buffer);
-// }
-// void drive_list()
-// {
-//     console_printf("List of Drives:\n");
-//     for (int i = 0; i < MAXIMUM_IDE_DEVICES; i++)
-//     {
-//         if (g_ide_devices[i].reserved)
-//         {
-//             console_printf("  %s\n", g_ide_devices[i].model);
-//         }
-//     }
-// }
-
-// void drive()
-// {
-//     char buffer[255];
-//     char buf[ATA_SECTOR_SIZE] = {0};
-//     int drive = -1;
-//     uint32_t lba = 0;
-//     uint8_t no_of_sectors = 1;
-
-//     console_printf("Drive Menu\n");
-//     console_printf("Type help for help\n");
-//     const char *shell = "drive> ";
-//     const char *read = "read> ";
-//     const char *write = "write> ";
-//     const char *select = "select> ";
-
-//     while (1)
-//     {
-//         console_printf(shell);
-//         memset(buffer, 0, sizeof(buffer));
-//         getstr(buffer, sizeof(buffer));
-//         if (strcmp(buffer, "exit") == 0)
-//             break;
-//         else if (strcmp(buffer, "help") == 0)
-//         {
-//             console_printf("=====================================\n");
-//             console_printf("|        Drive Menu Help Guide      |\n");
-//             console_printf("=====================================\n");
-//             console_printf("|  Commands:                        |\n");
-//             console_printf("|  * read   : Read from Drive       |\n");
-//             console_printf("|  * write  : Write to Drive        |\n");
-//             console_printf("|  * list   : List of Drives        |\n");
-//             console_printf("|  * select : Select a Drive        |\n");
-//             console_printf("|  * info   : Get Info of Drive     |\n");
-//             console_printf("|  * clear  : Clear Screen          |\n");
-//             console_printf("|  * exit   : Exit from Drive Menu  |\n");
-//             console_printf("=====================================\n");
-//         }
-//         else if (strcmp(buffer, "read") == 0)
-//         {
-//             if (drive == -1)
-//             {
-//                 console_printf("Please select a drive first\n");
-//                 continue;
-//             }
-//             while (1)
-//             {
-//                 console_printf(read);
-//                 memset(buf, 0, sizeof(buf));
-//                 getstr(buffer, sizeof(buffer)); // Get the read command input
-//                 if (strcmp(buffer, "exit") == 0)
-//                     break;
-
-//                 // Perform the read operation
-//                 drive_read(drive, no_of_sectors, lba, buf);
-
-//                 // Display the read contents
-//                 console_printf("Data read: %s\n", buf);
-//                 break;
-//             }
-//         }
-//         else if (strcmp(buffer, "write") == 0)
-//         {
-//             if (drive == -1)
-//             {
-//                 console_printf("Please select a drive first\n");
-//                 continue;
-//             }
-//             while (1)
-//             {
-//                 console_printf(write);
-//                 memset(buf, 0, sizeof(buf));
-//                 getstr(buf, sizeof(buf)); // Get the string input into buf
-//                 if (strcmp(buf, "exit") == 0)
-//                     break;
-
-//                 if (strlen(buf) > ATA_SECTOR_SIZE)
-//                 {
-//                     console_printf("Error: Input exceeds sector size (%d bytes)\n", ATA_SECTOR_SIZE);
-//                     continue;
-//                 }
-
-//                 // Write the contents of buf to the drive
-//                 drive_write(drive, no_of_sectors, lba, buf);
-//                 console_printf("Data written successfully: %s\n", buf);
-//                 break;
-//             }
-//         }
-//         else if (strcmp(buffer, "clear") == 0)
-//         {
-//             console_clear();
-//         }
-//         else if (strcmp(buffer, "list") == 0)
-//         {
-//             console_printf("List of Drives:\n");
-//             for (int i = 0; i < MAXIMUM_IDE_DEVICES; i++)
-//             {
-//                 if (g_ide_devices[i].reserved)
-//                 {
-//                     console_printf("  %s\n", g_ide_devices[i].model);
-//                 }
-//             }
-//             console_printf("List of all Drives:\n");
-//             for (int i = 0; i < 4; i++)
-//             {
-//                 if (g_ide_devices[i].reserved == 1)
-//                 {
-//                     console_printf("%d:-\n", i);
-//                     console_printf("  model: %s\n", g_ide_devices[i].model);
-//                     console_printf("  type: %s\n", (const char *[]){"ATA", "ATAPI"}[g_ide_devices[i].type]);
-//                     console_printf("  drive: %d, channel: %d\n", g_ide_devices[i].drive, g_ide_devices[i].channel);
-//                     console_printf("  base: 0x%x, control: 0x%x\n", g_ide_channels[i].base, g_ide_channels[i].control);
-//                     console_printf("  size: %d sectors, %d bytes\n", g_ide_devices[i].size, g_ide_devices[i].size * ATA_SECTOR_SIZE);
-//                     console_printf("  signature: 0x%x, features: %d\n", g_ide_devices[i].signature, g_ide_devices[i].features);
-//                 }
-//             }
-//         }
-//         else if (strcmp(buffer, "info") == 0)
-//         {
-//             if (drive == -1)
-//             {
-//                 console_printf("Please select a drive first\n");
-//                 continue;
-//             }
-//             console_printf("Drive %d:\n", drive);
-//             console_printf("  Model: %s\n", g_ide_devices[drive].model);
-//             console_printf("  Type: %s\n", g_ide_devices[drive].type ? "ATAPI" : "ATA");
-//             console_printf("  Size: %d bytes\n", g_ide_devices[drive].size);
-//         }
-//         else if (strcmp(buffer, "select") == 0)
-//         {
-//             console_printf(select);
-//             memset(buffer, 0, sizeof(buffer));
-//             getstr(buffer, sizeof(buffer));
-//             int selected_drive = atoi(buffer);
-//             if (selected_drive >= 0 && selected_drive < MAXIMUM_IDE_DEVICES && g_ide_devices[selected_drive].reserved)
-//             {
-//                 drive = selected_drive;
-//                 console_printf("Drive %d selected\n", drive);
-//             }
-//             else
-//             {
-//                 console_printf("Invalid drive selection\n");
-//             }
-//         }
-//         else
-//         {
-//             console_printf("Invalid command: %s\n", buffer);
-//         }
-//     }
-// }
-
-// void drive_test()
-// {
-//     console_printf("Drive Test:\n");
-// }
-
 void hwinfo()
 {
     console_printf("Hardware Information:\n");
@@ -491,8 +317,6 @@ void hwinfo()
     cpuid_info(1);
     console_printf("Memory: %d MB\n", g_kmap.system.total_memory / 1024);
     console_printf("Screen Resolution: %dx%d\n", g_width, g_height);
-    // console_printf("Drives:\n");
-    // drive_list();
 }
 void fireworks()
 {
@@ -562,39 +386,131 @@ void fireworks()
     console_clear();
 }
 
-void ls()
+static void resolve_path(const char *current, const char *path, char *resolved, size_t resolved_size)
 {
-    FAT32_Volume volume;
-    fat32_init_volume(&volume);
+    char combined[512];
+    combined[0] = '\0';
 
-    FAT32_File root;
-    // Find the root directory ("/")
-    if (fat32_find_file(&volume, "/", &root))
+    // Handle absolute vs relative paths
+    if (path[0] == '/')
     {
-        FAT32_DirList dir_list;
-        char name[256];
-        FAT32_File entry;
-
-        // Start directory listing
-        fat32_list_dir(&volume, &root, &dir_list);
-
-        // Iterate through directory entries
-        console_printf("Contents of root directory:\n");
-        while (fat32_next_dir_entry(&volume, &dir_list, &entry, name))
-        {
-            // Display entry type (file/directory) and name
-            console_printf(" [%s] %s (%d bytes)\n",
-                           (entry.attrib & FAT32_IS_DIR) ? "DIR" : "FILE",
-                           name,
-                           entry.size);
-        }
+        strncpy(combined, path, sizeof(combined));
     }
     else
     {
-        console_printf("Error: Could not find root directory\n");
+        // Manual concatenation without snprintf
+        strncpy(combined, current, sizeof(combined));
+        size_t current_len = strlen(current);
+
+        // Add slash only if needed
+        if (current_len > 0 && current[current_len - 1] != '/')
+        {
+            strncat(combined, "/", sizeof(combined) - strlen(combined) - 1);
+        }
+        strncat(combined, path, sizeof(combined) - strlen(combined) - 1);
+    }
+    combined[sizeof(combined) - 1] = '\0';
+
+    // Split into components
+    char *components[256];
+    int num_components = 0;
+    char *token = strtok(combined, "/");
+    while (token && num_components < 256)
+    {
+        if (strcmp(token, ".") == 0)
+        {
+            // Ignore
+        }
+        else if (strcmp(token, "..") == 0)
+        {
+            if (num_components > 0)
+                num_components--;
+        }
+        else
+        {
+            components[num_components++] = token;
+        }
+        token = strtok(NULL, "/");
     }
 
-    fat32_unmount_volume(&volume); // Cleanup
+    resolved[0] = '/';
+    size_t pos = 1;
+    for (int i = 0; i < num_components; i++)
+    {
+        // Convert component to uppercase
+        char upper[13];
+        for (int j = 0; j < strlen(components[i]) && j < 12; j++)
+        {
+            upper[j] = toupper(components[i][j]);
+        }
+        upper[strlen(components[i])] = '\0';
+
+        size_t len = strlen(upper);
+        if (pos + len + 1 > resolved_size)
+            break;
+        memcpy(resolved + pos, upper, len);
+        pos += len;
+        resolved[pos++] = '/';
+    }
+
+    if (pos > 1)
+        resolved[pos - 1] = '\0';
+    else
+        resolved[1] = '\0';
+
+    // console_printf("[FAT32] Resolved path: %s\n", resolved);
+}
+
+void cd(const char *path)
+{
+    if (!path || strlen(path) == 0)
+    {
+        console_printf("Error: No path specified\n");
+        return;
+    }
+
+    char resolved[256];
+    resolve_path(current_path, path, resolved, sizeof(resolved));
+
+    FAT32_File new_dir;
+    if (!fat32_find_file(&fat_volume, resolved, &new_dir))
+    {
+        console_printf("Error: Directory not found: %s\n", resolved);
+        return;
+    }
+
+    if (!(new_dir.attrib & FAT32_IS_DIR))
+    {
+        console_printf("Error: %s is not a directory\n", resolved);
+        return;
+    }
+
+    strncpy(current_path, resolved, sizeof(current_path));
+    current_path[sizeof(current_path) - 1] = '\0';
+    fat_root = new_dir;
+    console_printf("Changed directory to: %s\n", current_path);
+}
+
+void ls()
+{
+    if (!(fat_root.attrib & FAT32_IS_DIR))
+    {
+        console_printf("Error: Current directory is invalid\n");
+        return;
+    }
+
+    FAT32_DirList dir_list;
+    char name[256];
+    FAT32_File entry;
+
+    fat32_list_dir(&fat_volume, &fat_root, &dir_list);
+    console_printf("Contents of '%s':\n", current_path);
+    while (fat32_next_dir_entry(&fat_volume, &dir_list, &entry, name))
+    {
+        console_printf(" [%s] %s (%d bytes)\n",
+                       (entry.attrib & FAT32_IS_DIR) ? "DIR" : "FILE",
+                       name, entry.size);
+    }
 }
 
 void show_arp_cache()
@@ -630,7 +546,6 @@ void show_arp_cache()
     }
     console_printf("-----------------------------------------------\n");
 }
-
 void shell()
 {
     serial_printf("[SHELL] Starting shell...\n");
@@ -639,6 +554,10 @@ void shell()
     // console_printf("DEBUG: Console initialized\n");  // Check if this appears
     console_printf("Hal OS v0.13.0\n");
     console_printf("Type 'help' for a list of commands\n");
+
+    // Initialize the global FAT volume once
+    fat32_init_volume(&fat_volume);
+
     char buffer[255];
     const char *shell = "kernel> ";
 
@@ -665,28 +584,34 @@ void shell()
             console_printf("===============================================\n");
             console_printf("|  Available Commands:                        |\n");
             console_printf("|   * arp - Display ARP cache                 |\n");
+            console_printf("|   * cd - Change directory                   |\n");
             console_printf("|   * clear - Clear the console screen        |\n");
             console_printf("|   * cpuid - Display CPU information         |\n");
-            // console_printf("|   * drive - Read or write from/to a drive   |\n");
             console_printf("|   * echo - Echo a message to the console    |\n");
             console_printf("|   * haiku - Display a haiku                 |\n");
             console_printf("|   * help - Display this help message        |\n");
             console_printf("|   * hwinfo - Display hardware information   |\n");
-            console_printf("|   * ls - List files in the root directory   |\n");
+            console_printf("|   * ls - List files in current directory    |\n");
             console_printf("|   * lspci - Display PCI information         |\n");
             console_printf("|   * malloc - Test memory allocation         |\n");
             console_printf("|   * fireworks - Fireworks effect            |\n");
             console_printf("|   * memory - Display system memory          |\n");
+            console_printf("|   * pwd - Print current directory           |\n");
             console_printf("|   * shutdown - Shut down the system         |\n");
             console_printf("|   * snake - Play a game of Snake            |\n");
             console_printf("|   * timer - Display system timer            |\n");
+            console_printf("|   * tss - Display TSS information           |\n");
             console_printf("|   * vesa - Display VESA graphics            |\n");
             console_printf("|   * version - Display Hal OS version        |\n");
             console_printf("===============================================\n");
         }
         else if (strcmp(buffer, "help /f") == 0)
         {
-            console_printf("clear, cpuid, echo, haiku, help, hwinfo, lspci, malloc, memory, shutdown, snake, timer, vesa, version\n");
+            console_printf("arp, cd, clear, cpuid, echo, haiku, help, hwinfo, ls, lspci, malloc, memory, shutdown, snake, timer, tss, vesa, version\n");
+        }
+        else if (strncmp(buffer, "cd ", 3) == 0)
+        {
+            cd(buffer + 3);
         }
         else if (strcmp(buffer, "echo") == 0)
         {
@@ -696,10 +621,10 @@ void shell()
         {
             show_arp_cache();
         }
-        // else if (strcmp(buffer, "drive") == 0)
-        // {
-        //     drive();
-        // }
+        else if (strcmp(buffer, "pwd") == 0)
+        {
+            console_printf("%s\n", current_path);
+        }
         else if (strcmp(buffer, "ls") == 0)
         {
             ls();

@@ -267,7 +267,7 @@ int atoi(const char *str)
     return sign * result;
 }
 
-char* strncat(char *dest, const char *src, size_t n)
+char *strncat(char *dest, const char *src, size_t n)
 {
     size_t dest_len = strlen(dest);
     size_t i;
@@ -292,11 +292,56 @@ void assert(int condition)
     }
 }
 
-const char *strrchr(const char *s, int c) {
+const char *strrchr(const char *s, int c)
+{
     const char *last = NULL;
-    while (*s) {
-        if (*s == c) last = s;
+    while (*s)
+    {
+        if (*s == c)
+            last = s;
         s++;
     }
     return last;
+}
+
+static char *last;
+
+char *strtok(char *str, const char *delim)
+{
+    char *token_start;
+
+    if (str)
+        last = str;
+    else if (!last)
+        return NULL;
+
+    // Skip leading delimiters
+    while (*last && strchr(delim, *last))
+        last++;
+
+    if (!*last)
+        return NULL;
+
+    token_start = last;
+
+    // Find end of token
+    while (*last && !strchr(delim, *last))
+        last++;
+
+    if (*last)
+        *last++ = '\0';
+    else
+        last = NULL;
+
+    return token_start;
+}
+
+int toupper(int c)
+{
+    return (c >= 'a' && c <= 'z') ? (c & ~32) : c;
+}
+
+int tolower(int c)
+{
+    return (c >= 'A' && c <= 'Z') ? (c | 32) : c;
 }

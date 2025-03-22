@@ -19,15 +19,6 @@ static uint8_t g_fat32_drive = 0;
 
 static FAT32_Directory_Entry *read_next_entry(FAT32_Volume *volume, FAT32_DirList *dir_list);
 
-static int toupper(int c)
-{
-    return (c >= 'a' && c <= 'z') ? (c & ~32) : c;
-}
-
-static int tolower(int c)
-{
-    return (c >= 'A' && c <= 'Z') ? (c | 32) : c;
-}
 int fat32_strcasecmp(const char *s1, const char *s2)
 {
     while (1)
@@ -391,10 +382,18 @@ void fat32_init_volume(FAT32_Volume *volume)
     serial_printf("  Root cluster: %u\n", header->root_cluster);
 }
 
-bool fat32_find_file(FAT32_Volume *volume, const char *path, FAT32_File *out_file)
-{
+bool fat32_find_file(FAT32_Volume *volume, const char *path, FAT32_File *out_file) {
+    if (!volume || !path || !out_file) {
+        return false;
+    }
+
     char component[256];
     uint32_t start = 0;
+    size_t path_len = strlen(path);
+
+    if (path_len == 0) {
+        return false;
+    }
 
     if (path[0] == '/')
         start = 1;
@@ -403,12 +402,10 @@ bool fat32_find_file(FAT32_Volume *volume, const char *path, FAT32_File *out_fil
         .cluster = volume->header.root_cluster,
         .attrib = FAT32_IS_DIR};
 
-    while (1)
-    {
+    while (start < path_len) {
         // Extract next path component
         uint32_t end = start;
-        while (path[end] != '\0' && path[end] != '/')
-        {
+        while (path[end] != '\0' && path[end] != '/') {
             end++;
         }
 
@@ -418,6 +415,12 @@ bool fat32_find_file(FAT32_Volume *volume, const char *path, FAT32_File *out_fil
         strncpy(component, path + start, end - start);
         component[end - start] = '\0';
 
+        char component_upper[256];
+        for (int i = 0; component[i]; i++) {
+            component_upper[i] = toupper(component[i]);
+        }
+        component_upper[strlen(component)] = '\0';
+
         // Search directory
         FAT32_DirList list;
         FAT32_File entry;
@@ -425,10 +428,9 @@ bool fat32_find_file(FAT32_Volume *volume, const char *path, FAT32_File *out_fil
         bool found = false;
 
         fat32_list_dir(volume, &current, &list);
-        while (fat32_next_dir_entry(volume, &list, &entry, name))
-        {
-            if (fat32_strcasecmp(name, component) == 0)
-            {
+        while (fat32_next_dir_entry(volume, &list, &entry, name)) {
+            // Compare using uppercase version
+            if (fat32_strcasecmp(name, component_upper) == 0) {
                 current = entry;
                 found = true;
                 break;
@@ -581,3 +583,28 @@ void fat32_unmount_volume(FAT32_Volume *volume)
 
     memset(volume, 0, sizeof(FAT32_Volume));
 }
+
+// bool fat32_change_dir(FAT32_Volume *volume, FAT32_File *current_dir, const char *path)
+// {
+//     if (!volume || !current_dir || !path)
+//     {
+//         serial_printf("[FAT32] Invalid parameters in change_dir\n");
+//         return false;
+//     }
+
+//     FAT32_File new_dir;
+//     if (!fat32_find_file(volume, path, &new_dir))
+//     {
+//         serial_printf("[FAT32] Directory not found: %s\n", path);
+//         return false;
+//     }
+
+//     if (!(new_dir.attrib & FAT32_IS_DIR))
+//     {
+//         serial_printf("[FAT32] Not a directory: %s\n", path);
+//         return false;
+//     }
+
+//     *current_dir = new_dir;
+//     return true;
+// }

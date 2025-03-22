@@ -43,4 +43,10 @@ char* strncat(char *dest, const char *src, size_t n);
 
 const char *strrchr(const char *s, int c);
 
+char *strtok(char *str, const char *delim);
+
+int toupper(int c);
+
+int tolower(int c);
+
 #endif

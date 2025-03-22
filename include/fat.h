@@ -107,6 +107,8 @@ typedef struct {
     uint32_t buffered_sector;
 } FAT32_DirList;
 
+static void parse_short_filename(char output[13], FAT32_Directory_Entry *entry);
+static void parse_lfn_entry(FAT32_Directory_Entry_LFN *lfn, char *lfn_buffer);
 void fat32_init_volume(FAT32_Volume* volume);
 bool fat32_find_file(FAT32_Volume* volume, const char* path, FAT32_File* out_file);
 void fat32_read_file(FAT32_Volume* volume, FAT32_File* file, uint8_t* out_buffer, uint32_t num_bytes, uint32_t start_offset);
