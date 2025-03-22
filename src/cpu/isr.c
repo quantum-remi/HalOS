@@ -52,23 +52,19 @@ void isr_end_interrupt(size_t num)
 }
 
 void isr_irq_handler(REGISTERS *reg) {
-    uint8_t irq = reg->int_no - 32;
-    
-    serial_printf("IRQ %d triggered\n", irq);
+    uint8_t irq = reg->int_no - IRQ_BASE;
 
     // Handle spurious IRQs first
-    if ((irq == 7 && !pic8259_is_spurious(7)) ||
-        (irq == 15 && !pic8259_is_spurious(15))) {
+    if ((irq == 7 && pic8259_is_spurious(7)) || 
+        (irq == 15 && pic8259_is_spurious(15))) {
         return;
     }
-    
-    // Call registered handler
+
     if (g_interrupt_handlers[reg->int_no]) {
         g_interrupt_handlers[reg->int_no](reg);
     }
-    
-    // Send EOI even for spurious IRQs
-    pic8259_eoi(irq); 
+
+    pic8259_eoi(irq);
 }
 static void print_registers(REGISTERS *reg)
 {

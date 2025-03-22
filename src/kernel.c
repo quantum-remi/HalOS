@@ -86,7 +86,7 @@ void kmain(unsigned long magic, unsigned long addr)
     idt_init();
 
     pic8259_unmask(1);
-    pic8259_unmask(2);
+    // pic8259_unmask(2);
 
     tss_init();
 

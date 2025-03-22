@@ -3,15 +3,18 @@
 #include "console.h"
 #include "idt.h"
 #include "io.h"
+#include "8259_pic.h"
 #include "isr.h"
 #include "string.h"
+#include "serial.h"
 #include <stdint.h>
 #include <stddef.h>
+
 
 unsigned int seed = 0;
 
 // number of ticks since system booted
-uint32_t g_ticks = 0;
+volatile uint32_t g_ticks = 0; 
 // frequency in hertz
 uint16_t g_freq_hz = 0;
 // timer functions to be called when that ticks reached in irq handler
@@ -41,7 +44,7 @@ void timer_handler(REGISTERS *r)
     size_t i;
     TIMER_FUNC_ARGS *args = NULL;
     g_ticks++;
-    // printf("timer triggered at frequency %d\n", g_ticks);
+    // serial_printf("timer triggered at frequency %d\n", g_ticks);
     for (i = 0; i < MAXIMUM_TIMER_FUNCTIONS; i++)
     {
         args = &g_timer_function_manager.func_args[i];
@@ -52,6 +55,7 @@ void timer_handler(REGISTERS *r)
             g_timer_function_manager.functions[i](args);
         }
     }
+    pic8259_eoi(IRQ_BASE);
 }
 
 void timer_register_function(TIMER_FUNCTION function, TIMER_FUNC_ARGS *args)
@@ -70,16 +74,23 @@ void timer_register_function(TIMER_FUNCTION function, TIMER_FUNC_ARGS *args)
 
 void timer_init()
 {
+    // Initialize TIMER_FUNCTION_MANAGER structure
+    memset(&g_timer_function_manager, 0, sizeof(g_timer_function_manager));
+    
     // IRQ0 will fire 100 times per second
     timer_set_frequency(100);
     isr_register_interrupt_handler(IRQ_BASE, timer_handler);
+    pic8259_unmask(0);
+    // Ensure interrupts are enabled
+    __asm__ volatile("sti");
 }
 
 void sleep(int sec)
 {
     uint32_t end = g_ticks + sec * g_freq_hz;
-    while (g_ticks < end)
-        ;
+    while (g_ticks < end) {
+        __asm__ volatile ("sti; hlt"); // Allow interrupts
+    }
 }
 
 void usleep(int usec)

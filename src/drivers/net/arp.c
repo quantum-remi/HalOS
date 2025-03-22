@@ -47,16 +47,9 @@ void rtl8139_send_arp_request(uint32_t *src_ip, uint32_t *target_ip)
         return;
     }
 
-    uint8_t arp_packet[42]; // 14 Ethernet + 28 ARP
+    uint8_t arp_packet[60] = {0}; // Zero-initialize to 60 bytes
     create_arp_packet(arp_packet, nic.mac, src_ip, target_ip);
-    
-    serial_printf("ARP: Sending request from %d.%d.%d.%d for %d.%d.%d.%d\n",
-                 (*src_ip >> 24) & 0xFF, (*src_ip >> 16) & 0xFF,
-                 (*src_ip >> 8) & 0xFF, *src_ip & 0xFF,
-                 (*target_ip >> 24) & 0xFF, (*target_ip >> 16) & 0xFF,
-                 (*target_ip >> 8) & 0xFF, *target_ip & 0xFF);
-
-    rtl8139_send_packet(arp_packet, sizeof(arp_packet));
+    rtl8139_send_packet(arp_packet, 60); // Send 60 bytes (NIC pads to 64)
 }
 
 bool arp_lookup(uint32_t ip, uint8_t *mac)

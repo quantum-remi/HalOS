@@ -90,7 +90,10 @@ void rtl8139_init()
     // Configure registers
     outportl(nic.iobase + REG_RXBUF, nic.rx_phys);
     outportl(nic.iobase + REG_RCR, 0xF | (1 << 7));
-    outportl(nic.iobase + REG_TCR, 0x03000700 | (0x3 << 8) | (1 << 3));
+    outportl(nic.iobase + REG_TCR, 
+        (0x3 << 8) |    // IFG
+        (0x7 << 4) |    // MXDMA
+        (1 << 3));       // APM (Auto Pad)
     // Initialize TX descriptors
     // const int TX_STEP_SIZE = 4;
     // for (int i = 0; i < NUM_TX_BUFFERS; i++)
@@ -179,7 +182,7 @@ void rtl8139_send_packet(uint8_t *data, uint16_t len)
     memset(tx_buf + len, 0, aligned_len - len); // Zero-pad
 
     // Program descriptor with OWN bit
-    uint32_t tsd_value = len; // OWN + End of Ring
+    uint32_t tsd_value = (len & 0x1FFF) | (1 << 13); // OWN = bit 13
     outportl(nic.iobase + REG_TXSTATUS0 + (tx_idx * 4), tsd_value);
     nic.tx_current = (tx_idx + 1) % NUM_TX_BUFFERS;
 
