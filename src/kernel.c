@@ -125,12 +125,12 @@ void kmain(unsigned long magic, unsigned long addr)
     // Initialize PMM with proper size calculation
     uint32_t total_memory_kb = mboot_info->mem_lower + mboot_info->mem_upper;
     uint32_t total_memory_bytes = total_memory_kb * 1024;
-    
-    serial_printf("Memory: Lower: %dKB, Upper: %dKB, Total: %dKB\n",
-                 mboot_info->mem_lower, mboot_info->mem_upper, total_memory_kb);
 
-    // Fixed bitmap size for up to 4GB of memory (4GB / 4KB / 8 = 128KB)
-    #define PMM_BITMAP_SIZE (128 * 1024)  // 128KB bitmap can handle 4GB
+    serial_printf("Memory: Lower: %dKB, Upper: %dKB, Total: %dKB\n",
+                  mboot_info->mem_lower, mboot_info->mem_upper, total_memory_kb);
+
+// Fixed bitmap size for up to 4GB of memory (4GB / 4KB / 8 = 128KB)
+#define PMM_BITMAP_SIZE (128 * 1024) // 128KB bitmap can handle 4GB
     static uint8_t pmm_bitmap[PMM_BITMAP_SIZE] __attribute__((aligned(4096)));
     pmm_init(total_memory_bytes, pmm_bitmap);
 
@@ -149,14 +149,15 @@ void kmain(unsigned long magic, unsigned long addr)
     uint32_t fb_virt = KERNEL_VMEM_START + 0x2000000; // Map 16MB after kernel start
 
     // Map each page of the framebuffer
-    for (uint32_t i = 0; i < fb_pages; i++) {
-        paging_map_page(fb_phys + (i * PAGE_SIZE), 
-                       fb_virt + (i * PAGE_SIZE), 
-                       PAGE_PRESENT | PAGE_WRITABLE);
+    for (uint32_t i = 0; i < fb_pages; i++)
+    {
+        paging_map_page(fb_phys + (i * PAGE_SIZE),
+                        fb_virt + (i * PAGE_SIZE),
+                        PAGE_PRESENT | PAGE_WRITABLE);
     }
 
     // Update framebuffer pointer to virtual address
-    framebuffer = (uint32_t*)fb_virt;
+    framebuffer = (uint32_t *)fb_virt;
     serial_printf("[VESA] Framebuffer mapped to virtual address 0x%x\n", fb_virt);
 
     // Initialize VESA graphics
@@ -179,25 +180,28 @@ void kmain(unsigned long magic, unsigned long addr)
     // Initialize remaining subsystems
     serial_printf("Initializing timer...\n");
     timer_init();
-    
+
     serial_printf("Initializing keyboard...\n");
     keyboard_init();
-    
+
     serial_printf("Enabling FPU...\n");
     fpu_enable();
-    
+
     serial_printf("Initializing ATA...\n");
     ata_init();
-    
+
     uint8_t test_buffer[SECTOR_SIZE];
-    if (ide_read_sectors(1, 1, 0, (uint32_t)test_buffer) == 0) {
+    if (ide_read_sectors(1, 1, 0, (uint32_t)test_buffer) == 0)
+    {
         serial_printf("[IDE] Sector 0 read OK\n");
         // Dump signature bytes
         serial_printf("Signature: 0x%x 0x%x\n", test_buffer[510], test_buffer[511]);
-    } else {
+    }
+    else
+    {
         serial_printf("[IDE] Sector 0 read failed\n");
     }
-    
+
     serial_printf("Initializing PCI...\n");
     pci_init();
 
@@ -224,13 +228,13 @@ void kmain(unsigned long magic, unsigned long addr)
     //     }
     // }
     // fat32_unmount_volume(&vol);
-    
+
     serial_printf("System initialized successfully\n");
     console_printf("System initialized successfully\n");
-    
+
     // Start shell
     shell();
-    
+
     console_printf("you should not be here\n");
     for (;;)
     {

@@ -1,6 +1,6 @@
 ext2
 Multitasking
-userspace 
+userspace
 elf loader
 vfs
 smp

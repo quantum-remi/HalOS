@@ -258,7 +258,6 @@ void getstr(char *buffer, uint32_t max_size)
             buffer[i++] = c;
             console_putchar(c);
             vesa_swap_buffers();
-
         }
 
         // Prevent overflow
@@ -266,7 +265,6 @@ void getstr(char *buffer, uint32_t max_size)
         {
             console_putchar('\n');
             vesa_swap_buffers();
-
         }
     }
     buffer[i] = '\0';

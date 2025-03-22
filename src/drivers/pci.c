@@ -189,12 +189,16 @@ pci_dev_t pci_scan_device(uint16_t vendor_id, uint16_t device_id, uint32_t bus, 
     return dev_zero;
 }
 
-pci_dev_t pci_scan_bus(uint16_t vendor_id, uint16_t device_id, uint32_t bus, int device_type) {
-    for (int device = 0; device < DEVICE_PER_BUS; device++) {
+pci_dev_t pci_scan_bus(uint16_t vendor_id, uint16_t device_id, uint32_t bus, int device_type)
+{
+    for (int device = 0; device < DEVICE_PER_BUS; device++)
+    {
         pci_dev_t t = pci_scan_device(vendor_id, device_id, bus, device, device_type);
-        if (t.bits) {
+        if (t.bits)
+        {
             // If the device is a bridge, scan its secondary bus
-            if (get_device_type(t) == PCI_TYPE_BRIDGE) {
+            if (get_device_type(t) == PCI_TYPE_BRIDGE)
+            {
                 uint32_t secondary_bus = get_secondary_bus(t);
                 pci_scan_bus(vendor_id, device_id, secondary_bus, device_type);
             }
@@ -247,7 +251,8 @@ void pci_init()
 void pci_print_devices()
 {
     pci_dev_t dev = {0};
-    if (get_device_type(dev) == PCI_TYPE_BRIDGE) {
+    if (get_device_type(dev) == PCI_TYPE_BRIDGE)
+    {
         uint32_t sec_bus = get_secondary_bus(dev);
         pci_scan_bus(0, 0, sec_bus, -1); // Print devices on secondary bus
     }

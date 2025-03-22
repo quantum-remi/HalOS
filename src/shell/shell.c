@@ -27,7 +27,6 @@ KERNEL_MEMORY_MAP g_kmap;
 extern uint32_t g_width;
 extern uint32_t g_height;
 
-
 extern IDE_DEVICE g_ide_devices[MAXIMUM_IDE_DEVICES];
 
 typedef struct
@@ -507,19 +506,18 @@ void fireworks()
             int base_x = rand() % g_width;
             int base_y = g_height;
             uint32_t color = (rand() % 255 << 16) | (rand() % 255 << 8) | rand() % 255;
-            
+
             for (int i = 0; i < 100; i++)
             {
                 float angle = (float)i * 3.14159 * 2 / 50;
                 float speed = (rand() % 1000) / 100.0f + 3;
-                
+
                 particles[active] = (Particle){
                     base_x, base_y,
                     (int)(cos(angle) * speed),
                     (int)(sin(angle) * speed) - 10,
                     color,
-                    70 + (rand() % 30)
-                };
+                    70 + (rand() % 30)};
                 active++;
             }
         }

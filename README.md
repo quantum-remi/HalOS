@@ -9,6 +9,7 @@ HAL OS is a custom operating system that implements core OS functionality from t
 ## Features
 
 ### Core Features
+
 - Custom bootloader with multiboot support
 - Protected mode CPU initialization
 - Interrupt handling and IDT setup
@@ -17,12 +18,14 @@ HAL OS is a custom operating system that implements core OS functionality from t
 - Simple device drivers (keyboard, timer, etc.)
 
 ### User Interface
+
 - Text-mode console with basic shell
 - Command history and input handling
 - VESA graphics support with demo applications
 - Interactive commands and utilities
 
 ### Demo Applications
+
 - Snake game implementation
 - VESA graphics demonstrations
 - System information utilities
@@ -30,6 +33,7 @@ HAL OS is a custom operating system that implements core OS functionality from t
 - Hardware detection
 
 ### Hardware Support
+
 - x86 architecture support
 - PCI device enumeration
 - PS/2 keyboard support
@@ -39,12 +43,14 @@ HAL OS is a custom operating system that implements core OS functionality from t
 ## Building
 
 ### Prerequisites
+
 - GCC cross-compiler for i686-elf
 - NASM assembler
 - GNU Make
 - QEMU or VirtualBox for testing
 
 ### Build Instructions
+
 1. Clone the repository
 2. Install the required tools
 3. Run `make` in the project root
@@ -53,6 +59,7 @@ HAL OS is a custom operating system that implements core OS functionality from t
 ## Running
 
 The system can be run in:
+
 - QEMU (recommended for development)
 - VirtualBox
 - Real hardware (limited testing)
@@ -60,6 +67,7 @@ The system can be run in:
 ## Contributing
 
 Contributions are welcome! Please feel free to:
+
 - Report bugs and issues
 - Submit pull requests
 - Suggest new features

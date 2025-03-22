@@ -21,7 +21,7 @@ void pmm_init(size_t mem_size, uint8_t *bitmap)
     }
 
     pmm_memory_size = mem_size;
-    pmm_memory_map = bitmap; // use as a byte array
+    pmm_memory_map = bitmap;                                           // use as a byte array
     pmm_max_blocks = (mem_size + PMM_BLOCK_SIZE - 1) / PMM_BLOCK_SIZE; // Round up
     pmm_used_blocks = 0;
 
@@ -35,10 +35,10 @@ void pmm_init(size_t mem_size, uint8_t *bitmap)
     uint32_t kernel_start = (uint32_t)&__kernel_physical_start;
     uint32_t kernel_end = (uint32_t)&__kernel_physical_end;
     uint32_t kernel_size = kernel_end - kernel_start;
-    
-    serial_printf("PMM: Kernel physical start: 0x%x, end: 0x%x, size: %d bytes\n", 
-                 kernel_start, kernel_end, kernel_size);
-    
+
+    serial_printf("PMM: Kernel physical start: 0x%x, end: 0x%x, size: %d bytes\n",
+                  kernel_start, kernel_end, kernel_size);
+
     pmm_mark_used_region(kernel_start, kernel_size);
 
     // Mark bitmap area as used
@@ -51,7 +51,8 @@ void pmm_init(size_t mem_size, uint8_t *bitmap)
     serial_printf("PMM: Free blocks: %d\n", pmm_max_blocks - pmm_used_blocks);
 }
 
-uint32_t pmm_get_total_memory() {
+uint32_t pmm_get_total_memory()
+{
     return pmm_memory_size; // Returns total memory in bytes
 }
 
@@ -102,13 +103,13 @@ void pmm_mark_unused_region(uint32_t base, uint32_t size)
 }
 
 // Allocate a single 4KB block
-void* pmm_alloc_block()
+void *pmm_alloc_block()
 {
-    if (pmm_used_blocks >= pmm_max_blocks) {
+    if (pmm_used_blocks >= pmm_max_blocks)
+    {
         serial_printf("PMM: No free blocks available\n");
         return NULL;
     }
-
 
     for (uint32_t byte_idx = 0; byte_idx < pmm_max_blocks / PMM_BLOCKS_PER_BYTE; byte_idx++)
     {
@@ -125,8 +126,8 @@ void* pmm_alloc_block()
             {
                 pmm_memory_map[byte_idx] |= (1 << bit_idx);
                 pmm_used_blocks++;
-                // serial_printf("PMM: Allocated block at physical address 0x%x\n", 
-                            //  (uint32_t)(block * PMM_BLOCK_SIZE));
+                // serial_printf("PMM: Allocated block at physical address 0x%x\n",
+                //  (uint32_t)(block * PMM_BLOCK_SIZE));
                 return (void *)(block * PMM_BLOCK_SIZE); // Return physical address
             }
         }
@@ -137,34 +138,43 @@ void* pmm_alloc_block()
 
 /**
  * Allocates a specified number of contiguous 4KB blocks.
- * 
+ *
  * @param num_blocks The number of contiguous blocks to allocate.
  * @return A pointer to the start of the allocated blocks, or NULL if allocation fails.
  */
-void* pmm_alloc_blocks(int num_blocks) {
-    if (num_blocks <= 0) return NULL;
+void *pmm_alloc_blocks(int num_blocks)
+{
+    if (num_blocks <= 0)
+        return NULL;
 
     uint32_t consecutive = 0;
     uint32_t start_block = 0;
 
-    for (uint32_t block = 0; block < pmm_max_blocks; block++) {
+    for (uint32_t block = 0; block < pmm_max_blocks; block++)
+    {
         uint32_t byte_idx = block / PMM_BLOCKS_PER_BYTE;
         uint32_t bit_idx = block % PMM_BLOCKS_PER_BYTE;
-        
-        if (!(pmm_memory_map[byte_idx] & (1 << bit_idx))) {
-            if (consecutive == 0) start_block = block;
+
+        if (!(pmm_memory_map[byte_idx] & (1 << bit_idx)))
+        {
+            if (consecutive == 0)
+                start_block = block;
             consecutive++;
-            if (consecutive == num_blocks) {
+            if (consecutive == num_blocks)
+            {
                 // Mark blocks as used
-                for (uint32_t i = start_block; i < start_block + num_blocks; i++) {
+                for (uint32_t i = start_block; i < start_block + num_blocks; i++)
+                {
                     uint32_t b_idx = i / PMM_BLOCKS_PER_BYTE;
                     uint32_t bit = i % PMM_BLOCKS_PER_BYTE;
                     pmm_memory_map[b_idx] |= (1 << bit);
                     pmm_used_blocks++;
                 }
-                return (void*)(start_block * PMM_BLOCK_SIZE);
+                return (void *)(start_block * PMM_BLOCK_SIZE);
             }
-        } else {
+        }
+        else
+        {
             consecutive = 0; // Reset counter if a block is used
         }
     }
@@ -177,7 +187,7 @@ void pmm_free_block(void *p)
 {
     if (p == NULL)
         serial_printf("PMM: Invalid free address (NULL)\n");
-        return;
+    return;
 
     uint32_t addr = (uint32_t)p;
     if (addr % PMM_BLOCK_SIZE != 0)
@@ -211,7 +221,7 @@ void pmm_free_block(void *p)
 
 /**
  * Frees a specified number of contiguous 4KB blocks.
- * 
+ *
  * @param p The pointer to the start of the blocks to free.
  * @param num_blocks The number of contiguous blocks to free.
  */
@@ -236,8 +246,10 @@ void pmm_free_blocks(void *p, int num_blocks)
     }
 }
 
-bool pmm_is_block_free(uint32_t block) {
-    if (block >= pmm_max_blocks) {
+bool pmm_is_block_free(uint32_t block)
+{
+    if (block >= pmm_max_blocks)
+    {
         return false; // Out of bounds, treat as used
     }
     uint32_t byte_idx = block / PMM_BLOCKS_PER_BYTE;
@@ -245,8 +257,10 @@ bool pmm_is_block_free(uint32_t block) {
     return !(pmm_memory_map[byte_idx] & (1 << bit_idx));
 }
 
-void* pmm_alloc_blocks_in_range(int num_blocks, uint32_t start_addr, uint32_t end_addr) {
-    if (num_blocks <= 0 || start_addr >= end_addr) {
+void *pmm_alloc_blocks_in_range(int num_blocks, uint32_t start_addr, uint32_t end_addr)
+{
+    if (num_blocks <= 0 || start_addr >= end_addr)
+    {
         serial_printf("PMM: Invalid parameters for block allocation in range\n");
         return NULL;
     }
@@ -256,16 +270,21 @@ void* pmm_alloc_blocks_in_range(int num_blocks, uint32_t start_addr, uint32_t en
     uint32_t end_block = end_addr / block_size;
 
     uint32_t consecutive = 0;
-    for (uint32_t block = start_block; block < end_block; block++) {
-        if (pmm_is_block_free(block)) {
+    for (uint32_t block = start_block; block < end_block; block++)
+    {
+        if (pmm_is_block_free(block))
+        {
             consecutive++;
-            if (consecutive == num_blocks) {
+            if (consecutive == num_blocks)
+            {
                 uint32_t first_block = block - num_blocks + 1;
                 pmm_mark_used_region(first_block * block_size, num_blocks * block_size);
                 // serial_printf("PMM: Allocated %d blocks starting at 0x%x\n", num_blocks, first_block * block_size);
-                return (void*)(first_block * block_size);
+                return (void *)(first_block * block_size);
             }
-        } else {
+        }
+        else
+        {
             consecutive = 0;
         }
     }
