@@ -17,8 +17,13 @@ void net_process_packet(uint8_t *data, uint16_t len)
     struct eth_header *eth = (struct eth_header *)data;
     uint16_t ethertype = ntohs(eth->ethertype);
 
-    if (ethertype == ETHERTYPE_ARP)
+    switch (ethertype)
     {
+    case 0x8100:
+        serial_printf("NET: VLAN tagged frame\n");
+        break;
+
+    case ETHERTYPE_ARP:
         struct arp_packet *arp = (struct arp_packet *)(data + sizeof(struct eth_header));
         uint16_t opcode = ntohs(arp->opcode);
         serial_printf("NET: ARP packet opcode=%d\n", opcode);
@@ -49,6 +54,7 @@ void net_process_packet(uint8_t *data, uint16_t len)
                                  (arp->target_ip[1] << 16) |
                                  (arp->target_ip[2] << 8) |
                                  arp->target_ip[3];
+            target_ip = ntohl(target_ip); // Convert to host byte order
 
             if (target_ip == nic.ip_addr)
             {
@@ -80,15 +86,14 @@ void net_process_packet(uint8_t *data, uint16_t len)
             }
             retry_pending_packets();
         }
-    }
+        break;
 
-    else if (ethertype == ETHERTYPE_IP)
-    {
+    case ETHERTYPE_IP:
         // Handle IPv4 packets
         if (len < sizeof(struct eth_header) + sizeof(ipv4_header_t))
         {
             serial_printf("NET: IP packet too short\n");
-            return;
+            break;
         }
 
         ipv4_header_t *ip = (ipv4_header_t *)(data + sizeof(struct eth_header));
@@ -98,7 +103,7 @@ void net_process_packet(uint8_t *data, uint16_t len)
         if (checksum != ip_checksum(ip, sizeof(ipv4_header_t)))
         {
             serial_printf("NET: IPv4 checksum error (got 0x%04x)\n", checksum);
-            return;
+            break;
         }
 
         serial_printf("NET: IPv4 packet from %d.%d.%d.%d to %d.%d.%d.%d (proto=%d)\n",
@@ -114,23 +119,11 @@ void net_process_packet(uint8_t *data, uint16_t len)
             uint8_t *icmp_data = data + sizeof(struct eth_header) + sizeof(ipv4_header_t);
             uint16_t icmp_len = ntohs(ip->total_length) - sizeof(ipv4_header_t);
             icmp_handle_packet(ip, icmp_data, icmp_len);
+            retry_pending_packets();
         }
-    }
-    else
-    {
-        // serial_printf("NET: Unknown ethertype 0x%04x\n", ntohs(eth->ethertype));
+        break;
+    default:
+        serial_printf("NET: Unknown ethertype 0x%04x\n", ethertype);
+        break;
     }
 }
-// Debug dump first few bytes
-// serial_printf("NET: Packet dump: ");
-// for (int i = 0; i < 16 && i < len; i++)
-// {
-//     serial_printf("%02x ", data[i]);
-// }
-// serial_printf("\n");
-
-// serial_printf("NET: Received packet from %02x:%02x:%02x:%02x:%02x:%02x (type 0x%04x)\n",
-//               eth->src_mac[0], eth->src_mac[1], eth->src_mac[2],
-//               eth->src_mac[3], eth->src_mac[4], eth->src_mac[5],
-//               ntohs(eth->ethertype));
-

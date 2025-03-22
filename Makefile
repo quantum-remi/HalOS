@@ -53,6 +53,7 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o $(ASM_OBJ)/load_tss.o \
 		$(OBJ)/tss.o $(OBJ)/liballoc.o $(OBJ)/liballoc_hook.o \
 		$(OBJ)/pci.o $(OBJ)/ide.o $(OBJ)/fat.o $(OBJ)/font.o \
 		$(OBJ)/rtl8139.o $(OBJ)/arp.o $(OBJ)/eth.o $(OBJ)/network.o $(OBJ)/ipv4.o $(OBJ)/icmp.o \
+		$(OBJ)/math.o \
 		$(OBJ)/kernel.o
 
 .PHONY: all	
@@ -207,6 +208,11 @@ $(OBJ)/serial.o : $(SRC)/drivers/serial.c
 $(OBJ)/printf.o : $(SRC)/libs/printf.c
 	@printf "[ $(SRC)/libs/printf.c ]\n"
 	$(CC) $(CC_FLAGS) -c $(SRC)/libs/printf.c -o $(OBJ)/printf.o
+	@printf "\n"
+
+$(OBJ)/math.o : $(SRC)/libs/math.c
+	@printf "[ $(SRC)/libs/math.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/libs/math.c -o $(OBJ)/math.o
 	@printf "\n"
 
 $(OBJ)/tss.o : $(SRC)/mm/tss.c

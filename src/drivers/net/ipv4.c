@@ -34,6 +34,9 @@ void net_send_ipv4_packet(uint32_t dst_ip, uint8_t protocol, uint8_t *payload, u
         return;
     }
 
+    serial_printf("IPv4: Sending packet to %d.%d.%d.%d (proto=%d, len=%d)\n",
+                  (dst_ip >> 24) & 0xFF, (dst_ip >> 16) & 0xFF,
+                  (dst_ip >> 8) & 0xFF, dst_ip & 0xFF, protocol, payload_len);
     // Resolve MAC via ARP and send
     uint8_t dst_mac[6];
     if (arp_lookup(dst_ip, dst_mac))

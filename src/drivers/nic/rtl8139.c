@@ -90,10 +90,10 @@ void rtl8139_init()
     // Configure registers
     outportl(nic.iobase + REG_RXBUF, nic.rx_phys);
     outportl(nic.iobase + REG_RCR, 0xF | (1 << 7));
-    outportl(nic.iobase + REG_TCR, 
-        (0x3 << 8) |    // IFG
-        (0x7 << 4) |    // MXDMA
-        (1 << 3));       // APM (Auto Pad)
+    outportl(nic.iobase + REG_TCR,
+             (0x3 << 8) |     // IFG
+                 (0x7 << 4) | // MXDMA
+                 (1 << 3));   // APM (Auto Pad)
     // Initialize TX descriptors
     // const int TX_STEP_SIZE = 4;
     // for (int i = 0; i < NUM_TX_BUFFERS; i++)
@@ -155,39 +155,30 @@ void rtl8139_send_packet(uint8_t *data, uint16_t len)
 {
     if (len > TX_BUFFER_SIZE)
     {
-        serial_printf("RTL8139: Packet too large (%d bytes)\n", len);
+        serial_printf("RTL8139: Packet too large\n");
         return;
     }
 
     uint8_t tx_idx = nic.tx_current;
-    uint8_t *tx_buf = nic.tx_buffer + (tx_idx * TX_BUFFER_SIZE);
-
-    // Wait for buffer to be free
     uint32_t timeout = TX_TIMEOUT_MS * 1000;
+
+    // Wait for buffer to be free (OWN bit not set)
     while ((inportl(nic.iobase + REG_TXSTATUS0 + (tx_idx * 4)) & 0x2000))
     {
-        usleep(1); // Add a small delay to prevent CPU hogging
-
         if (--timeout == 0)
         {
-            rtl8139_init(); // Reinitialize NIC
-            continue;
+            serial_printf("RTL8139: TX timeout on buffer %d\n", tx_idx);
+            return;
         }
-        __asm__ volatile("pause"); // Prevent CPU hogging
+        __asm__ volatile("pause");
     }
 
-    // Align packet to 4 bytes
-    uint16_t aligned_len = (len + 3) & ~3;
-    memcpy(tx_buf, data, len);
-    memset(tx_buf + len, 0, aligned_len - len); // Zero-pad
+    // Copy data and trigger transmission
+    memcpy(nic.tx_buffer + (tx_idx * TX_BUFFER_SIZE), data, len);
+    outportl(nic.iobase + REG_TXSTATUS0 + (tx_idx * 4), len); // Set OWN bit implicitly
 
-    // Program descriptor with OWN bit
-    uint32_t tsd_value = (len & 0x1FFF) | (1 << 13); // OWN = bit 13
-    outportl(nic.iobase + REG_TXSTATUS0 + (tx_idx * 4), tsd_value);
     nic.tx_current = (tx_idx + 1) % NUM_TX_BUFFERS;
-
-    serial_printf("RTL8139: Sent %d bytes via buffer %d (aligned=%d)\n",
-                  len, tx_idx, aligned_len);
+    serial_printf("RTL8139: Sent %d bytes via buffer %d\n", len, tx_idx);
 }
 
 void rtl8139_receive_packet(uint8_t *data, uint16_t len)
@@ -218,23 +209,23 @@ void rtl8139_irq_handler(REGISTERS *r)
         {
             uint8_t *rx_buf = nic.rx_buffer + nic.rx_ptr;
             uint16_t pkt_status = *(uint16_t *)(rx_buf);
-            uint16_t pkt_len = *(uint16_t *)(rx_buf + 2) & 0x1FFF; // Mask 13 bits
-            if (pkt_len < 14 || pkt_len > 1514)
+            uint16_t pkt_len = *(uint16_t *)(rx_buf + 2) & 0x1FFF;
+
+            // Validate packet length
+            if (pkt_len < 14 || pkt_len > 1514 || (nic.rx_ptr + pkt_len + 4) > RX_BUFFER_SIZE)
             {
-                // serial_printf("Invalid packet length: %d. Skipping.\n", pkt_len);
-                nic.rx_ptr = (nic.rx_ptr + 4) % RX_BUFFER_SIZE; // Skip header
+                nic.rx_ptr = (nic.rx_ptr + 4) % RX_BUFFER_SIZE; // Skip corrupted header
                 continue;
             }
 
-            // Process valid packet
-            uint8_t *packet_data = rx_buf + 4; // Skip header
+            uint8_t *packet_data = rx_buf + 4;
             net_process_packet(packet_data, pkt_len);
-            // Update pointer with alignment
-            nic.rx_ptr = (nic.rx_ptr + pkt_len + 4 + 3) & ~3; // Align to 4 bytes
-            nic.rx_ptr %= RX_BUFFER_SIZE;                     // Wrap around circular buffer
 
-            // Update CAPR
+            // Advance rx_ptr safely
+            nic.rx_ptr = (nic.rx_ptr + pkt_len + 4 + 3) & ~3;
+            nic.rx_ptr %= RX_BUFFER_SIZE;
             outportw(nic.iobase + REG_CAPR, (nic.rx_ptr - 16) % RX_BUFFER_SIZE);
+            return;
         }
     }
     if (status & 0x04)
@@ -267,16 +258,7 @@ void rtl8139_irq_handler(REGISTERS *r)
         outportb(nic.iobase + REG_CMD, 0x0C); // Re-enable rx/tx
     }
     outportw(nic.iobase + REG_CAPR, (nic.rx_ptr - 16) % RX_BUFFER_SIZE);
-    if (status & 0x01 || status & 0x04)
-    {
-        if (nic.irq >= 8)
-        {
-            pic8259_eoi(nic.irq - 8); // Slave
-            pic8259_eoi(2);           // Master (cascade)
-        }
-        else
-        {
-            pic8259_eoi(nic.irq); // Master
-        }
-    }
+
+    pic8259_eoi(nic.irq);
+    // pic8259_eoi(nic.irq - 8);
 }

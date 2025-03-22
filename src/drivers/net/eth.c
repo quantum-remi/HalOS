@@ -36,7 +36,7 @@ void eth_send_frame(uint8_t *dest_mac, uint16_t ethertype, uint8_t *data, uint16
                  dest_mac[0], dest_mac[1], dest_mac[2], dest_mac[3], dest_mac[4], dest_mac[5],
                  ethertype, len);
 
-    rtl8139_send_packet(frame, sizeof(frame));
+    rtl8139_send_packet(frame, 14 + len);
 }
 
 void eth_init()
@@ -51,13 +51,20 @@ void eth_init()
     // Wait a bit before sending first packet
     // usleep(100000); // 100ms delay
     
-    // uint32_t src_ip[4] = {10, 0, 2, 15};
-    // uint32_t target_ip[4] = {10, 0, 2, 2}; // Fix: Target gateway IP
-    // rtl8139_send_arp_request(src_ip, target_ip);
+    // Set the NIC's IP address (10.0.2.15 in host byte order)
+    nic.ip_addr = (10 << 24) | (0 << 16) | (2 << 8) | 15;
+
+    // Prepare ARP request parameters (host byte order)
+    uint32_t src_ip = nic.ip_addr;
+    uint32_t target_ip = (10 << 24) | (0 << 16) | (2 << 8) | 2; // 10.0.2.2
+
+    rtl8139_send_arp_request(&src_ip, &target_ip);
+
+    // rtl8139_send_arp_request(&src_ip, &target_ip);
     // rtl8139_send_arp_request(src_ip, target_ip);
     // net_send_ipv4_packet(0x0A000202, IP_PROTO_ICMP, (uint8_t *)"Hello, world!", 13);
     // net_send_ipv4_packet(0x0A000202, IP_PROTO_ICMP, (uint8_t *)"Hello", 5);
     //
     //
-    icmp_send_echo_request(0x0A000202);
+    // icmp_send_echo_request(0x0A000202);
 }

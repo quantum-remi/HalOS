@@ -155,9 +155,9 @@ void console_ungetchar(void)
         uint32_t screen_x = console.cursor_x * console.font->width;
         uint32_t screen_y = console.cursor_y * console.font->height;
 
-        for (int y = 0; y < FONT_HEIGHT; y++)
+        for (int y = 0; y < FONT_HEIGHT + 1; y++)
         {
-            for (int x = 0; x < FONT_WIDTH; x++)
+            for (int x = 0; x < FONT_WIDTH + 1; x++)
             {
                 vbe_putpixel(screen_x + x, screen_y + y, console.bg);
             }
