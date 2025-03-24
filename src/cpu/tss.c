@@ -24,9 +24,6 @@ void tss_init()
     gdt_set_entry(5, base, limit, 0x89, 0x00);
 
 
-    uint8_t *iomap = (uint8_t*)&tss + tss.iomap_base;
-    iomap[0x3F8 / 8] &= ~(1 << (0x3F8 % 8)); 
-
     // Load TSS into task register (0x28 = 5th entry * 8)
     __asm__ volatile("ltr %%ax" : : "a"(0x28));
     serial_printf("TSS initialized at 0x%x\n", base);
