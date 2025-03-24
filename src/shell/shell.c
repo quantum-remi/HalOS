@@ -282,7 +282,7 @@ void haiku()
 
 int test_memory_allocation()
 {
-    void *ptr = malloc(64);
+    void *ptr = malloc(512);
     if (ptr == NULL)
     {
         console_printf("Initial malloc allocation failed\n");
@@ -554,7 +554,7 @@ void shell()
 
     console_clear();
     // console_printf("DEBUG: Console initialized\n");  // Check if this appears
-    console_printf("Hal OS v0.13.0\n");
+    console_printf("Hal OS v0.14.0\n");
     console_printf("Type 'help' for a list of commands\n");
 
     // Initialize the global FAT volume once
@@ -593,7 +593,7 @@ void shell()
             console_printf("|   * clear - Clear the console screen        |\n");
             console_printf("|   * cpuid - Display CPU information         |\n");
             console_printf("|   * echo - Echo a message to the console    |\n");
-            console_printf("|   * elf - Execute ELF file                  |\n");
+            console_printf("|   * elf - Execute ELF file EXPERIMENTAL     |\n");
             console_printf("|   * haiku - Display a haiku                 |\n");
             console_printf("|   * help - Display this help message        |\n");
             console_printf("|   * hwinfo - Display hardware information   |\n");
@@ -688,7 +688,7 @@ void shell()
         else if (strcmp(buffer, "version") == 0)
         {
             console_printf("--------------------------------------------------------------\n");
-            console_printf("Hal OS v0.13.0\n");
+            console_printf("Hal OS v0.14.0\n");
             console_printf("Built on: %s %s\n", __DATE__, __TIME__);
             console_printf("Built with: GCC %s\n", __VERSION__);
             console_printf("--------------------------------------------------------------\n");

@@ -57,16 +57,32 @@ int vesa_init(uint32_t *framebuffer, uint32_t width, uint32_t height, uint32_t p
     g_height = height;
     g_pitch = pitch;
     g_bpp = bpp;
-    uint32_t buffer_size = height * pitch; // Total byte size of the backbuffer
-    uint32_t pages_needed = (buffer_size + PAGE_SIZE - 1) / PAGE_SIZE;
-    // Allocate back buffer using contiguous virtual memory allocation
-    g_back_buffer = (uint32_t *)vmm_alloc_contiguous(pages_needed);
-    if (!g_back_buffer)
-    {
-        serial_printf("VESA: Failed to allocate back buffer!\n");
+    
+    uint32_t buffer_size = height * pitch;
+    uint32_t aligned_size = (buffer_size + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
+    uint32_t pages_needed = aligned_size / PAGE_SIZE;
+    
+    // Allocate physical memory for back buffer
+    void *phys_buffer = pmm_alloc_blocks(pages_needed);
+    if (!phys_buffer) {
+        serial_printf("VESA: Failed to allocate physical memory for back buffer\n");
         return -1;
     }
-    serial_printf("VESA: Initialized %dx%d (%d bpp)\n", width, height, bpp);
-    serial_printf("initializing vesa vbe 2.0\n");
+
+    // Map back buffer with virtual memory manager
+    g_back_buffer = vmm_map_mmio((uintptr_t)phys_buffer, aligned_size, 
+                                PAGE_PRESENT | PAGE_WRITABLE | PAGE_UNCACHED);
+    
+    if (!g_back_buffer) {
+        pmm_free_blocks(phys_buffer, pages_needed);
+        serial_printf("VESA: Failed to map back buffer\n");
+        return -1;
+    }
+
+    // Zero-initialize the buffer 
+    memset(g_back_buffer, 0, buffer_size);
+
+    serial_printf("VESA: Back buffer allocated %d pages at V:0x%x P:0x%x\n",
+                 pages_needed, (uint32_t)g_back_buffer, (uint32_t)phys_buffer);
     return 0;
 }

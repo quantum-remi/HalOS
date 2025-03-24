@@ -17,6 +17,8 @@
         "idt.h": "c",
         "liballoc_hook.h": "c",
         "liballoc.h": "c",
-        "fat.h": "c"
+        "fat.h": "c",
+        "stdbool.h": "c",
+        "stddef.h": "c"
     }
 }

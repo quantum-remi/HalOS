@@ -18,6 +18,7 @@ void paging_init(uint32_t mem_size)
     if (!page_directory)
     {
         serial_printf("Paging: Failed to allocate page directory!\n");
+        serial_printf("Paging: Failed to allocate first page table!\n");
         return;
     }
     // serial_printf("Paging: Page directory allocated at 0x%x\n", (uint32_t)page_directory);
@@ -33,17 +34,17 @@ void paging_init(uint32_t mem_size)
     // Clear first page table
     memset(first_page_table, 0, PAGE_SIZE);
 
-    // Map first 4MB
+    for (uint32_t i = 0; i < 1024; i++)
     for (uint32_t i = 0; i < 2048; i++)
     {
         first_page_table[i] = (i * PAGE_SIZE) | PAGE_PRESENT | PAGE_WRITABLE;
     }
 
     // Add page table to directory
-    page_directory[0] = ((uint32_t)first_page_table) | PAGE_PRESENT | PAGE_WRITABLE;
+    page_directory[0] = ((uint32_t)first_page_table & 0xFFFFF000) | PAGE_PRESENT | PAGE_WRITABLE;
 
     // Also map first 4MB to higher half (0xC0000000)
-    page_directory[768] = page_directory[0];
+    page_directory[768] = ((uint32_t)first_page_table) | PAGE_PRESENT | PAGE_WRITABLE;
 }
 
 static inline void load_page_directory(uint32_t pd_addr)
