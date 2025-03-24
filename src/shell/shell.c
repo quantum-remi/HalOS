@@ -19,6 +19,7 @@
 #include "math.h"
 #include "elf.h"
 #include "tasks.h"
+#include "pong.h"
 
 #define BRAND_QEMU 1
 #define BRAND_VBOX 2
@@ -518,7 +519,7 @@ void show_arp_cache()
 {
     console_printf("ARP Cache Table:\n");
     console_printf("-----------------------------------------------\n");
-    console_printf("IP Address        MAC Address           Age\n");
+    console_printf("IP Address        MAC Address               Age\n");
     console_printf("-----------------------------------------------\n");
 
     uint32_t current_time = get_ticks();
@@ -535,14 +536,14 @@ void show_arp_cache()
                            arp_cache[i].ip & 0xFF);
 
             // Format MAC address
-            console_printf("%02x:%02x:%02x:%02x:%02x:%02x    ",
+            console_printf("      %02x:%02x:%02x:%02x:%02x:%02x    ",
                            arp_cache[i].mac[0], arp_cache[i].mac[1],
                            arp_cache[i].mac[2], arp_cache[i].mac[3],
                            arp_cache[i].mac[4], arp_cache[i].mac[5]);
 
             // Calculate age in seconds
             uint32_t age = (current_time - arp_cache[i].timestamp) / 100; // Since timer runs at 100Hz
-            console_printf("%ds\n", age);
+            console_printf("     %ds\n", age);
         }
     }
     console_printf("-----------------------------------------------\n");
@@ -561,6 +562,9 @@ void shell()
 
     char buffer[255];
     const char *shell = "kernel> ";
+
+    // Set fat_root to the root directory of the FAT volume.
+    fat32_find_file(&fat_volume, "/", &fat_root);
 
     while (1)
     {
@@ -598,6 +602,7 @@ void shell()
             console_printf("|   * malloc - Test memory allocation         |\n");
             console_printf("|   * fireworks - Fireworks effect            |\n");
             console_printf("|   * memory - Display system memory          |\n");
+            console_printf("|   * pong - Play a game of Pong              |\n");
             console_printf("|   * pwd - Print current directory           |\n");
             console_printf("|   * shutdown - Shut down the system         |\n");
             console_printf("|   * snake - Play a game of Snake            |\n");
@@ -631,6 +636,10 @@ void shell()
         else if (strcmp(buffer, "echo") == 0)
         {
             echo();
+        }
+        else if (strcmp(buffer, "pong") == 0)
+        {
+            pong_game();
         }
         else if (strcmp(buffer, "arp") == 0)
         {

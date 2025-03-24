@@ -23,9 +23,9 @@ section .multiboot
     dd 0    ; bss_end_addr
     dd 0    ; entry_addr
     dd 0
-    ; dd 1920
-    ; dd 1080
-    ; dd 32
+    dd 800
+    dd 600
+    dd 32
 
 section .data
     align 4096

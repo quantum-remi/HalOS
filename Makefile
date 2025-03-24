@@ -53,7 +53,7 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o $(ASM_OBJ)/load_tss.o \
 		$(OBJ)/tss.o $(OBJ)/liballoc.o $(OBJ)/liballoc_hook.o \
 		$(OBJ)/pci.o $(OBJ)/ide.o $(OBJ)/fat.o $(OBJ)/font.o \
 		$(OBJ)/rtl8139.o $(OBJ)/arp.o $(OBJ)/eth.o $(OBJ)/network.o $(OBJ)/ipv4.o $(OBJ)/icmp.o \
-		$(OBJ)/math.o $(OBJ)/elf.o \
+		$(OBJ)/math.o $(OBJ)/elf.o $(OBJ)/pong.o \
 		$(OBJ)/kernel.o
 
 .PHONY: all	
@@ -183,6 +183,11 @@ $(OBJ)/paging.o : $(SRC)/mm/paging.c
 $(OBJ)/snake.o : $(SRC)/shell/snake.c
 	@printf "[ $(SRC)/shell/snake.c ]\n"
 	$(CC) $(CC_FLAGS) -c $(SRC)/shell/snake.c -o $(OBJ)/snake.o
+	@printf "\n"
+
+$(OBJ)/pong.o : $(SRC)/shell/pong.c
+	@printf "[ $(SRC)/shell/pong.c ]\n"
+	$(CC) $(CC_FLAGS) -c $(SRC)/shell/pong.c -o $(OBJ)/pong.o
 	@printf "\n"
 
 $(OBJ)/bios32.o : $(SRC)/cpu/bios32.c

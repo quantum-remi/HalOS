@@ -7,4 +7,4 @@ smp
 sound
 usb
 
-FIX DOUBLE BUFFERING
+DODAJ GRE
