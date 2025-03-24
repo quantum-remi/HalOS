@@ -107,7 +107,15 @@ void uptime()
 
 int rand(void)
 {
-    seed = (seed * 1103515245 + 12345) ^ (g_ticks); // XOR with current ticks
+    // Combine Linear Congruential Generator with Xorshift
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    seed ^= seed << 13;
+    seed ^= seed >> 17;
+    seed ^= seed << 5;
+    // Mix with timer ticks and a non-linear operation
+    seed = (seed + g_ticks) ^ ((seed * g_ticks) >> 16);
+    // Additional scrambling
+    seed = ((seed ^ 0x5DEECE66D) + (g_ticks * 69069)) & 0x7fffffff;
     return (seed >> 16) & 0x7FFF;
 }
 uint32_t get_ticks(void)

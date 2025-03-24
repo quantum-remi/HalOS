@@ -12,7 +12,7 @@ extern uint32_t g_height;
 #define PADDLE_WIDTH  4
 #define PADDLE_HEIGHT 40
 #define BALL_SIZE     5
-#define PADDLE_SPEED  5
+#define PADDLE_SPEED  10
 #define BALL_SPEED    5
 
 typedef struct {
