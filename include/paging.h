@@ -14,7 +14,7 @@
 #define PAGE_UNCACHED  (1 << 4)  // PCD (Page Cache Disable) flag
 #define PAGE_RW        (1 << 1)  // R/W flag
 // Initialize paging system (allocates the page directory)
-void paging_init(uint32_t mem_size);
+void paging_init();
 // Enable paging by loading CR3 and setting CR0.PG
 void paging_enable(uint32_t page_directory);
 // Map a physical page to a virtual address with given flags (creates page table if needed)

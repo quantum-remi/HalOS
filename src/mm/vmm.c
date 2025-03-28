@@ -99,10 +99,10 @@ static void mark_page(uint32_t page, bool used)
         vmm_bitmap[byte_idx] &= ~(1 << bit_idx);
 }
 
-void list_available_pages()
+void list_available_pages(void)
 {
     serial_printf("VMM: Available pages:\n");
-    for (int i = 0; i < vmm_max_pages; i++)
+    for (uint32_t i = 0; i < vmm_max_pages; i++)
     {
         if (vmm_bitmap[i] == 0)
         {
@@ -115,7 +115,7 @@ void vmm_init()
     // serial_printf("VMM: Initializing virtual memory manager\n");
 
     // Initialize paging structures
-    paging_init(0);
+    paging_init();
     vmm_bitmap_init();
 
     // Get page directory early to check if initialization succeeded
@@ -234,12 +234,12 @@ void vmm_free_page(void *addr)
     }
 
     // Calculate page index
-    int page_index = (virt_addr - KERNEL_VMEM_START) / PAGE_SIZE;
+    uint32_t page_index = (virt_addr - KERNEL_VMEM_START) / PAGE_SIZE;
 
     // Check if page index is within bounds
     if (page_index >= vmm_max_pages)
     {
-        serial_printf("VMM: Page index %d out of bounds\n", page_index);
+        serial_printf("VMM: Page index %u out of bounds\n", page_index);
         return;
     }
 
@@ -262,7 +262,7 @@ void *vmm_map_mmio(uintptr_t phys_addr, size_t size, uint32_t flags)
 {
     // Ensure size is page-aligned
     size = (size + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
-    int pages_needed = size / PAGE_SIZE;
+    uint32_t pages_needed = (size + PAGE_SIZE - 1) / PAGE_SIZE;
 
     // Find contiguous free virtual pages
     int start_index = -1;
@@ -291,14 +291,14 @@ void *vmm_map_mmio(uintptr_t phys_addr, size_t size, uint32_t flags)
     }
 
     // Mark pages as used
-    for (int i = start_index; i < start_index + pages_needed; i++)
+    for (uint32_t i = start_index; i < start_index + pages_needed; i++)
     {
         mark_page(i, true);
     }
 
     // Map physical to virtual
     uint32_t virt_start = KERNEL_VMEM_START + start_index * PAGE_SIZE;
-    for (size_t i = 0; i < pages_needed; i++)
+    for (uint32_t i = 0; i < pages_needed; i++)
     {
         uintptr_t curr_phys = phys_addr + (i * PAGE_SIZE);
         uintptr_t curr_virt = virt_start + (i * PAGE_SIZE);
@@ -325,7 +325,7 @@ void *vmm_alloc_contiguous(size_t pages)
     }
 
     // Reserve virtual address space first
-    for (int i = start_index; i < start_index + pages; i++)
+    for (uint32_t i = start_index; i < (uint32_t)(start_index + pages); i++)
     {
         mark_page(i, true);
     }
@@ -335,7 +335,7 @@ void *vmm_alloc_contiguous(size_t pages)
     if (!phys_start)
     {
         // Rollback virtual reservation
-        for (int i = start_index; i < start_index + pages; i++)
+        for (uint32_t i = start_index; i < (uint32_t)(start_index + pages); i++)
         {
             mark_page(i, false);
         }
@@ -346,7 +346,7 @@ void *vmm_alloc_contiguous(size_t pages)
 
     // Map contiguous physical to contiguous virtual
     uint32_t virt_start = KERNEL_VMEM_START + start_index * PAGE_SIZE;
-    for (size_t i = 0; i < pages; i++)
+    for (uint32_t i = 0; i < pages; i++)
     {
         uint32_t phys_addr = (uint32_t)phys_start + (i * PAGE_SIZE);
         uint32_t virt_addr = virt_start + (i * PAGE_SIZE);
@@ -455,8 +455,8 @@ void dma_free(void *addr, size_t size)
 }
 
 bool vmm_map_userspace(uint32_t virt_addr, uint32_t phys_addr, uint32_t flags) {
-    // Validate userspace address
-    if(virt_addr < USER_SPACE_START || virt_addr >= KERNEL_VMEM_START) {
+    // Validate userspace address - compare with KERNEL_VMEM_START only
+    if (virt_addr >= KERNEL_VMEM_START) {
         serial_printf("VMM: Invalid userspace address 0x%x\n", virt_addr);
         return false;
     }
@@ -475,14 +475,14 @@ void* vmm_alloc_userspace_pages(size_t pages) {
     void* phys = pmm_alloc_blocks(pages);
     if(!phys) return NULL;
 
-    for(int i = 0; i < pages; i++) {
+    for(uint32_t i = 0; i < pages; i++) {
         if (!paging_map_page(
             (uint32_t)phys + i * PAGE_SIZE,
             virt_addr + i * PAGE_SIZE,
             PAGE_PRESENT | PAGE_WRITABLE | PAGE_USER
         )) {
             // Cleanup if mapping fails
-            for (int j = 0; j < i; j++) {
+            for (uint32_t j = 0; j < i; j++) {
                 paging_unmap_page(virt_addr + j * PAGE_SIZE);
             }
             pmm_free_blocks(phys, pages);

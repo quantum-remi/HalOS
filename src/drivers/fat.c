@@ -1,20 +1,16 @@
-// fat 32 driver
 #include "fat.h"
-
 #include <stdint.h>
 #include "string.h"
 #include "io.h"
 #include "liballoc.h"
 #include "serial.h"
 #include "vmm.h"
-
 #include "ide.h"
 
 #define DIR_ENTRY_ATTRIB_LFN 0x0F
 
 extern IDE_DEVICE g_ide_devices[MAXIMUM_IDE_DEVICES];
 
-// Drive number for FAT32 filesystem
 static uint8_t g_fat32_drive = 0;
 
 static FAT32_Directory_Entry *read_next_entry(FAT32_Volume *volume, FAT32_DirList *dir_list);
@@ -38,7 +34,6 @@ static bool disk_read_sector(uint8_t *buffer, uint32_t sector)
     uint32_t timeout = 100000;
     while (timeout-- > 0)
     {
-
         if (ide_read_sectors(g_fat32_drive, 1, sector, (uint32_t)buffer) != 0)
         {
             serial_printf("[FAT32] Error reading sector %u\n", sector);
@@ -49,123 +44,76 @@ static bool disk_read_sector(uint8_t *buffer, uint32_t sector)
     serial_printf("[FAT32] Error Read timeout at sector %u\n", sector);
     return false;
 }
-
-static bool disk_write_sector(uint8_t *buffer, uint32_t sector)
-{
-    if (ide_write_sectors(g_fat32_drive, 1, sector, (uint32_t)buffer) != 0)
-    {
-        serial_printf("[FAT32] Error writing sector %u\n", sector);
-        return false;
-    }
-    return true;
-}
-
-static void split_path(const char *path, char *parent, char *filename)
-{
-    const char *last_slash = strrchr(path, '/');
-    if (!last_slash)
-    {
-        strcpy(parent, "/");
-        strcpy(filename, path);
-        return;
-    }
-
-    strncpy(parent, path, last_slash - path);
-    parent[last_slash - path] = '\0';
-    strcpy(filename, last_slash + 1);
-}
-
-static void to_short_filename(const char *name, char *short_name, char *short_ext)
-{
-    memset(short_name, ' ', 8);
-    memset(short_ext, ' ', 3);
-
-    const char *dot = strchr(name, '.');
-    if (!dot)
-    {
-        strncpy(short_name, name, 8);
-        return;
-    }
-
-    strncpy(short_name, name, dot - name < 8 ? dot - name : 8);
-    strncpy(short_ext, dot + 1, strlen(dot + 1) < 3 ? strlen(dot + 1) : 3);
-
-    // Convert to uppercase
-    for (int i = 0; i < 8; i++)
-        short_name[i] = toupper(short_name[i]);
-    for (int i = 0; i < 3; i++)
-        short_ext[i] = toupper(short_ext[i]);
-}
-
 static uint32_t cluster_to_sector(const FAT32_Volume *volume, uint32_t cluster)
 {
     return volume->data_start_sector + (cluster - 2) * volume->header.sectors_per_cluster;
 }
 
-void fat32_read_file(FAT32_Volume *volume, FAT32_File *file, uint8_t *out_buffer, uint32_t num_bytes, uint32_t start_offset)
+bool fat32_read_file(FAT32_Volume *volume, FAT32_File *file, uint32_t offset, uint8_t *buffer, uint32_t size)
 {
-    if (!volume || !file || !out_buffer)
+    if (!volume || !file || !buffer)
     {
         serial_printf("[FAT32] Invalid parameters in fat32_read_file\n");
-        return;
+        return false;
     }
 
-    if (start_offset + num_bytes > file->size && !(file->attrib & FAT32_IS_DIR))
+    if (offset + size > file->size && !(file->attrib & FAT32_IS_DIR))
     {
         serial_printf("[FAT32] Attempted read beyond file size\n");
-        return;
+        return false;
     }
 
     FAT32_Header *header = &volume->header;
 
     uint32_t cluster = file->cluster;
-    uint32_t clusters_to_advance = start_offset / volume->cluster_size;
-    for (int i = 0; i < clusters_to_advance; i++)
+    uint32_t clusters_to_advance = offset / volume->cluster_size;
+    for (uint32_t i = 0; i < clusters_to_advance; i++)
     {
-        start_offset -= volume->cluster_size;
+        offset -= volume->cluster_size;
         cluster = volume->fat[cluster] & 0xFFFFFF;
         if (cluster == 0xFFFFFF)
         {
             serial_printf("[FAT32] Invalid cluster chain\n");
-            return;
+            return false;
         }
     }
 
-    uint32_t bytes_left = num_bytes;
+    uint32_t bytes_left = size;
     while (true)
     {
-        for (int i = start_offset / SECTOR_SIZE; i < header->sectors_per_cluster; i++)
+        for (int i = offset / SECTOR_SIZE; i < header->sectors_per_cluster; i++)
         {
-            start_offset %= SECTOR_SIZE;
+            offset %= SECTOR_SIZE;
 
-            uint8_t buffer[SECTOR_SIZE];
-            if (!disk_read_sector(buffer, cluster_to_sector(volume, cluster) + i))
+            uint8_t sector_buffer[SECTOR_SIZE];
+            if (!disk_read_sector(sector_buffer, cluster_to_sector(volume, cluster) + i))
             {
-                return;
+                return false;
             }
 
             uint32_t bytes_to_read = bytes_left;
-            if (bytes_left + start_offset > SECTOR_SIZE)
+            if (bytes_left + offset > SECTOR_SIZE)
             {
-                bytes_to_read = SECTOR_SIZE - start_offset;
+                bytes_to_read = SECTOR_SIZE - offset;
             }
 
-            memcpy(out_buffer, buffer + start_offset, bytes_to_read);
+            memcpy(buffer, sector_buffer + offset, bytes_to_read);
             bytes_left -= bytes_to_read;
-            out_buffer += bytes_to_read;
+            buffer += bytes_to_read;
 
-            start_offset = 0;
+            offset = 0;
             if (bytes_left == 0)
-                return;
+                return true;
         }
 
         cluster = volume->fat[cluster] & 0xFFFFFF;
         if (cluster == 0xFFFFFF)
             break;
     }
+
+    return false;
 }
 
-// dos style 8.3
 static void parse_short_filename(char output[13], FAT32_Directory_Entry *entry)
 {
     strncpy(output, (const char *)entry->short_name, 8);
@@ -198,19 +146,13 @@ static void parse_short_filename(char output[13], FAT32_Directory_Entry *entry)
     }
 }
 
-static char ucs2_to_ascii(uint16_t ucs2)
-{
-    return ucs2 & 0xFF;
-}
-
 #define LFN_CHARS_PER_ENTRY 13
 
 static void parse_lfn_entry(FAT32_Directory_Entry_LFN *lfn, char *lfn_buffer)
 {
-    uint8_t seq = lfn->sequence & 0x1F; // Remove last-entry flag
+    uint8_t seq = lfn->sequence & 0x1F;
     uint16_t chars[13];
 
-    // Extract all 13 characters
     memcpy(chars, lfn->name0, 10);
     memcpy(chars + 5, lfn->name1, 12);
     memcpy(chars + 11, lfn->name2, 4);
@@ -221,57 +163,6 @@ static void parse_lfn_entry(FAT32_Directory_Entry_LFN *lfn, char *lfn_buffer)
             break;
         lfn_buffer[(seq - 1) * 13 + i] = (chars[i] & 0xFF);
     }
-}
-
-// returns length in clusters
-static uint32_t count_fat_chain_length(const FAT32_Volume *volume, uint32_t cluster)
-{
-    uint32_t length = 1;
-
-    while (true)
-    {
-        cluster = volume->fat[cluster] & 0xFFFFFF;
-
-        if (cluster == 0xFFFFFF)
-            break;
-
-        length++;
-    }
-
-    return length;
-}
-
-static uint32_t fat32_strncmp_nocase(const char *s1, const char *s2, uint32_t n)
-{
-    register unsigned char u1, u2;
-
-    while (n-- > 0)
-    {
-        u1 = toupper((unsigned char)*s1++);
-        u2 = toupper((unsigned char)*s2++);
-        if (u1 != u2)
-            return u1 - u2;
-        if (u1 == '\0')
-            return 0;
-    }
-    return 0;
-}
-
-static bool find_file_in_dir(FAT32_Volume *volume, FAT32_File *dir_file, const char *name, uint32_t name_len, FAT32_File *out_file)
-{
-    FAT32_DirList list;
-    fat32_list_dir(volume, dir_file, &list);
-
-    char entry_name[256];
-    while (fat32_next_dir_entry(volume, &list, out_file, entry_name))
-    {
-        if (fat32_strncmp_nocase(entry_name, name, name_len) == 0)
-        {
-            return true;
-        }
-    }
-
-    return false;
 }
 
 void fat32_init_volume(FAT32_Volume *volume)
@@ -285,7 +176,6 @@ void fat32_init_volume(FAT32_Volume *volume)
     memset(volume, 0, sizeof(FAT32_Volume));
     uint8_t *sector_buffer = dma_alloc(SECTOR_SIZE);
 
-    // 1. Find a valid IDE ATA drive
     g_fat32_drive = 0;
     while (g_fat32_drive < MAXIMUM_IDE_DEVICES)
     {
@@ -304,14 +194,12 @@ void fat32_init_volume(FAT32_Volume *volume)
         return;
     }
 
-    // 2. Read boot sector (LBA 0)
     if (!disk_read_sector(sector_buffer, 0))
     {
         serial_printf("[FAT32] Failed to read boot sector\n");
         return;
     }
 
-    // 3. Validate FAT32 signature and type
     uint8_t boot_sig1 = sector_buffer[510];
     uint8_t boot_sig2 = sector_buffer[511];
     if (boot_sig1 != 0x55 || boot_sig2 != 0xAA)
@@ -326,31 +214,26 @@ void fat32_init_volume(FAT32_Volume *volume)
         return;
     }
 
-    // 4. Copy header structure
     memcpy(&volume->header, sector_buffer, sizeof(FAT32_Header));
     const FAT32_Header *header = &volume->header;
 
-    // 5. Validate sector size
     if (header->bytes_per_sector != SECTOR_SIZE)
     {
         serial_printf("[FAT32] Unsupported sector size: %u\n", header->bytes_per_sector);
         return;
     }
 
-    // 6. Calculate FAT parameters
     volume->fat_size_in_sectors = header->fat_size_16 == 0 ? header->fat_size_32 : header->fat_size_16;
 
     volume->data_start_sector = header->reserved_sectors +
                                 (header->fat_count * volume->fat_size_in_sectors);
 
-    // 7. Allocate and read FAT table
     if (!sector_buffer)
     {
         serial_printf("[FAT32] DMA buffer allocation failed\n");
         return;
     }
 
-    // Read boot sector
     if (!disk_read_sector(sector_buffer, 0))
     {
         serial_printf("[FAT32] Read failed\n");
@@ -358,7 +241,6 @@ void fat32_init_volume(FAT32_Volume *volume)
         return;
     }
 
-    // Allocate FAT table with contiguous memory
     uint32_t fat_size = volume->fat_size_in_sectors * SECTOR_SIZE;
     if (volume->fat_size_in_sectors == 0)
     {
@@ -373,7 +255,6 @@ void fat32_init_volume(FAT32_Volume *volume)
         return;
     }
 
-    // 8. Final initialization
     volume->cluster_size = header->sectors_per_cluster * SECTOR_SIZE;
 
     serial_printf("[FAT32] Initialized successfully\n");
@@ -382,8 +263,10 @@ void fat32_init_volume(FAT32_Volume *volume)
     serial_printf("  Root cluster: %u\n", header->root_cluster);
 }
 
-bool fat32_find_file(FAT32_Volume *volume, const char *path, FAT32_File *out_file) {
-    if (!volume || !path || !out_file) {
+bool fat32_find_file(FAT32_Volume *volume, const char *path, FAT32_File *out_file)
+{
+    if (!volume || !path || !out_file)
+    {
         return false;
     }
 
@@ -391,7 +274,8 @@ bool fat32_find_file(FAT32_Volume *volume, const char *path, FAT32_File *out_fil
     uint32_t start = 0;
     size_t path_len = strlen(path);
 
-    if (path_len == 0) {
+    if (path_len == 0)
+    {
         return false;
     }
 
@@ -402,35 +286,37 @@ bool fat32_find_file(FAT32_Volume *volume, const char *path, FAT32_File *out_fil
         .cluster = volume->header.root_cluster,
         .attrib = FAT32_IS_DIR};
 
-    while (start < path_len) {
-        // Extract next path component
+    while (start < path_len)
+    {
         uint32_t end = start;
-        while (path[end] != '\0' && path[end] != '/') {
+        while (path[end] != '\0' && path[end] != '/')
+        {
             end++;
         }
 
         if (end == start)
-            break; // Empty component
+            break;
 
         strncpy(component, path + start, end - start);
         component[end - start] = '\0';
 
         char component_upper[256];
-        for (int i = 0; component[i]; i++) {
+        for (int i = 0; component[i]; i++)
+        {
             component_upper[i] = toupper(component[i]);
         }
         component_upper[strlen(component)] = '\0';
 
-        // Search directory
         FAT32_DirList list;
         FAT32_File entry;
         char name[256];
         bool found = false;
 
         fat32_list_dir(volume, &current, &list);
-        while (fat32_next_dir_entry(volume, &list, &entry, name)) {
-            // Compare using uppercase version
-            if (fat32_strcasecmp(name, component_upper) == 0) {
+        while (fat32_next_dir_entry(volume, &list, &entry, name))
+        {
+            if (fat32_strcasecmp(name, component_upper) == 0)
+            {
                 current = entry;
                 found = true;
                 break;
@@ -515,7 +401,7 @@ bool fat32_next_dir_entry(FAT32_Volume *volume, FAT32_DirList *dir_list,
         FAT32_Directory_Entry *entry = read_next_entry(volume, dir_list);
         if (!entry)
         {
-            lfn_length = 0; // Reset on directory end
+            lfn_length = 0;
             return false;
         }
 
@@ -525,7 +411,7 @@ bool fat32_next_dir_entry(FAT32_Volume *volume, FAT32_DirList *dir_list,
             uint8_t seq = lfn->sequence & 0x1F;
 
             if (seq == 0)
-                continue; // Deleted entry
+                continue;
             if (seq > lfn_length)
                 lfn_length = seq;
 
@@ -535,7 +421,6 @@ bool fat32_next_dir_entry(FAT32_Volume *volume, FAT32_DirList *dir_list,
         {
             if (lfn_length > 0)
             {
-                // Reverse LFN parts and trim nulls
                 char temp[256];
                 uint8_t parts = lfn_length;
 

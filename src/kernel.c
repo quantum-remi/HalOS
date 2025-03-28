@@ -78,7 +78,6 @@ void kmain(unsigned long magic, unsigned long addr)
     serial_printf("\n=== Boot Sequence Started ===\n");
 
     // Initialize core subsystems with detailed logging
-    struct resolution resolution = {.x = 1024, .y = 768};
     serial_printf("Initializing GDT...\n");
     gdt_init();
 

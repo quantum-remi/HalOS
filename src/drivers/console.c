@@ -17,8 +17,8 @@ static struct
     uint32_t bg;
     uint32_t cols;
     uint32_t rows;
-    int cursor_x;
-    int cursor_y;
+    uint32_t cursor_x;    // Changed from int to uint32_t
+    uint32_t cursor_y;    // Changed from int to uint32_t
     bool cursor_visible;
     char *buffer;
     PSF2_Header *font;
@@ -37,7 +37,7 @@ extern char _binary___config_ter_powerline_v20b_psf_start;
 
 int console_scrolling = 0;
 
-static inline char *buffer_at(int x, int y)
+static inline char *buffer_at(uint32_t x, uint32_t y)  // Changed parameters to uint32_t
 {
     return &console.buffer[y * console.cols + x];
 }
@@ -65,17 +65,17 @@ void draw_char(int x, int y, char c)
 {
     uint32_t screen_x = x * console.font->width;
     uint32_t screen_y = y * console.font->height;
-    int bytes_per_row = (console.font->width + 7) / 8;
+    uint32_t bytes_per_row = (console.font->width + 7) / 8;
     const unsigned char *glyph = (const unsigned char *)console.font + console.font->headersize + (unsigned char)c * console.font->bytesperglyph;
 
-    for (int font_y = 0; font_y < console.font->height; font_y++)
+    for (uint32_t font_y = 0; font_y < console.font->height; font_y++)
     {
-        for (int byte = 0; byte < bytes_per_row; byte++)
+        for (uint32_t byte = 0; byte < bytes_per_row; byte++)
         {
             unsigned char font_byte = glyph[font_y * bytes_per_row + byte];
-            for (int bit = 0; bit < 8; bit++)
+            for (uint32_t bit = 0; bit < 8; bit++)
             {
-                int font_x = byte * 8 + bit;
+                uint32_t font_x = byte * 8 + bit;
                 if (font_x >= console.font->width)
                     break;
                 uint32_t color = (font_byte & (0x80 >> bit)) ? console.fg : console.bg;
@@ -157,9 +157,9 @@ void console_ungetchar(void)
         uint32_t screen_x = console.cursor_x * console.font->width;
         uint32_t screen_y = console.cursor_y * console.font->height;
 
-        for (int y = 0; y < FONT_HEIGHT + 1; y++)
+        for (uint32_t y = 0; y < FONT_HEIGHT + 1; y++)
         {
-            for (int x = 0; x < FONT_WIDTH + 1; x++)
+            for (uint32_t x = 0; x < FONT_WIDTH + 1; x++)
             {
                 vbe_putpixel(screen_x + x, screen_y + y, console.bg);
             }
@@ -321,7 +321,7 @@ static void format_number(char *buf, unsigned int val, int base,
 void console_vprintf(const char *format, va_list args)
 {
     char buf[32];
-    int i, n, width, pad_zero;
+    int n, width, pad_zero;  // Removed unused variable 'i'
     unsigned int uval;
 
     while ((n = *format++) != 0)

@@ -142,9 +142,9 @@ void *pmm_alloc_block()
  * @param num_blocks The number of contiguous blocks to allocate.
  * @return A pointer to the start of the allocated blocks, or NULL if allocation fails.
  */
-void *pmm_alloc_blocks(int num_blocks)
+void *pmm_alloc_blocks(uint32_t num_blocks)
 {
-    if (num_blocks <= 0)
+    if (num_blocks == 0)
         return NULL;
 
     uint32_t consecutive = 0;
@@ -257,9 +257,9 @@ bool pmm_is_block_free(uint32_t block)
     return !(pmm_memory_map[byte_idx] & (1 << bit_idx));
 }
 
-void *pmm_alloc_blocks_in_range(int num_blocks, uint32_t start_addr, uint32_t end_addr)
+void *pmm_alloc_blocks_in_range(uint32_t num_blocks, uint32_t start_addr, uint32_t end_addr)
 {
-    if (num_blocks <= 0 || start_addr >= end_addr)
+    if (num_blocks == 0 || start_addr >= end_addr)
     {
         serial_printf("PMM: Invalid parameters for block allocation in range\n");
         return NULL;

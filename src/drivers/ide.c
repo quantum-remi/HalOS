@@ -362,19 +362,6 @@ void ide_init(uint32_t prim_channel_base_addr, uint32_t prim_channel_control_bas
             count++;
         }
     }
-
-    // 4- Print Summary:
-    for (i = 0; i < 4; i++)
-        if (g_ide_devices[i].reserved == 1)
-        {
-            console_printf("%d:-\n", i);
-            console_printf("  model: %s\n", g_ide_devices[i].model);
-            console_printf("  type: %s\n", (const char *[]){"ATA", "ATAPI"}[g_ide_devices[i].type]);
-            console_printf("  drive: %u, channel: %u\n", g_ide_devices[i].drive, g_ide_devices[i].channel);
-            console_printf("  base: 0x%x, control: 0x%x\n", g_ide_channels[i].base, g_ide_channels[i].control);
-            console_printf("  size: %u sectors, %u bytes\n", g_ide_devices[i].size, g_ide_devices[i].size * ATA_SECTOR_SIZE);
-            console_printf("  signature: 0x%x, features: %d\n", g_ide_devices[i].signature, g_ide_devices[i].features);
-        }
 }
 uint8_t ide_ata_access(uint8_t direction, uint8_t drive, uint32_t lba, uint8_t num_sectors, uint32_t buffer)
 {

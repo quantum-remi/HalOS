@@ -9,7 +9,6 @@
 #define SECTOR_SIZE 512
 #define FAT32_IS_DIR 0x10
 
-// Add these error codes
 #define FAT32_ERROR_NO_DEVICE    1
 #define FAT32_ERROR_READ_FAILED  2
 #define FAT32_ERROR_NO_FAT32     3
@@ -76,16 +75,13 @@ typedef struct {
     uint16_t name2[2];
 } FAT32_Directory_Entry_LFN;
 
-// static_assert(sizeof(FAT32_Directory_Entry) == 32, "wrong byte size!");
-// static_assert(sizeof(FAT32_Directory_Entry) == sizeof(FAT32_Directory_Entry_LFN), "wrong byte size!");
-
 #pragma pack(pop)
 
 typedef struct {
   uint32_t attrib;
     uint32_t cluster;
     uint32_t size;
-    uint32_t offset; // not used by any fat32_* funcs
+    uint32_t offset;
 } FAT32_File;
 
 typedef uint32_t fat32_entry;
@@ -96,22 +92,20 @@ typedef struct {
     uint32_t data_start_sector;
     uint32_t partition_start;  
     fat32_entry *fat;
-    uint32_t cluster_size; // in bytes
+    uint32_t cluster_size;
 } FAT32_Volume;
 
 typedef struct {
   uint32_t cluster;
-    uint32_t entry; // in cluster
+    uint32_t entry;
 
     uint8_t sector_buffer[SECTOR_SIZE];
     uint32_t buffered_sector;
 } FAT32_DirList;
 
-static void parse_short_filename(char output[13], FAT32_Directory_Entry *entry);
-static void parse_lfn_entry(FAT32_Directory_Entry_LFN *lfn, char *lfn_buffer);
 void fat32_init_volume(FAT32_Volume* volume);
 bool fat32_find_file(FAT32_Volume* volume, const char* path, FAT32_File* out_file);
-void fat32_read_file(FAT32_Volume* volume, FAT32_File* file, uint8_t* out_buffer, uint32_t num_bytes, uint32_t start_offset);
+bool fat32_read_file(FAT32_Volume *volume, FAT32_File *file, uint32_t offset, uint8_t *buffer, uint32_t size);
 void fat32_list_dir(FAT32_Volume* volume, FAT32_File* dir, FAT32_DirList* dir_list);
 bool fat32_next_dir_entry(FAT32_Volume* volume, FAT32_DirList* dir_list, FAT32_File* out_file, char out_name[256]);
 void fat32_unmount_volume(FAT32_Volume* volume);

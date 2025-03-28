@@ -38,7 +38,7 @@ static char current_path[256] = "/";
 
 typedef struct
 {
-    int x, y;
+    uint32_t x, y;
     int dx, dy;
     uint32_t color;
     int lifetime;
@@ -48,7 +48,7 @@ void __cpuid(uint32_t type, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_
 {
     __asm__ volatile("cpuid"
                      : "=a"(*eax), "=b"(*ebx), "=c"(*ecx), "=d"(*edx)
-                     : "0"(type)); // put the type into eax
+                     : "0"(type));
 }
 
 int cpuid_info(int print)
@@ -81,14 +81,11 @@ void echo()
 {
     console_printf("echo> ");
 
-    // Declare and clear the input buffer
     char buffer[255];
     memset(buffer, 0, sizeof(buffer));
 
-    // Get input from the user
-    getstr(buffer, sizeof(buffer)); // Use the buffer size directly
+    getstr(buffer, sizeof(buffer));
 
-    // Print the input back to the console
     console_printf("%s\n", buffer);
 }
 
@@ -126,7 +123,6 @@ void ftoa(char *buf, float f)
     char *p;
 
     memset(int_part_buf, 0, sizeof(int_part_buf));
-    // add integer part
     int x = (int)f;
     itoa(int_part_buf, 'd', x);
     p = int_part_buf;
@@ -136,7 +132,6 @@ void ftoa(char *buf, float f)
     }
     *buf++ = '.';
 
-    // example decimal = 3.14159 - 3 = 0.14159
     float decimal = f - x;
     if (decimal == 0)
         *buf++ = '0';
@@ -144,9 +139,9 @@ void ftoa(char *buf, float f)
     {
         while (decimal > 0)
         {
-            uint32_t y = decimal * 10; // y = 0.14159 * 10 = 1
+            uint32_t y = decimal * 10;
             *buf++ = y + '0';
-            decimal = (decimal * 10) - y; // decimal = (0.14159 * 10) - 1 = 0.4159
+            decimal = (decimal * 10) - y;
             count++;
             if (count == DEFAULT_DECIMAL_COUNT)
                 break;
@@ -167,7 +162,6 @@ static void test_vesa()
 {
     console_printf("Running VESA graphics demo...\n");
 
-    // Rainbow gradient - using triangle wave pattern instead of sine
     for (uint32_t y = 0; y < g_height; y++)
     {
         uint8_t r = (y * 255) / g_height;
@@ -179,7 +173,6 @@ static void test_vesa()
         }
     }
 
-    // Animated bouncing ball
     int ball_x = g_width / 2;
     int ball_y = g_height / 2;
     int dx = 5, dy = 3;
@@ -188,7 +181,7 @@ static void test_vesa()
 
     while (iterations-- && !kbhit())
     {
-        // Clear previous ball position
+
         for (int y = -radius; y <= radius; y++)
         {
             for (int x = -radius; x <= radius; x++)
@@ -197,9 +190,9 @@ static void test_vesa()
                 {
                     int px = ball_x + x;
                     int py = ball_y + y;
-                    if (px >= 0 && px < g_width && py >= 0 && py < g_height)
+                    if (px >= 0 && (uint32_t)px < g_width && py >= 0 && (uint32_t)py < g_height)
                     {
-                        // Restore background gradient using same calculation as above
+
                         uint8_t r = (py * 255) / g_height;
                         uint8_t g = ((py * 510 / g_height) > 255) ? 510 - (py * 510 / g_height) : (py * 510 / g_height);
                         uint8_t b = 255 - ((py * 255) / g_height);
@@ -209,17 +202,14 @@ static void test_vesa()
             }
         }
 
-        // Update ball position
         ball_x += dx;
         ball_y += dy;
 
-        // Bounce off edges
-        if (ball_x <= radius || ball_x >= g_width - radius)
+        if (ball_x <= radius || (uint32_t)(ball_x + radius) >= g_width)
             dx = -dx;
-        if (ball_y <= radius || ball_y >= g_height - radius)
+        if (ball_y <= radius || (uint32_t)(ball_y + radius) >= g_height)
             dy = -dy;
 
-        // Draw new ball position
         for (int y = -radius; y <= radius; y++)
         {
             for (int x = -radius; x <= radius; x++)
@@ -228,9 +218,8 @@ static void test_vesa()
                 {
                     int px = ball_x + x;
                     int py = ball_y + y;
-                    if (px >= 0 && px < g_width && py >= 0 && py < g_height)
+                    if (px >= 0 && (uint32_t)px < g_width && py >= 0 && (uint32_t)py < g_height)
                     {
-                        // Create a shiny effect
                         int d = (x * x + y * y);
                         int intensity = 255 - (d * 255) / (radius * radius);
                         vbe_putpixel(px, py, (intensity << 16) | (intensity << 8) | intensity);
@@ -238,10 +227,8 @@ static void test_vesa()
                 }
             }
         }
-
-        // Swap buffers so that the frame becomes visible
         vesa_swap_buffers();
-        usleep(20000); // Add a small delay
+        usleep(20000);
     }
 
     console_printf("Press any key to exit VESA demo...\n");
@@ -318,7 +305,8 @@ void hwinfo()
     console_printf("CPU: ");
     cpuid_info(1);
     console_printf("Memory: %d MB\n", g_kmap.system.total_memory / 1024);
-    console_printf("Screen Resolution: %dx%d\n", g_width, g_height);
+    console_printf("VESA Mode: %dx%d\n", g_width, g_height);
+
 }
 void fireworks()
 {
@@ -329,8 +317,8 @@ void fireworks()
     {
         if (active < 900 && (rand() % 10 == 0))
         {
-            int base_x = rand() % g_width;
-            int base_y = g_height;
+            uint32_t base_x = rand() % g_width;
+            uint32_t base_y = g_height;
             uint32_t color = (rand() % 255 << 16) | (rand() % 255 << 8) | rand() % 255;
 
             for (int i = 0; i < 100; i++)
@@ -350,8 +338,8 @@ void fireworks()
 
         for (int i = 0; i < active; i++)
         {
-            if (particles[i].x >= 0 && particles[i].x < g_width &&
-                particles[i].y >= 0 && particles[i].y < g_height)
+            if ((int)particles[i].x >= 0 && particles[i].x < g_width &&
+                (int)particles[i].y >= 0 && particles[i].y < g_height)
             {
                 vbe_putpixel(particles[i].x, particles[i].y, 0);
             }
@@ -369,8 +357,8 @@ void fireworks()
             uint32_t b = (particles[i].color & 0xFF) * particles[i].lifetime / 50;
             uint32_t fade_color = (r << 16) | (g << 8) | b;
 
-            if (particles[i].x >= 0 && particles[i].x < g_width &&
-                particles[i].y >= 0 && particles[i].y < g_height)
+            if ((int)particles[i].x >= 0 && particles[i].x < g_width &&
+                (int)particles[i].y >= 0 && particles[i].y < g_height)
             {
                 vbe_putpixel(particles[i].x, particles[i].y, fade_color);
             }
@@ -441,7 +429,7 @@ static void resolve_path(const char *current, const char *path, char *resolved, 
     {
         // Convert component to uppercase
         char upper[13];
-        for (int j = 0; j < strlen(components[i]) && j < 12; j++)
+        for (size_t j = 0; j < strlen(components[i]) && j < 12; j++)
         {
             upper[j] = toupper(components[i][j]);
         }
@@ -594,16 +582,17 @@ void shell()
             console_printf("|   * cpuid - Display CPU information         |\n");
             console_printf("|   * echo - Echo a message to the console    |\n");
             console_printf("|   * elf - Execute ELF file EXPERIMENTAL     |\n");
+            console_printf("|   * fireworks - Fireworks effect            |\n");
             console_printf("|   * haiku - Display a haiku                 |\n");
             console_printf("|   * help - Display this help message        |\n");
             console_printf("|   * hwinfo - Display hardware information   |\n");
             console_printf("|   * ls - List files in current directory    |\n");
             console_printf("|   * lspci - Display PCI information         |\n");
             console_printf("|   * malloc - Test memory allocation         |\n");
-            console_printf("|   * fireworks - Fireworks effect            |\n");
             console_printf("|   * memory - Display system memory          |\n");
             console_printf("|   * pong - Play a game of Pong              |\n");
             console_printf("|   * pwd - Print current directory           |\n");
+            console_printf("|   * reboot - Reboot the system              |\n");
             console_printf("|   * shutdown - Shut down the system         |\n");
             console_printf("|   * snake - Play a game of Snake            |\n");
             console_printf("|   * timer - Display system timer            |\n");
@@ -613,25 +602,14 @@ void shell()
         }
         else if (strcmp(buffer, "help /f") == 0)
         {
-            console_printf("arp, cd, clear, cpuid, echo, elf, haiku, help, hwinfo, ls, lspci, malloc, memory, shutdown, snake, timer, vesa, version\n");
+            console_printf("arp, cd, clear, cpuid, echo, elf, fireworks, haiku, help, hwinfo, ls, lspci, malloc, memory, pong, pwd, reboot, shutdown, snake, timer, vesa, version\n");
         }
         else if (strncmp(buffer, "cd ", 3) == 0)
         {
             cd(buffer + 3);
         }
-        else if (strncmp(buffer, "elf ", 4) == 0) {
-            char *filename = buffer + 4;
-            uint32_t entry, stack;
-            
-            if(elf_load(filename, &entry, &stack) == 0) {
-                console_printf("Launching %s at 0x%x\n", filename, entry);
-                switch_to_userspace(entry, stack);  // Should be called AFTER successful load
-                
-                // If we return here, the switch failed
-                serial_printf("Failed to switch to userspace\n");
-            } else {
-                console_printf("Failed to load ELF\n");
-            }
+        else if (strcmp(buffer, "reboot") == 0) {
+            outportb(0x64, 0xFE);
         }
         else if (strcmp(buffer, "echo") == 0)
         {

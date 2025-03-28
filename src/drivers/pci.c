@@ -148,7 +148,7 @@ pci_dev_t pci_scan_function(uint16_t vendor_id, uint16_t device_id, uint32_t bus
     }
 
     // Check device match
-    if (device_type == -1 || device_type == get_device_type(dev))
+    if (device_type == -1 || (uint32_t)device_type == get_device_type(dev))
     {
         uint32_t dev_id = pci_read(dev, PCI_DEVICE_ID);
         uint32_t vend_id = pci_read(dev, PCI_VENDOR_ID);

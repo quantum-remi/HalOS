@@ -83,7 +83,14 @@ int factorial(int a)
     }
     return result;
 }
+double fabs(double x) {
+    return x < 0 ? -x : x;
+}
 
+double fmod(double x, double y) {
+    int quotient = (int)(x / y);
+    return x - y * quotient;
+}
 int is_prime(int a)
 {
     if (a < 2)

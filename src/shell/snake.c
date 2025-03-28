@@ -3,6 +3,7 @@
 #include "keyboard.h"
 #include "vesa.h"
 #include "kernel.h"
+#include <stdbool.h>
 
 static int g_start_x;
 static int g_start_y;
@@ -49,7 +50,7 @@ static void snake_init(void);
 static void draw_game(void);
 static void snake_update(void);
 static void snake_handle_input(char key);
-static int snake_collision(void);
+static bool snake_collision(Point head);
 
 static void snake_update()
 {
@@ -61,7 +62,7 @@ static void snake_update()
         .y = snake.body[0].y + snake.direction.y};
 
     // Check collisions
-    if (snake_collision())
+    if (snake_collision(new_head))
     {
         game_over = 1;
         return;
@@ -119,15 +120,13 @@ static void snake_handle_input(char key)
     }
 }
 
-static int snake_collision()
+static bool snake_collision(Point head)
 {
-    Point head = snake.body[0];
-
     // Wall collision
-    if (head.x < 0 || head.x >= BOARD_WIDTH ||
-        head.y < 0 || head.y >= BOARD_HEIGHT)
+    if (head.x < 0 || (uint32_t)head.x >= BOARD_WIDTH ||
+        head.y < 0 || (uint32_t)head.y >= BOARD_HEIGHT)
     {
-        return 1;
+        return true;
     }
 
     // Self collision
@@ -136,11 +135,11 @@ static int snake_collision()
         if (snake.body[i].x == head.x &&
             snake.body[i].y == head.y)
         {
-            return 1;
+            return true;
         }
     }
 
-    return 0;
+    return false;
 }
 
 // Update draw_rect to use centered coordinates

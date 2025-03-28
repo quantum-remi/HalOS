@@ -27,12 +27,10 @@ void rtl8139_init()
         return;
     }
 
-    // Enable PCI features
     uint32_t pci_cmd = pci_read(dev, PCI_COMMAND);
-    pci_cmd |= (1 << 0) | (1 << 2); // I/O space + Bus mastering
+    pci_cmd |= (1 << 0) | (1 << 2);
     pci_write(dev, PCI_COMMAND, pci_cmd);
 
-    // Get base address and IRQ
     nic.iobase = pci_read(dev, PCI_BAR0) & 0xFFFC;
     nic.irq = pci_read(dev, PCI_INTERRUPT_LINE) & 0xFF;
 
@@ -54,7 +52,6 @@ void rtl8139_init()
         return;
     }
 
-    // Allocate DMA buffers
     nic.rx_buffer = dma_alloc(RX_BUFFER_PAGES);
     if (!nic.rx_buffer)
     {
@@ -63,7 +60,7 @@ void rtl8139_init()
     }
     nic.rx_phys = virt_to_phys(nic.rx_buffer);
     serial_printf("RTL8139: RX buffer P=0x%x\n", nic.rx_phys);
-    outportl(nic.iobase + REG_RXBUF, nic.rx_phys); // Program RX buffer address
+    outportl(nic.iobase + REG_RXBUF, nic.rx_phys);
 
     uint32_t tx_total_size = NUM_TX_BUFFERS * TX_BUFFER_SIZE;
     uint32_t tx_pages = (tx_total_size + PAGE_SIZE - 1) / PAGE_SIZE;
@@ -71,15 +68,15 @@ void rtl8139_init()
     if (!nic.tx_buffer)
     {
         serial_printf("RTL8139: Failed to allocate TX buffer\n");
-        dma_free(nic.rx_buffer, RX_BUFFER_PAGES); // Use DMA-free
+        dma_free(nic.rx_buffer, RX_BUFFER_PAGES);
         return;
     }
     nic.tx_phys = virt_to_phys(nic.tx_buffer);
     for (int i = 0; i < NUM_TX_BUFFERS; i++)
     {
         uint32_t tx_phys = nic.tx_phys + (i * TX_BUFFER_SIZE);
-        outportl(nic.iobase + REG_TXADDR0 + (i * 4), tx_phys);  // Set TXADDR
-        serial_printf("RTL8139: TX%d addr=0x%x\n", i, tx_phys); // Debug log
+        outportl(nic.iobase + REG_TXADDR0 + (i * 4), tx_phys);
+        serial_printf("RTL8139: TX%d addr=0x%x\n", i, tx_phys);
     }
 
     // Hardware reset
@@ -87,49 +84,29 @@ void rtl8139_init()
     while (inportb(nic.iobase + REG_CONFIG1) & 0x10)
         ;
 
-    // Configure registers
+
     outportl(nic.iobase + REG_RXBUF, nic.rx_phys);
     outportl(nic.iobase + REG_RCR, 0xF | (1 << 7));
     outportl(nic.iobase + REG_TCR,
-             (0x3 << 8) |     // IFG
-                 (0x7 << 4) | // MXDMA
-                 (1 << 3));   // APM (Auto Pad)
-    // Initialize TX descriptors
-    // const int TX_STEP_SIZE = 4;
-    // for (int i = 0; i < NUM_TX_BUFFERS; i++)
-    // {
-    //     uint32_t tx_phys = nic.tx_phys + (i * TX_BUFFER_SIZE);
-    //     outportl(nic.iobase + REG_TXADDR0 + (i * TX_STEP_SIZE), tx_phys);
-    //     outportl(nic.iobase + REG_TXSTATUS0 + (i * TX_STEP_SIZE), 0);
-    // }
+             (0x3 << 8) |     
+                 (0x7 << 4) |
+                 (1 << 3));
 
     for (int i = 0; i < NUM_TX_BUFFERS; i++)
     {
-        outportl(nic.iobase + REG_TXSTATUS0 + (i * 4), 0); // Clear OWN initially
+        outportl(nic.iobase + REG_TXSTATUS0 + (i * 4), 0); 
     }
-
     // Enable interrupts and start chip
-    outportw(nic.iobase + REG_IMR, 0x0005); // ROK + TOK
+    outportw(nic.iobase + REG_IMR, 0x0005);
     outportb(nic.iobase + REG_CMD, 0x0C);
 
-    // outportl(nic.iobase + 0x40,
-    //          0x03000700 |     // MXDMA unlimited
-    //              (0x3 << 8)); // IFG = 3 (96-bit inter-frame gap)
-
-    // clear rx buffer
     nic.rx_ptr = 0;
     outportw(nic.iobase + REG_CAPR, 0);
 
-    // pic8259_unmask(2);
+
     pic8259_unmask(nic.irq);
-    // Read and print MAC
+
     isr_register_interrupt_handler(nic.irq + IRQ_BASE, rtl8139_irq_handler);
-    // if (nic.irq >= 8) {
-    //     pic8259_unmask(nic.irq - 8); // For IRQ 11: 11-8=3 → unmask Slave PIC IRQ 3
-    // } else {
-    //     pic8259_unmask(nic.irq);
-    // }
-    // Add debug logs to confirm unmasking:
     read_mac_address();
     serial_printf("RTL8139: MAC %02x:%02x:%02x:%02x:%02x:%02x\n",
                   nic.mac[0], nic.mac[1], nic.mac[2],
@@ -146,9 +123,6 @@ void rtl8139_init()
                   nic.tx_buffer, virt_to_phys(nic.tx_buffer));
 
     serial_printf("RTL8139: Initialized\n");
-
-    // serial_printf("RTL8139: TEST trigger interrupt\n");
-    // outportb(nic.iobase + REG_ISR, 0x01);
 }
 
 void rtl8139_send_packet(uint8_t *data, uint16_t len)
@@ -162,7 +136,7 @@ void rtl8139_send_packet(uint8_t *data, uint16_t len)
     uint8_t tx_idx = nic.tx_current;
     uint32_t timeout = TX_TIMEOUT_MS * 1000;
 
-    // Wait for buffer to be free (OWN bit not set)
+
     while ((inportl(nic.iobase + REG_TXSTATUS0 + (tx_idx * 4)) & 0x2000))
     {
         if (--timeout == 0)
@@ -175,7 +149,7 @@ void rtl8139_send_packet(uint8_t *data, uint16_t len)
 
     // Copy data and trigger transmission
     memcpy(nic.tx_buffer + (tx_idx * TX_BUFFER_SIZE), data, len);
-    outportl(nic.iobase + REG_TXSTATUS0 + (tx_idx * 4), len); // Set OWN bit implicitly
+    outportl(nic.iobase + REG_TXSTATUS0 + (tx_idx * 4), len);
 
     nic.tx_current = (tx_idx + 1) % NUM_TX_BUFFERS;
     serial_printf("RTL8139: Sent %d bytes via buffer %d\n", len, tx_idx);
@@ -192,8 +166,6 @@ void rtl8139_irq_handler(REGISTERS *r)
     (void)r;
     uint16_t status = inportw(nic.iobase + 0x3e);
     outportw(nic.iobase + 0x3E, 0x05);
-    // uint16_t status = inportw(nic.iobase + REG_ISR);
-    // outportw(nic.iobase + REG_ISR, status); // Clear interrupts
 
     serial_printf("RTL8139: IRQ Triggered\n");
 
@@ -208,20 +180,18 @@ void rtl8139_irq_handler(REGISTERS *r)
         while (nic.rx_ptr != curr_rx)
         {
             uint8_t *rx_buf = nic.rx_buffer + nic.rx_ptr;
-            uint16_t pkt_status = *(uint16_t *)(rx_buf);
             uint16_t pkt_len = *(uint16_t *)(rx_buf + 2) & 0x1FFF;
 
-            // Validate packet length
+
             if (pkt_len < 14 || pkt_len > 1514 || (nic.rx_ptr + pkt_len + 4) > RX_BUFFER_SIZE)
             {
-                nic.rx_ptr = (nic.rx_ptr + 4) % RX_BUFFER_SIZE; // Skip corrupted header
+                nic.rx_ptr = (nic.rx_ptr + 4) % RX_BUFFER_SIZE;
                 continue;
             }
 
             uint8_t *packet_data = rx_buf + 4;
             net_process_packet(packet_data, pkt_len);
 
-            // Advance rx_ptr safely
             nic.rx_ptr = (nic.rx_ptr + pkt_len + 4 + 3) & ~3;
             nic.rx_ptr %= RX_BUFFER_SIZE;
             outportw(nic.iobase + REG_CAPR, (nic.rx_ptr - 16) % RX_BUFFER_SIZE);
@@ -229,36 +199,34 @@ void rtl8139_irq_handler(REGISTERS *r)
         }
     }
     if (status & 0x04)
-    { // TOK (Transmit OK)
+    {
         for (int i = 0; i < NUM_TX_BUFFERS; i++)
         {
             uint32_t tsd = inportl(nic.iobase + REG_TXSTATUS0 + (i * 4));
             if (tsd & 0x8000)
-            { // Check TOK bit (bit 15)
-                // Clear TOK by writing 1 to it (per datasheet)
+            {
                 outportl(nic.iobase + REG_TXSTATUS0 + (i * 4), tsd | 0x8000);
                 serial_printf("TX buffer %d completed (TSD=0x%x)\n", i, tsd);
             }
         }
     }
-    // Handle other interrupts (TX, errors)
+
     if (status & 0x08)
-    { // Transmit error
+    {
         serial_printf("RTL8139: Transmit Error\n");
     }
     if (status & 0x02)
-    { // Receive error
+    {
         serial_printf("RTL8139: Receive Error\n");
     }
     if (status & 0x10)
-    { // Rx buffer overflow
+    {
         serial_printf("RTL8139: Rx Buffer Overflow\n");
-        outportb(nic.iobase + REG_CMD, 0x04); // Reset rx
+        outportb(nic.iobase + REG_CMD, 0x04);
         nic.rx_ptr = 0;
-        outportb(nic.iobase + REG_CMD, 0x0C); // Re-enable rx/tx
+        outportb(nic.iobase + REG_CMD, 0x0C);
     }
     outportw(nic.iobase + REG_CAPR, (nic.rx_ptr - 16) % RX_BUFFER_SIZE);
 
     pic8259_eoi(nic.irq);
-    // pic8259_eoi(nic.irq - 8);
 }

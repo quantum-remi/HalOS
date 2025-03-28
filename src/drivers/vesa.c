@@ -31,7 +31,7 @@ static inline uint32_t *pixel_address(int x, int y)
 // put the pixel on the given x,y point
 void vbe_putpixel(int x, int y, int color)
 {
-    if (x < 0 || x >= g_width || y < 0 || y >= g_height)
+    if (x < 0 || (uint32_t)x >= g_width || y < 0 || (uint32_t)y >= g_height)
         return;
     uint32_t *location = g_back_buffer + (y * (g_pitch / 4)) + x; // Write to back buffer
     *location = color;
@@ -39,7 +39,7 @@ void vbe_putpixel(int x, int y, int color)
 
 uint32_t vbe_getpixel(int x, int y)
 {
-    if (x < 0 || x >= g_width || y < 0 || y >= g_height)
+    if (x < 0 || (uint32_t)x >= g_width || y < 0 || (uint32_t)y >= g_height)
         return 0;
     return g_back_buffer[y * (g_pitch / 4) + x]; // Read from back buffer
 }

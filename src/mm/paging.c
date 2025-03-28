@@ -11,7 +11,7 @@ extern uint32_t __kernel_physical_end;
 static uint32_t *page_directory __attribute__((aligned(4096))) = NULL;
 static bool paging_active = false; // Track if paging is enabled
 
-void paging_init(uint32_t mem_size)
+void paging_init()
 {
     // Allocate page directory (must be 4KB aligned)
     page_directory = pmm_alloc_block();
