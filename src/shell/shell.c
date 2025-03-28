@@ -227,7 +227,7 @@ static void test_vesa()
                 }
             }
         }
-        vesa_swap_buffers();
+        console_flush();
         usleep(20000);
     }
 

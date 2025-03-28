@@ -25,6 +25,9 @@ static struct
     uint16_t *unicode;
 } console;
 
+// Dirty rectangle tracking
+static DirtyRect dirty_rect = {0, 0, 0, 0, false};
+
 // VESA variables
 extern uint32_t g_width;
 extern uint32_t g_height;
@@ -61,6 +64,36 @@ void console_init(uint32_t fg, uint32_t bg)
     console_clear();
 }
 
+void console_mark_dirty(uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
+    if (!dirty_rect.dirty) {
+        dirty_rect.x1 = x;
+        dirty_rect.y1 = y;
+        dirty_rect.x2 = x + width;
+        dirty_rect.y2 = y + height;
+        dirty_rect.dirty = true;
+    } else {
+        if (x < dirty_rect.x1) dirty_rect.x1 = x;
+        if (y < dirty_rect.y1) dirty_rect.y1 = y;
+        if (x + width > dirty_rect.x2) dirty_rect.x2 = x + width;
+        if (y + height > dirty_rect.y2) dirty_rect.y2 = y + height;
+    }
+}
+
+void console_flush(void) {
+    if (!dirty_rect.dirty) return;
+
+    // Copy only the dirty rectangle
+    uint32_t pitch_pixels = g_pitch / sizeof(uint32_t);
+    for (uint32_t y = dirty_rect.y1; y < dirty_rect.y2; y++) {
+        uint32_t *src = g_back_buffer + y * pitch_pixels + dirty_rect.x1;
+        uint32_t *dst = g_vbe_buffer + y * pitch_pixels + dirty_rect.x1;
+        uint32_t width = dirty_rect.x2 - dirty_rect.x1;
+        memcpy(dst, src, width * sizeof(uint32_t));
+    }
+
+    dirty_rect.dirty = false;
+}
+
 void draw_char(int x, int y, char c)
 {
     uint32_t screen_x = x * console.font->width;
@@ -68,22 +101,29 @@ void draw_char(int x, int y, char c)
     uint32_t bytes_per_row = (console.font->width + 7) / 8;
     const unsigned char *glyph = (const unsigned char *)console.font + console.font->headersize + (unsigned char)c * console.font->bytesperglyph;
 
-    for (uint32_t font_y = 0; font_y < console.font->height; font_y++)
-    {
-        for (uint32_t byte = 0; byte < bytes_per_row; byte++)
-        {
+    // Pre-compute row offsets for better cache usage
+    uint32_t row_offsets[8];
+    for (uint32_t byte = 0; byte < bytes_per_row; byte++) {
+        row_offsets[byte] = byte * 8;
+    }
+
+    for (uint32_t font_y = 0; font_y < console.font->height; font_y++) {
+        for (uint32_t byte = 0; byte < bytes_per_row; byte++) {
             unsigned char font_byte = glyph[font_y * bytes_per_row + byte];
-            for (uint32_t bit = 0; bit < 8; bit++)
-            {
-                uint32_t font_x = byte * 8 + bit;
-                if (font_x >= console.font->width)
-                    break;
-                uint32_t color = (font_byte & (0x80 >> bit)) ? console.fg : console.bg;
-                vbe_putpixel(screen_x + font_x, screen_y + font_y, color);
+            if (font_byte == 0) continue; // Skip empty bytes
+
+            for (uint32_t bit = 0; bit < 8; bit++) {
+                if (!(font_byte & (0x80 >> bit))) continue; // Skip empty pixels
+                
+                uint32_t font_x = row_offsets[byte] + bit;
+                if (font_x >= console.font->width) break;
+                
+                vbe_putpixel(screen_x + font_x, screen_y + font_y, console.fg);
             }
         }
     }
-    // Removed: vesa_swap_buffers(); to avoid costly per-character buffer swapping
+
+    console_mark_dirty(screen_x, screen_y, console.font->width, console.font->height);
 }
 
 void console_clear(void)
@@ -98,7 +138,8 @@ void console_clear(void)
     }
     memset(console.buffer, 0, console.rows * console.cols);
     console.cursor_x = console.cursor_y = 0;
-    vesa_swap_buffers(); // Added to update the screen after clearing
+    console_mark_dirty(0, 0, g_width, g_height);
+    console_flush();
 }
 
 void console_scroll(int lines)
@@ -119,7 +160,8 @@ void console_scroll(int lines)
             vbe_putpixel(x, y, console.bg);
         }
     }
-    vesa_swap_buffers(); // Update the screen after scrolling
+    console_mark_dirty(0, g_height - scroll_pixels, g_width, scroll_pixels);
+    vesa_swap_buffers();
 }
 
 void console_putchar(char c)
@@ -132,6 +174,7 @@ void console_putchar(char c)
             console_scroll(1);
             console.cursor_y = console.rows - 1;
         }
+        console_flush(); // Flush on newline
         return;
     }
 
@@ -164,8 +207,9 @@ void console_ungetchar(void)
                 vbe_putpixel(screen_x + x, screen_y + y, console.bg);
             }
         }
+        console_mark_dirty(screen_x, screen_y, console.font->width, console.font->height);
     }
-    vesa_swap_buffers(); // Update the screen after ungetting a character
+    console_flush(); // Update the screen after ungetting a character
 }
 
 void console_ungetchar_bound(uint8_t n)
@@ -192,10 +236,12 @@ void console_putstr(const char *str)
         console_putchar(*str++);
     }
 }
+
 void console_refresh(void)
 {
-    vesa_swap_buffers();
+    console_flush();
 }
+
 void getstr(char *buffer, uint32_t max_size)
 {
     uint32_t i = 0;
@@ -213,7 +259,7 @@ void getstr(char *buffer, uint32_t max_size)
         else if (c == '\n')
         {
             console_putchar('\n');
-            vesa_swap_buffers();
+            console_flush();
             buffer[i] = '\0';
             return;
         }
@@ -221,14 +267,14 @@ void getstr(char *buffer, uint32_t max_size)
         { // Printable ASCII only
             buffer[i++] = c;
             console_putchar(c);
-            vesa_swap_buffers();
+            console_flush();
         }
 
         // Prevent overflow
         if (console.cursor_x >= console.cols)
         {
             console_putchar('\n');
-            vesa_swap_buffers();
+            console_flush();
         }
     }
     buffer[i] = '\0';
@@ -241,7 +287,7 @@ void getstr_bound(char *buffer, uint8_t bound)
     uint8_t idx = 0;
 
     // Draw initial state
-    vesa_swap_buffers();
+    console_flush();
 
     while (idx < bound - 1)
     {
@@ -251,7 +297,7 @@ void getstr_bound(char *buffer, uint8_t bound)
         {
             console_putchar('\n');
             buffer[idx] = 0;
-            vesa_swap_buffers(); // Update screen on enter
+            console_flush(); // Update screen on enter
             return;
         }
 
@@ -260,7 +306,7 @@ void getstr_bound(char *buffer, uint8_t bound)
             idx--;
             buffer[idx] = 0;
             console_ungetchar();
-            vesa_swap_buffers(); // Update screen after backspace
+            console_flush(); // Update screen after backspace
             continue;
         }
 
@@ -268,17 +314,17 @@ void getstr_bound(char *buffer, uint8_t bound)
         { // Printable ASCII only
             buffer[idx++] = c;
             console_putchar(c);
-            vesa_swap_buffers(); // Update screen after each character
+            console_flush(); // Update screen after each character
         }
 
         if (console.cursor_x >= console.cols)
         {
             console_putchar('\n');
-            vesa_swap_buffers(); // Update screen after newline
+            console_flush(); // Update screen after newline
         }
     }
     buffer[idx] = 0;
-    vesa_swap_buffers(); // Final screen update
+    console_flush(); // Final screen update
 }
 
 static void format_number(char *buf, unsigned int val, int base,
@@ -396,5 +442,5 @@ void console_printf(const char *format, ...)
     va_start(args, format);
     console_vprintf(format, args);
     va_end(args);
-    vesa_swap_buffers();
+    console_flush();
 }

@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdarg.h>
+#include <stdbool.h>
 #include "vesa.h"
 
 #define PSF2_FONT_MAGIC 0x864ab572
@@ -48,6 +50,12 @@ typedef struct
 #define VESA_COLOR_YELLOW 0x00FFFF00
 #define VESA_COLOR_WHITE 0x00FFFFFF
 
+typedef struct {
+    uint32_t x1, y1;
+    uint32_t x2, y2;
+    bool dirty;
+} DirtyRect;
+
 // Function declarations
 void draw_char(int x, int y, char c);
 void console_clear(void);
@@ -61,5 +69,7 @@ void console_putstr(const char *str);
 void console_refresh(void);
 void getstr(char *buffer, size_t max_size);
 void getstr_bound(char *buffer, uint8_t bound);
+void console_mark_dirty(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
+void console_flush(void);
 
 #endif

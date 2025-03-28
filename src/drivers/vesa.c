@@ -7,10 +7,14 @@
 #include "paging.h"
 #include "pmm.h"
 #include "liballoc.h"
+#include "io.h"
 
 uint32_t g_width = 0, g_height = 0, g_pitch = 0, g_bpp = 0;
 uint32_t *g_vbe_buffer = NULL;
 uint32_t *g_back_buffer = NULL;
+
+static bool g_vsync_enabled = true;
+static bool g_vsync_supported = false;
 
 // set rgb values in 32 bit number
 uint32_t vbe_rgb(uint8_t red, uint8_t green, uint8_t blue)
@@ -44,10 +48,33 @@ uint32_t vbe_getpixel(int x, int y)
     return g_back_buffer[y * (g_pitch / 4) + x]; // Read from back buffer
 }
 
+void vesa_wait_for_vsync(void)
+{
+    if (!g_vsync_enabled || !g_vsync_supported)
+        return;
+
+    // Wait until not in vertical retrace
+    while (inportb(0x3DA) & 0x08);
+    
+    // Wait until vertical retrace
+    while (!(inportb(0x3DA) & 0x08));
+}
+
 void vesa_swap_buffers()
 {
+    vesa_wait_for_vsync();
     // Copy back buffer to front buffer using full pitch size in bytes
     memcpy(g_vbe_buffer, g_back_buffer, g_height * g_pitch);
+}
+
+bool vesa_is_vsync_supported(void)
+{
+    return g_vsync_supported;
+}
+
+void vesa_enable_vsync(bool enable)
+{
+    g_vsync_enabled = enable;
 }
 
 int vesa_init(uint32_t *framebuffer, uint32_t width, uint32_t height, uint32_t pitch, uint32_t bpp)
@@ -135,6 +162,16 @@ int vesa_init(uint32_t *framebuffer, uint32_t width, uint32_t height, uint32_t p
 
     free(phys_chunks);
     
+    // Check for VSync support by testing VGA status register
+    g_vsync_supported = true;
+    uint8_t status = inportb(0x3DA);
+    if (status == 0xFF) {
+        g_vsync_supported = false;
+        serial_printf("VESA: VSync not supported\n");
+    } else {
+        serial_printf("VESA: VSync supported\n");
+    }
+
     serial_printf("VESA: Back buffer initialized at V:0x%x\n", (uint32_t)g_back_buffer);
     return 0;
 }
