@@ -542,7 +542,7 @@ void shell()
 
     console_clear();
     // console_printf("DEBUG: Console initialized\n");  // Check if this appears
-    console_printf("Hal OS v0.14.0\n");
+    console_printf("Hal OS v0.14.1\n");
     console_printf("Type 'help' for a list of commands\n");
 
     // Initialize the global FAT volume once
@@ -581,7 +581,7 @@ void shell()
             console_printf("|   * clear - Clear the console screen        |\n");
             console_printf("|   * cpuid - Display CPU information         |\n");
             console_printf("|   * echo - Echo a message to the console    |\n");
-            console_printf("|   * elf - Execute ELF file EXPERIMENTAL     |\n");
+            // console_printf("|   * elf - Execute ELF file EXPERIMENTAL     |\n");
             console_printf("|   * fireworks - Fireworks effect            |\n");
             console_printf("|   * haiku - Display a haiku                 |\n");
             console_printf("|   * help - Display this help message        |\n");
@@ -602,7 +602,7 @@ void shell()
         }
         else if (strcmp(buffer, "help /f") == 0)
         {
-            console_printf("arp, cd, clear, cpuid, echo, elf, fireworks, haiku, help, hwinfo, ls, lspci, malloc, memory, pong, pwd, reboot, shutdown, snake, timer, vesa, version\n");
+            console_printf("arp, cd, clear, cpuid, echo, fireworks, haiku, help, hwinfo, ls, lspci, malloc, memory, pong, pwd, reboot, shutdown, snake, timer, vesa, version\n");
         }
         else if (strncmp(buffer, "cd ", 3) == 0)
         {
@@ -666,7 +666,7 @@ void shell()
         else if (strcmp(buffer, "version") == 0)
         {
             console_printf("--------------------------------------------------------------\n");
-            console_printf("Hal OS v0.14.0\n");
+            console_printf("Hal OS v0.14.1\n");
             console_printf("Built on: %s %s\n", __DATE__, __TIME__);
             console_printf("Built with: GCC %s\n", __VERSION__);
             console_printf("--------------------------------------------------------------\n");

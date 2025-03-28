@@ -59,7 +59,7 @@ void rtl8139_init()
         return;
     }
     nic.rx_phys = virt_to_phys(nic.rx_buffer);
-    serial_printf("RTL8139: RX buffer P=0x%x\n", nic.rx_phys);
+    // serial_printf("RTL8139: RX buffer P=0x%x\n", nic.rx_phys);
     outportl(nic.iobase + REG_RXBUF, nic.rx_phys);
 
     uint32_t tx_total_size = NUM_TX_BUFFERS * TX_BUFFER_SIZE;
@@ -76,7 +76,7 @@ void rtl8139_init()
     {
         uint32_t tx_phys = nic.tx_phys + (i * TX_BUFFER_SIZE);
         outportl(nic.iobase + REG_TXADDR0 + (i * 4), tx_phys);
-        serial_printf("RTL8139: TX%d addr=0x%x\n", i, tx_phys);
+        // serial_printf("RTL8139: TX%d addr=0x%x\n", i, tx_phys);
     }
 
     // Hardware reset
@@ -112,15 +112,15 @@ void rtl8139_init()
                   nic.mac[0], nic.mac[1], nic.mac[2],
                   nic.mac[3], nic.mac[4], nic.mac[5]);
 
-    serial_printf("TX Buffers:\n");
+    // serial_printf("TX Buffers:\n");
     for (int i = 0; i < 4; i++)
     {
         uint32_t tx_phys = nic.tx_phys + (i * TX_BUFFER_SIZE);
-        serial_printf("  TX%d: V=0x%x P=0x%x\n",
-                      i, nic.tx_buffer + (i * TX_BUFFER_SIZE), tx_phys);
+        // // serial_printf("  TX%d: V=0x%x P=0x%x\n",
+        //               i, nic.tx_buffer + (i * TX_BUFFER_SIZE), tx_phys);
     }
-    serial_printf("TX Buffer Virtual: 0x%x → Physical: 0x%x\n",
-                  nic.tx_buffer, virt_to_phys(nic.tx_buffer));
+    // serial_printf("TX Buffer Virtual: 0x%x → Physical: 0x%x\n",
+                //   nic.tx_buffer, virt_to_phys(nic.tx_buffer));
 
     serial_printf("RTL8139: Initialized\n");
 }
@@ -152,7 +152,7 @@ void rtl8139_send_packet(uint8_t *data, uint16_t len)
     outportl(nic.iobase + REG_TXSTATUS0 + (tx_idx * 4), len);
 
     nic.tx_current = (tx_idx + 1) % NUM_TX_BUFFERS;
-    serial_printf("RTL8139: Sent %d bytes via buffer %d\n", len, tx_idx);
+    // serial_printf("RTL8139: Sent %d bytes via buffer %d\n", len, tx_idx);
 }
 
 void rtl8139_receive_packet(uint8_t *data, uint16_t len)
@@ -167,10 +167,10 @@ void rtl8139_irq_handler(REGISTERS *r)
     uint16_t status = inportw(nic.iobase + 0x3e);
     outportw(nic.iobase + 0x3E, 0x05);
 
-    serial_printf("RTL8139: IRQ Triggered\n");
+    // serial_printf("RTL8139: IRQ Triggered\n");
 
-    serial_printf("RTL8139: ISR=0x%x (ROK=%d, TOK=%d)\n",
-                  status, (status & 0x01), (status & 0x04));
+    // serial_printf("RTL8139: ISR=0x%x (ROK=%d, TOK=%d)\n",
+                //   status, (status & 0x01), (status & 0x04));
 
     if (status & 0x01)
     { // ROK (Receive OK)
@@ -206,7 +206,7 @@ void rtl8139_irq_handler(REGISTERS *r)
             if (tsd & 0x8000)
             {
                 outportl(nic.iobase + REG_TXSTATUS0 + (i * 4), tsd | 0x8000);
-                serial_printf("TX buffer %d completed (TSD=0x%x)\n", i, tsd);
+                // serial_printf("TX buffer %d completed (TSD=0x%x)\n", i, tsd);
             }
         }
     }
