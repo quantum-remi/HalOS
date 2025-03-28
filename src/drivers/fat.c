@@ -583,28 +583,3 @@ void fat32_unmount_volume(FAT32_Volume *volume)
 
     memset(volume, 0, sizeof(FAT32_Volume));
 }
-
-// bool fat32_change_dir(FAT32_Volume *volume, FAT32_File *current_dir, const char *path)
-// {
-//     if (!volume || !current_dir || !path)
-//     {
-//         serial_printf("[FAT32] Invalid parameters in change_dir\n");
-//         return false;
-//     }
-
-//     FAT32_File new_dir;
-//     if (!fat32_find_file(volume, path, &new_dir))
-//     {
-//         serial_printf("[FAT32] Directory not found: %s\n", path);
-//         return false;
-//     }
-
-//     if (!(new_dir.attrib & FAT32_IS_DIR))
-//     {
-//         serial_printf("[FAT32] Not a directory: %s\n", path);
-//         return false;
-//     }
-
-//     *current_dir = new_dir;
-//     return true;
-// }

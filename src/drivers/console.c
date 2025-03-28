@@ -194,44 +194,8 @@ void console_putstr(const char *str)
 }
 void console_refresh(void)
 {
-    vesa_swap_buffers(); // Swap buffers to update the screen
+    vesa_swap_buffers();
 }
-// void console_refresh(void)
-// {
-//     uint32_t screen_x = console.cursor_x * console.font->width;
-//     uint32_t screen_y = console.cursor_y * console.font->height;
-//     char c = console.buffer[console.cursor_y * console.cols + console.cursor_x];
-//     bool needs_redraw = false;
-//     int bytes_per_row = (console.font->width + 7) / 8;
-//     const unsigned char *glyph = (const unsigned char *)console.font + console.font->headersize + (unsigned char)c * console.font->bytesperglyph;
-
-//     for (int fy = 0; fy < console.font->height; fy++)
-//     {
-//         for (int byte = 0; byte < bytes_per_row; byte++)
-//         {
-//             unsigned char font_byte = glyph[fy * bytes_per_row + byte];
-//             for (int bit = 0; bit < 8; bit++)
-//             {
-//                 int fx_pixel = byte * 8 + bit;
-//                 if (fx_pixel >= console.font->width)
-//                     break;
-
-//                 uint32_t expected = (font_byte & (0x80 >> bit)) ? console.fg : console.bg;
-//                 uint32_t actual = vbe_getpixel(screen_x + fx_pixel, screen_y + fy);
-//                 if (actual != expected)
-//                 {
-//                     needs_redraw = true;
-//                     break;
-//                 }
-//             }
-//             if (needs_redraw)
-//                 break;
-//         }
-//         if (needs_redraw)
-//             break;
-//     }
-// }
-
 void getstr(char *buffer, uint32_t max_size)
 {
     uint32_t i = 0;
