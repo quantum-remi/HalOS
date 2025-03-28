@@ -227,7 +227,7 @@ static void test_vesa()
                 }
             }
         }
-        console_flush();
+        vesa_swap_buffers();
         usleep(20000);
     }
 
@@ -542,7 +542,7 @@ void shell()
 
     console_clear();
     // console_printf("DEBUG: Console initialized\n");  // Check if this appears
-    console_printf("Hal OS v0.14.1\n");
+    console_printf("Hal OS v0.14.2\n");
     console_printf("Type 'help' for a list of commands\n");
 
     // Initialize the global FAT volume once
@@ -666,7 +666,7 @@ void shell()
         else if (strcmp(buffer, "version") == 0)
         {
             console_printf("--------------------------------------------------------------\n");
-            console_printf("Hal OS v0.14.1\n");
+            console_printf("Hal OS v0.14.2\n");
             console_printf("Built on: %s %s\n", __DATE__, __TIME__);
             console_printf("Built with: GCC %s\n", __VERSION__);
             console_printf("--------------------------------------------------------------\n");
