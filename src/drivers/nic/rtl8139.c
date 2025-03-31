@@ -169,13 +169,16 @@ void rtl8139_irq_handler(REGISTERS *r)
 
     // Clear interrupts first
     outportw(nic.iobase + REG_ISR, status);
+    // outportw(nic.iobase + REG_CAPR, nic.rx_ptr / 4);
 
     if (status & 0x01)
     { // ROK (Receive OK)
+        serial_printf("RTL8139: Receive OK\n");
         uint16_t curr_rx = inportw(nic.iobase + REG_CAPR);
 
         while ((curr_rx + 16) % RX_BUFFER_SIZE != nic.rx_ptr)
         {
+            serial_printf("RTL8139: Processing RX buffer\n");
             uint8_t *rx_buf = nic.rx_buffer + nic.rx_ptr;
             uint16_t pkt_len = *(uint16_t *)(rx_buf + 2) & 0x1FFF;
 
@@ -192,7 +195,7 @@ void rtl8139_irq_handler(REGISTERS *r)
 
             nic.rx_ptr = (nic.rx_ptr + pkt_len + 4 + 3) & ~3;
             nic.rx_ptr %= RX_BUFFER_SIZE;
-            outportw(nic.iobase + REG_CAPR, (nic.rx_ptr - 16) % RX_BUFFER_SIZE);
+            outportw(nic.iobase + REG_CAPR, nic.rx_ptr / 4);
             return;
         }
     }

@@ -22,7 +22,7 @@ typedef struct {
     uint32_t dst_ip;
 } ipv4_header_t;
 #pragma pack(pop)
-
+uint32_t inet_addr(const char *ip_str);
 uint16_t ip_checksum(void* data, uint16_t len);
 void net_send_ipv4_packet(uint32_t dst_ip, uint8_t protocol, uint8_t* payload, uint16_t payload_len);
 

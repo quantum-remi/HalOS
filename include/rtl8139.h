@@ -46,6 +46,8 @@ struct rtl8139_dev {
     uint8_t* tx_buffer;
     uint32_t tx_phys;
     uint32_t ip_addr;
+    uint32_t netmask;
+    uint32_t gateway_ip;
 };
 
 extern struct rtl8139_dev nic;

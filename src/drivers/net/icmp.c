@@ -3,6 +3,7 @@
 #include "ipv4.h"
 #include "network.h"
 #include "liballoc.h"
+#include "console.h"
 
 #define ICMP_ECHO_REPLY        0
 #define ICMP_ECHO_REQUEST      8
@@ -22,7 +23,12 @@ void icmp_handle_packet(ipv4_header_t *ip, uint8_t *payload, uint16_t len) {
                  (ntohl(ip->src_ip) >> 16) & 0xFF,
                  (ntohl(ip->src_ip) >> 8) & 0xFF,
                  ntohl(ip->src_ip) & 0xFF);
+    
+    // console_printf("RECEIVED ICMP: type=%d code=%d checksum=0x%04x id=0x%04x seq=%d\n",
+    //               icmp->type, icmp->code, ntohs(icmp->checksum),
+    //               ntohs(icmp->id), ntohs(icmp->seq));
 
+    console_printf("PONG\n");
     // Verify checksum
     uint16_t saved_checksum = icmp->checksum;
     icmp->checksum = 0;

@@ -7,7 +7,7 @@
 #include "liballoc.h"
 
 #define IP_DEFAULT_TTL 64
-
+#define INADDR_NONE 0xFFFFFFFF
 uint16_t ip_checksum(void *data, uint16_t len)
 {
     uint32_t sum = 0;
@@ -21,22 +21,70 @@ uint16_t ip_checksum(void *data, uint16_t len)
     return (uint16_t)(~sum);
 }
 
+uint32_t inet_addr(const char *ip_str)
+{
+    uint32_t result = 0;
+    int value = 0;
+    int part = 0;
+
+    for (const char *p = ip_str; *p != '\0'; p++)
+    {
+        if (*p == '.')
+        {
+            if (value > 255)
+                return INADDR_NONE;
+            result = (result << 8) | value;
+            value = 0;
+            part++;
+            if (part > 3)
+                return INADDR_NONE;
+        }
+        else if (*p >= '0' && *p <= '9')
+        {
+            value = value * 10 + (*p - '0');
+        }
+        else
+        {
+            return INADDR_NONE;
+        }
+    }
+
+    if (value > 255 || part != 3)
+        return INADDR_NONE;
+    result = (result << 8) | value;
+    return result;
+}
 void net_send_ipv4_packet(uint32_t dst_ip, uint8_t protocol, uint8_t *payload, uint16_t payload_len)
 {
     uint8_t dst_mac[6];
-    if (!arp_lookup(dst_ip, dst_mac)) {
-        serial_printf("IPv4: No MAC found for %d.%d.%d.%d\n",
-                     (dst_ip >> 24) & 0xFF, (dst_ip >> 16) & 0xFF,
-                     (dst_ip >> 8) & 0xFF, dst_ip & 0xFF);
+    uint32_t next_hop;
+
+    // Determine if destination is on local network
+    if ((dst_ip & nic.netmask) == (nic.ip_addr & nic.netmask)) {
+        next_hop = dst_ip;
+    } else {
+        next_hop = nic.gateway_ip;
+    }
+
+    serial_printf("IPv4: Routing to %d.%d.%d.%d via %d.%d.%d.%d\n",
+                 (dst_ip >> 24) & 0xFF, (dst_ip >> 16) & 0xFF,
+                 (dst_ip >> 8) & 0xFF, dst_ip & 0xFF,
+                 (next_hop >> 24) & 0xFF, (next_hop >> 16) & 0xFF,
+                 (next_hop >> 8) & 0xFF, next_hop & 0xFF);
+
+    if (!arp_lookup(next_hop, dst_mac)) {
+        queue_packet(dst_ip, protocol, payload, payload_len);
+        rtl8139_send_arp_request(&nic.ip_addr, &next_hop);
         return;
     }
 
     uint16_t total_len = sizeof(ipv4_header_t) + payload_len;
     uint8_t *packet = malloc(total_len);
-    if (!packet) return;
+    if (!packet)
+        return;
 
     ipv4_header_t *ip = (ipv4_header_t *)packet;
-    ip->version_ihl = 0x45;  // IPv4, 5 DWORDs
+    ip->version_ihl = 0x45; // IPv4, 5 DWORDs
     ip->tos = 0;
     ip->total_length = htons(total_len);
     static uint16_t packet_id = 0;

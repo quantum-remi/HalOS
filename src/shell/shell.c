@@ -20,7 +20,11 @@
 #include "elf.h"
 #include "tasks.h"
 #include "pong.h"
+#include "network.h"
+#include "icmp.h"
+#include "ipv4.h"  
 
+#define INADDR_NONE 0xFFFFFFFF
 #define BRAND_QEMU 1
 #define BRAND_VBOX 2
 
@@ -590,6 +594,7 @@ void shell()
             console_printf("|   * lspci - Display PCI information         |\n");
             console_printf("|   * malloc - Test memory allocation         |\n");
             console_printf("|   * memory - Display system memory          |\n");
+            console_printf("|   * ping - Send ICMP echo request           |\n");
             console_printf("|   * pong - Play a game of Pong              |\n");
             console_printf("|   * pwd - Print current directory           |\n");
             console_printf("|   * reboot - Reboot the system              |\n");
@@ -602,11 +607,24 @@ void shell()
         }
         else if (strcmp(buffer, "help /f") == 0)
         {
-            console_printf("arp, cd, clear, cpuid, echo, fireworks, haiku, help, hwinfo, ls, lspci, malloc, memory, pong, pwd, reboot, shutdown, snake, timer, vesa, version\n");
+            console_printf("arp, cd, clear, cpuid, echo, fireworks, haiku, help, hwinfo, ls, lspci, malloc, memory, ping, pong, pwd, reboot, shutdown, snake, timer, vesa, version\n");
         }
         else if (strncmp(buffer, "cd ", 3) == 0)
         {
             cd(buffer + 3);
+        }
+        else if (strncmp(buffer, "ping ", 5) == 0)
+        {
+            char *ip_str = buffer + 5;
+            uint32_t ip = inet_addr(ip_str);
+            if (ip == INADDR_NONE)
+            {
+                console_printf("Invalid IP address: %s\n", ip_str);
+            }
+            else
+            {
+                icmp_send_echo_request(ip);
+            }
         }
         else if (strcmp(buffer, "reboot") == 0) {
             outportb(0x64, 0xFE);

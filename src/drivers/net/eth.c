@@ -47,14 +47,20 @@ void eth_init()
     rtl8139_init();
     __asm__ volatile("sti");
     
-    nic.ip_addr = (10 << 24) | (0 << 16) | (2 << 8) | 15;
-    uint32_t gateway_ip = (10 << 24) | (0 << 16) | (2 << 8) | 2;
+    // Configure networking
+    nic.ip_addr = (10 << 24) | (0 << 16) | (2 << 8) | 15;     // 10.0.2.15
+    nic.netmask = (255 << 24) | (255 << 16) | (255 << 8) | 0; // 255.255.255.0
+    nic.gateway_ip = (10 << 24) | (0 << 16) | (2 << 8) | 2;   // 10.0.2.2
 
-    serial_printf("ETH: Sending ARP request to gateway\n");
-    rtl8139_send_arp_request(&nic.ip_addr, &gateway_ip);
-
-    icmp_send_echo_request(gateway_ip);
-    serial_printf("ETH: Sent ICMP echo request to %d.%d.%d.%d\n",
-                  (gateway_ip >> 24) & 0xFF, (gateway_ip >> 16) & 0xFF,
-                  (gateway_ip >> 8) & 0xFF, gateway_ip & 0xFF);
+    // First resolve gateway MAC
+    rtl8139_send_arp_request(&nic.ip_addr, &nic.gateway_ip);
+    
+    // Wait for ARP reply before sending ICMP
+    for(volatile int i = 0; i < 2000000; i++) {
+        uint8_t mac[6];
+        if (arp_lookup(nic.gateway_ip, mac)) {
+            serial_printf("ETH: Gateway MAC resolved\n");
+            break;
+        }
+    }
 }

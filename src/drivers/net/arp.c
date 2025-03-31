@@ -13,6 +13,23 @@ struct arp_cache_entry arp_cache[ARP_CACHE_SIZE];
 struct pending_packet pending_queue[MAX_PENDING_PACKETS];
 int pending_count = 0;
 
+static bool is_local_ip(uint32_t ip)
+{
+    return (nic.ip_addr & nic.netmask) == (ip & nic.netmask);
+}
+
+bool arp_cache_contains(uint32_t ip)
+{
+    for (int i = 0; i < ARP_CACHE_SIZE; i++)
+    {
+        if (arp_cache[i].ip == ip &&
+            (get_ticks() - arp_cache[i].timestamp) < ARP_CACHE_TIMEOUT)
+        {
+            return true;
+        }
+    }
+    return false;
+}
 void create_arp_packet(uint8_t *buffer, uint8_t *src_mac, uint32_t *src_ip, uint32_t *target_ip)
 {
     // Convert IPs to network byte order
@@ -56,27 +73,36 @@ void rtl8139_send_arp_request(uint32_t *src_ip, uint32_t *target_ip)
 bool arp_lookup(uint32_t ip, uint8_t *mac)
 {
     if (!mac)
-    {
-        serial_printf("ARP: Invalid MAC output buffer\n");
         return false;
+
+    uint32_t target_ip = ip;
+
+    // Route external IPs through gateway
+    if (!is_local_ip(ip))
+    {
+        serial_printf("ARP: Routing %d.%d.%d.%d via gateway\n",
+                      (ip >> 24) & 0xFF, (ip >> 16) & 0xFF,
+                      (ip >> 8) & 0xFF, ip & 0xFF);
+        target_ip = nic.gateway_ip;
     }
 
+    // Existing cache lookup for target_ip
     for (int i = 0; i < ARP_CACHE_SIZE; i++)
     {
-        if (arp_cache[i].ip == ip &&
+        if (arp_cache[i].ip == target_ip &&
             (get_ticks() - arp_cache[i].timestamp) < ARP_CACHE_TIMEOUT)
         {
             memcpy(mac, arp_cache[i].mac, 6);
-            serial_printf("ARP: Cache hit for IP %d.%d.%d.%d\n",
-                          (ip >> 24) & 0xFF, (ip >> 16) & 0xFF,
-                          (ip >> 8) & 0xFF, ip & 0xFF);
             return true;
         }
     }
 
-    serial_printf("ARP: Cache miss for IP %d.%d.%d.%d\n",
-                  (ip >> 24) & 0xFF, (ip >> 16) & 0xFF,
-                  (ip >> 8) & 0xFF, ip & 0xFF);
+    // If gateway MAC not found, queue for ARP resolution
+    if (target_ip == nic.gateway_ip && !arp_cache_contains(nic.gateway_ip))
+    {
+        rtl8139_send_arp_request(&nic.ip_addr, &nic.gateway_ip);
+    }
+
     return false;
 }
 
