@@ -10,6 +10,8 @@
 #define htonl(x) ((((x) >> 24) & 0xFF) | (((x) >> 8) & 0xFF00) | (((x) << 8) & 0xFF0000) | ((x) << 24))
 #define ntohl(x) htonl(x)
 
+#define ETHERTYPE_IP  0x0800
+
 void net_process_packet(uint8_t* data, uint16_t len);
 
 #endif // NETWORK_H

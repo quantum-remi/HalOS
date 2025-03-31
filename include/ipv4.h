@@ -10,8 +10,7 @@
 
 #pragma pack(push, 1)
 typedef struct {
-    uint8_t  ihl : 4;
-    uint8_t  version : 4;
+    uint8_t  version_ihl;     // Version (4 bits) + IHL (4 bits)
     uint8_t  tos;
     uint16_t total_length;
     uint16_t id;
