@@ -24,7 +24,13 @@ void icmp_handle_packet(ipv4_header_t *ip, uint8_t *payload, uint16_t len) {
                  (ntohl(ip->src_ip) >> 8) & 0xFF,
                  ntohl(ip->src_ip) & 0xFF);
     console_printf("\n");
-    console_printf("PONG");
+    console_printf(" *** ICMP Packet ***\n");
+    console_printf("Type: %d\n", icmp->type);
+    console_printf("Code: %d\n", icmp->code);
+    console_printf("ID: 0x%04x\n", ntohs(icmp->id));
+    console_printf("Sequence: %d\n", ntohs(icmp->seq));
+    console_printf("Checksum: 0x%04x\n", icmp->checksum);
+    console_printf("Data length: %d bytes\n", len - sizeof(icmp_header_t));
     // Verify checksum
     uint16_t saved_checksum = icmp->checksum;
     icmp->checksum = 0;

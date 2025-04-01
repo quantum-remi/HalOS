@@ -53,7 +53,7 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o $(ASM_OBJ)/load_tss.o \
 		$(OBJ)/tss.o $(OBJ)/liballoc.o $(OBJ)/liballoc_hook.o \
 		$(OBJ)/pci.o $(OBJ)/ide.o $(OBJ)/fat.o $(OBJ)/font.o \
 		$(OBJ)/rtl8139.o $(OBJ)/arp.o $(OBJ)/eth.o $(OBJ)/network.o $(OBJ)/ipv4.o $(OBJ)/icmp.o \
-		$(OBJ)/math.o $(OBJ)/elf.o $(OBJ)/pong.o $(OBJ)/tcp.o \
+		$(OBJ)/math.o $(OBJ)/elf.o $(OBJ)/pong.o \
 		$(OBJ)/kernel.o
 
 .PHONY: all	
@@ -290,10 +290,10 @@ $(OBJ)/icmp.o : $(SRC)/drivers/net/icmp.c
 	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/net/icmp.c -o $(OBJ)/icmp.o
 	@printf "\n"
 
-$(OBJ)/tcp.o : $(SRC)/drivers/net/tcp.c
-	@printf "[ $(SRC)/drivers/net/tcp.c ]\n"
-	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/net/tcp.c -o $(OBJ)/tcp.o
-	@printf "\n"
+# $(OBJ)/tcp.o : $(SRC)/drivers/net/tcp.c
+# 	@printf "[ $(SRC)/drivers/net/tcp.c ]\n"
+# 	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/net/tcp.c -o $(OBJ)/tcp.o
+# 	@printf "\n"
 
 qemu:
 	qemu-system-i386 -m 4G -vga virtio -boot d -cdrom $(TARGET_ISO) \

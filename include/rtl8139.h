@@ -13,7 +13,8 @@
 
 #define RTL8139_VENDOR_ID  0x10EC
 #define RTL8139_DEVICE_ID  0x8139
-#define RX_BUFFER_PAGES 3
+#define ARP_CACHE_TIMEOUT    600   // 6 seconds @ 100Hz tick rate
+#define RX_BUFFER_PAGES 4
 #define RX_BUFFER_SIZE (RX_BUFFER_PAGES * PAGE_SIZE)
 #define NUM_TX_BUFFERS     4
 #define TX_BUFFER_SIZE     1792  // Max size per RTL8139 datasheet
