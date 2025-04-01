@@ -45,6 +45,7 @@ struct rtl8139_dev {
     uint16_t rx_ptr;
     uint8_t  tx_current;
     uint8_t* tx_buffer;
+    uint32_t tx_start_time;
     uint32_t tx_phys;
     uint32_t ip_addr;
     uint32_t netmask;

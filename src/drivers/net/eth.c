@@ -4,6 +4,7 @@
 #include "serial.h"
 #include "liballoc.h"
 #include "rtl8139.h"
+#include "ne2k.h"
 #include "network.h"
 #include "ipv4.h"
 #include "icmp.h"
@@ -46,8 +47,9 @@ void eth_send_frame(uint8_t *dest_mac, uint16_t ethertype, uint8_t *data, uint16
 
 void eth_init()
 {
-    rtl8139_init();
     __asm__ volatile("sti");
+    rtl8139_init();
+    dp83820_init();
     
     // Configure networking
     nic.ip_addr = (10 << 24) | (0 << 16) | (2 << 8) | 15;     // 10.0.2.15

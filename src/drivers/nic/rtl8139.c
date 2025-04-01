@@ -77,37 +77,63 @@ void rtl8139_init()
         outportl(nic.iobase + REG_TXADDR0 + (i * 4), tx_phys);
     }
 
-    // Hardware reset
+    // Hardware reset with timeout
     outportb(nic.iobase + REG_CONFIG1, 0x10);
-    while (inportb(nic.iobase + REG_CONFIG1) & 0x10)
-        ;
+    uint32_t reset_timeout = 1000;
+    while ((inportb(nic.iobase + REG_CONFIG1) & 0x10) && reset_timeout--)
+    {
+        __asm__ volatile("pause");
+    }
+    if (reset_timeout == 0)
+    {
+        serial_printf("RTL8139: Reset timeout\n");
+        return;
+    }
 
+    // Additional delay after reset
+    for (volatile int i = 0; i < 10000; i++)
+        __asm__ volatile("pause");
+
+    // Configure buffers first
     outportl(nic.iobase + REG_RXBUF, nic.rx_phys);
-    outportl(nic.iobase + REG_RCR, 0xF | (1 << 7) | (1 << 8)); // RBLEN=1 (16KB), WRAP=1
 
-    // Configure TX - modify the TCR settings
+    // Clear missed packet counter
+    outportl(nic.iobase + 0x4C, 0);
+
+    // Configure RX: Accept all packets
+    outportl(nic.iobase + REG_RCR,
+             (1 << 7) |  // WRAP
+             (1 << 3) |  // AR - Accept All Packets
+             (1 << 2) |  // AB - Accept Broadcast
+             (1 << 1) |  // AM - Accept Multicast
+             (1 << 0));  // APM - Accept Physical Match
+
+    // Configure TX with better defaults
     outportl(nic.iobase + REG_TCR,
-        (0x00 << 24) |     // TX DMA burst size 16 bytes (was 0x03)
-        (0x1F << 16) |     // Set early TX threshold to 1024 bytes (was 0x00)
-        (0x60 << 8) |      // IFG = normal
-        (0x0F));           // Max retry count (was 0x00)
+             (6 << 8) |      // IFG = 960ns (default)
+             (0x3F << 16) |  // Maximum TX DMA burst
+             (1 << 24));     // Clear abort on error
 
-    // Initialize TX descriptors and clear status
-    for (int i = 0; i < NUM_TX_BUFFERS; i++) {
+    // Initialize all TX descriptors
+    for (int i = 0; i < NUM_TX_BUFFERS; i++)
+    {
         outportl(nic.iobase + REG_TXADDR0 + (i * 4), nic.tx_phys + (i * TX_BUFFER_SIZE));
         outportl(nic.iobase + REG_TXSTATUS0 + (i * 4), 0);
     }
 
-    nic.tx_current = 0;  // Add this line to initialize tx_current
+    nic.tx_current = 0;
 
-    // Enable interrupts and start chip
+    // Enable interrupts - ROK + TOK only initially
     outportw(nic.iobase + REG_IMR, 0x0005);
+
+    // Start RX and TX
     outportb(nic.iobase + REG_CMD, 0x0C);
 
+    // Reset pointers
     nic.rx_ptr = 0;
     outportw(nic.iobase + REG_CAPR, 0);
 
-    // enable for qemu 
+    // enable for qemu
     outportb(nic.iobase + REG_CONFIG1, 0x0);
     outportb(nic.iobase + REG_CONFIG1, 0x0);
     outportb(nic.iobase + REG_CONFIG1, 0x0);
@@ -127,63 +153,59 @@ void rtl8139_send_packet(uint8_t *data, uint16_t len)
 {
     if (len > TX_BUFFER_SIZE)
     {
-        serial_printf("RTL8139: Packet too large\n");
+        serial_printf("RTL8139: Packet too large (%d bytes)\n", len);
         return;
     }
 
+    // Find a free TX descriptor with timeout
+    uint32_t start_time = get_ticks();
     uint8_t tx_idx = nic.tx_current;
     uint32_t status;
+    bool buffer_found = false;
 
-    // Reset transmitter if all buffers appear busy
-    int reset_needed = 1;
-    for (int i = 0; i < NUM_TX_BUFFERS; i++) {
-        status = inportl(nic.iobase + REG_TXSTATUS0 + (i * 4));
-        if (!(status & (1 << 13))) {  // Check OWN bit instead of TOK
-            reset_needed = 0;
-            tx_idx = i;  // Use the free buffer we found
-            break;
+    while ((get_ticks() - start_time) < TX_TIMEOUT_MS)
+    {
+        for (int i = 0; i < NUM_TX_BUFFERS; i++)
+        {
+            tx_idx = (nic.tx_current + i) % NUM_TX_BUFFERS;
+            status = inportl(nic.iobase + REG_TXSTATUS0 + (tx_idx * 4));
+            if (!(status & (1 << 13)))
+            { // Check OWN bit
+                buffer_found = true;
+                break;
+            }
         }
+        if (buffer_found)
+            break;
+        __asm__ volatile("pause");
     }
 
-    if (reset_needed)
+    if (!buffer_found)
     {
-        serial_printf("RTL8139: All buffers busy, resetting TX\n");
+        serial_printf("RTL8139: TX timeout - resetting TX\n");
+        // Reset TX ring
         uint8_t cmd = inportb(nic.iobase + REG_CMD);
-        outportb(nic.iobase + REG_CMD, cmd & ~0x04); // Stop TX
-        outportb(nic.iobase + REG_CMD, cmd | 0x04);  // Start TX
-        // Clear all TX status registers
+        outportb(nic.iobase + REG_CMD, cmd & ~0x04);
+        outportb(nic.iobase + REG_CMD, cmd | 0x04);
+
+        // Reset descriptors
         for (int i = 0; i < NUM_TX_BUFFERS; i++)
         {
             outportl(nic.iobase + REG_TXSTATUS0 + (i * 4), 0);
         }
+
+        tx_idx = 0;
+        nic.tx_current = 0;
     }
 
-    // Wait for current buffer with timeout
-    uint32_t start_time = get_ticks();
-    do
-    {
-        status = inportl(nic.iobase + REG_TXSTATUS0 + (tx_idx * 4));
-        if (!(status & (1 << 13)))
-            break;
-
-        if (get_ticks() - start_time > TX_BUFFER_TIMEOUT)
-        {
-            serial_printf("RTL8139: TX timeout on buffer %d (status=0x%x)\n", tx_idx, status);
-            tx_idx = (tx_idx + 1) % NUM_TX_BUFFERS; // Try next buffer
-            outportl(nic.iobase + REG_TXSTATUS0 + (tx_idx * 4), 0); // Clear status
-            break;
-        }
-        __asm__ volatile("pause");
-    } while (1);
-
-    // Copy data and initiate transmission
+    // Copy packet to TX buffer with proper alignment
     uint8_t *tx_buf = nic.tx_buffer + (tx_idx * TX_BUFFER_SIZE);
     memcpy(tx_buf, data, len);
 
-    // Set early TX threshold to maximum to prevent underrun
+    // Set descriptor with correct flags
     outportl(nic.iobase + REG_TXSTATUS0 + (tx_idx * 4),
-             (0x3F << 16) | // Maximum early TX threshold
-                 len);       // Packet size
+             (0x3F << 16) |  // All segments + maximum early TX threshold
+             (len & 0x1FFF)); // Length
 
     nic.tx_current = (tx_idx + 1) % NUM_TX_BUFFERS;
 }
@@ -202,23 +224,27 @@ void rtl8139_irq_handler(REGISTERS *r)
     // Clear interrupts but keep track of what we're processing
     outportw(nic.iobase + REG_ISR, status);
 
-    if (status & 0x01) { // ROK (Receive OK)
+    if (status & 0x01)
+    { // ROK (Receive OK)
         serial_printf("RTL8139: Receive OK\n");
-        
+
         // Keep processing packets until we catch up with the NIC
-        while (1) {
+        while (1)
+        {
             uint8_t *rx_buf = nic.rx_buffer + nic.rx_ptr;
-            uint32_t rx_status = *(uint32_t*)rx_buf;
+            uint32_t rx_status = *(uint32_t *)rx_buf;
             uint16_t pkt_len = rx_status >> 16;
-            
+
             // Check if we have a complete packet
-            if (!(rx_status & 0x1)) {
-                break;  // No more packets
+            if (!(rx_status & 0x1))
+            {
+                break; // No more packets
             }
 
-            pkt_len &= 0x1FFF;  // Mask length to 13 bits
-            
-            if (pkt_len < 64 || pkt_len > 1514) {
+            pkt_len &= 0x1FFF; // Mask length to 13 bits
+
+            if (pkt_len < 64 || pkt_len > 1514)
+            {
                 serial_printf("RTL8139: Invalid packet length %d\n", pkt_len);
                 break;
             }
@@ -230,7 +256,7 @@ void rtl8139_irq_handler(REGISTERS *r)
             // Update receive pointer with 4-byte alignment
             nic.rx_ptr = (nic.rx_ptr + pkt_len + 4 + 3) & ~3;
             nic.rx_ptr %= RX_BUFFER_SIZE;
-            
+
             // Update CAPR
             outportw(nic.iobase + REG_CAPR, (nic.rx_ptr - 16) % RX_BUFFER_SIZE);
         }
@@ -253,14 +279,15 @@ void rtl8139_irq_handler(REGISTERS *r)
         outportw(nic.iobase + REG_ISR, 0x04);
     }
 
-    if (status & 0x10) { // Rx buffer overflow
+    if (status & 0x10)
+    { // Rx buffer overflow
         serial_printf("RTL8139: Rx Buffer Overflow - Resetting RX\n");
         uint8_t cmd = inportb(nic.iobase + REG_CMD);
         outportb(nic.iobase + REG_CMD, cmd & ~0x08); // Stop RX
         nic.rx_ptr = 0;
         outportw(nic.iobase + REG_CAPR, 0);
         outportl(nic.iobase + REG_RXBUF, nic.rx_phys); // Reset buffer address
-        outportb(nic.iobase + REG_CMD, cmd | 0x08);  // Restart RX
+        outportb(nic.iobase + REG_CMD, cmd | 0x08);    // Restart RX
     }
 
     if (status & 0x08)
