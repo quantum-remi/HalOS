@@ -540,6 +540,33 @@ void show_arp_cache()
     }
     console_printf("-----------------------------------------------\n");
 }
+void show_ip_info()
+{
+    console_printf("Network Interface Information:\n");
+    console_printf("-----------------------------------------------\n");
+    console_printf("IP Address: %d.%d.%d.%d\n",
+                   (nic.ip_addr >> 24) & 0xFF,
+                   (nic.ip_addr >> 16) & 0xFF,
+                   (nic.ip_addr >> 8) & 0xFF,
+                   nic.ip_addr & 0xFF);
+                   
+    console_printf("Netmask: %d.%d.%d.%d\n",
+                   (nic.netmask >> 24) & 0xFF, 
+                   (nic.netmask >> 16) & 0xFF,
+                   (nic.netmask >> 8) & 0xFF,
+                   nic.netmask & 0xFF);
+                   
+    console_printf("Gateway: %d.%d.%d.%d\n",
+                   (nic.gateway_ip >> 24) & 0xFF,
+                   (nic.gateway_ip >> 16) & 0xFF,
+                   (nic.gateway_ip >> 8) & 0xFF,
+                   nic.gateway_ip & 0xFF);
+                   
+    console_printf("MAC Address: %02x:%02x:%02x:%02x:%02x:%02x\n",
+                   nic.mac[0], nic.mac[1], nic.mac[2],
+                   nic.mac[3], nic.mac[4], nic.mac[5]);
+    console_printf("-----------------------------------------------\n");
+}
 void shell()
 {
     serial_printf("[SHELL] Starting shell...\n");
@@ -590,6 +617,7 @@ void shell()
             console_printf("|   * haiku - Display a haiku                 |\n");
             console_printf("|   * help - Display this help message        |\n");
             console_printf("|   * hwinfo - Display hardware information   |\n");
+            console_printf("|   * ip - Display network interface info     |\n");
             console_printf("|   * ls - List files in current directory    |\n");
             console_printf("|   * lspci - Display PCI information         |\n");
             console_printf("|   * malloc - Test memory allocation         |\n");
@@ -612,6 +640,10 @@ void shell()
         else if (strncmp(buffer, "cd ", 3) == 0)
         {
             cd(buffer + 3);
+        }
+        else if (strcmp(buffer, "ip") == 0)
+        {
+            show_ip_info();
         }
         else if (strncmp(buffer, "ping ", 5) == 0)
         {

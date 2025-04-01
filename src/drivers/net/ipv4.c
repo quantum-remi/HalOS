@@ -56,6 +56,15 @@ uint32_t inet_addr(const char *ip_str)
 }
 void net_send_ipv4_packet(uint32_t dst_ip, uint8_t protocol, uint8_t *payload, uint16_t payload_len)
 {
+    // Use static buffer instead of malloc
+    static uint8_t packet_buffer[1518]; // Max Ethernet frame size
+    uint16_t total_len = sizeof(ipv4_header_t) + payload_len;
+
+    if (total_len > sizeof(packet_buffer)) {
+        serial_printf("IPv4: Packet too large\n");
+        return;
+    }
+
     uint8_t dst_mac[6];
     uint32_t next_hop;
 
@@ -78,12 +87,7 @@ void net_send_ipv4_packet(uint32_t dst_ip, uint8_t protocol, uint8_t *payload, u
         return;
     }
 
-    uint16_t total_len = sizeof(ipv4_header_t) + payload_len;
-    uint8_t *packet = malloc(total_len);
-    if (!packet)
-        return;
-
-    ipv4_header_t *ip = (ipv4_header_t *)packet;
+    ipv4_header_t *ip = (ipv4_header_t *)packet_buffer;
     ip->version_ihl = 0x45; // IPv4, 5 DWORDs
     ip->tos = 0;
     ip->total_length = htons(total_len);
@@ -97,8 +101,7 @@ void net_send_ipv4_packet(uint32_t dst_ip, uint8_t protocol, uint8_t *payload, u
     ip->checksum = 0;
     ip->checksum = ip_checksum(ip, sizeof(ipv4_header_t));
 
-    memcpy(packet + sizeof(ipv4_header_t), payload, payload_len);
+    memcpy(packet_buffer + sizeof(ipv4_header_t), payload, payload_len);
 
-    eth_send_frame(dst_mac, ETHERTYPE_IP, packet, total_len);
-    free(packet);
+    eth_send_frame(dst_mac, ETHERTYPE_IP, packet_buffer, total_len);
 }

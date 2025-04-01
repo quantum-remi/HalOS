@@ -49,4 +49,6 @@ int toupper(int c);
 
 int tolower(int c);
 
+int MIN(int a, int b);
+
 #endif

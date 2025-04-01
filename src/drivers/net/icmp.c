@@ -23,12 +23,8 @@ void icmp_handle_packet(ipv4_header_t *ip, uint8_t *payload, uint16_t len) {
                  (ntohl(ip->src_ip) >> 16) & 0xFF,
                  (ntohl(ip->src_ip) >> 8) & 0xFF,
                  ntohl(ip->src_ip) & 0xFF);
-    
-    // console_printf("RECEIVED ICMP: type=%d code=%d checksum=0x%04x id=0x%04x seq=%d\n",
-    //               icmp->type, icmp->code, ntohs(icmp->checksum),
-    //               ntohs(icmp->id), ntohs(icmp->seq));
-
-    console_printf("PONG\n");
+    console_printf("\n");
+    console_printf("PONG");
     // Verify checksum
     uint16_t saved_checksum = icmp->checksum;
     icmp->checksum = 0;
@@ -46,40 +42,32 @@ void icmp_handle_packet(ipv4_header_t *ip, uint8_t *payload, uint16_t len) {
         serial_printf("ICMP: Echo request (ID=0x%04x Seq=%d)\n",
                      ntohs(icmp->id), ntohs(icmp->seq));
 
-        // Allocate response buffer
-        uint8_t *response = malloc(len);
-        if (!response) {
-            serial_printf("ICMP: Failed to allocate response buffer\n");
-            return;
-        }
-
+        // Statically allocate response buffer
+        static uint8_t response[1518]; // Max Ethernet frame size
+        
+        // Copy and modify the packet
         memcpy(response, payload, len);
         icmp_header_t *reply = (icmp_header_t *)response;
         
-        // Convert to reply
         reply->type = ICMP_ECHO_REPLY;
         reply->code = 0;
         reply->checksum = 0;
         reply->checksum = ip_checksum(reply, len);
 
-        // Send response
+        // Send response - no memory allocation needed
         net_send_ipv4_packet(ntohl(ip->src_ip), IP_PROTO_ICMP, response, len);
         serial_printf("ICMP: Sent echo reply to %d.%d.%d.%d\n",
                      (ntohl(ip->src_ip) >> 24) & 0xFF,
                      (ntohl(ip->src_ip) >> 16) & 0xFF,
                      (ntohl(ip->src_ip) >> 8) & 0xFF,
                      ntohl(ip->src_ip) & 0xFF);
-        free(response);  // Critical: Free after sending
     }
 }
 
 void icmp_send_echo_request(uint32_t dst_ip) {
-    uint8_t *packet = malloc(ICMP_PACKET_SIZE);
-    if (!packet) {
-        serial_printf("ICMP: Failed to allocate request packet\n");
-        return;
-    }
-
+    // Use static allocation instead of malloc
+    static uint8_t packet[ICMP_PACKET_SIZE];
+    
     // Initialize header
     icmp_header_t *icmp = (icmp_header_t *)packet;
     icmp->type = ICMP_ECHO_REQUEST;
@@ -100,8 +88,8 @@ void icmp_send_echo_request(uint32_t dst_ip) {
     uint8_t mac[6];
     if (!arp_lookup(dst_ip, mac)) {
         serial_printf("ICMP: Queueing packet for ARP resolution\n");
+        // Queue using static buffer
         queue_packet(dst_ip, IP_PROTO_ICMP, packet, ICMP_PACKET_SIZE);
-        free(packet);  // Only free if queued successfully
 
         rtl8139_send_arp_request(&nic.ip_addr, &dst_ip);
         return;
@@ -109,6 +97,9 @@ void icmp_send_echo_request(uint32_t dst_ip) {
 
     // Direct send if MAC known
     net_send_ipv4_packet(dst_ip, IP_PROTO_ICMP, packet, ICMP_PACKET_SIZE);
-    
-    free(packet);
+    serial_printf("ICMP: Sent echo request to %d.%d.%d.%d\n",
+                 (dst_ip >> 24) & 0xFF,
+                 (dst_ip >> 16) & 0xFF,
+                 (dst_ip >> 8) & 0xFF,
+                 dst_ip & 0xFF);
 }

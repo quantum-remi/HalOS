@@ -10,6 +10,7 @@
 
 #include "arp.h"
 
+
 void eth_send_frame(uint8_t *dest_mac, uint16_t ethertype, uint8_t *data, uint16_t len)
 {
     if (!dest_mac || !data) {
@@ -42,6 +43,7 @@ void eth_send_frame(uint8_t *dest_mac, uint16_t ethertype, uint8_t *data, uint16
     rtl8139_send_packet(frame, total_len);
 }
 
+
 void eth_init()
 {
     rtl8139_init();
@@ -51,6 +53,7 @@ void eth_init()
     nic.ip_addr = (10 << 24) | (0 << 16) | (2 << 8) | 15;     // 10.0.2.15
     nic.netmask = (255 << 24) | (255 << 16) | (255 << 8) | 0; // 255.255.255.0
     nic.gateway_ip = (10 << 24) | (0 << 16) | (2 << 8) | 2;   // 10.0.2.2
+    uint32_t broadcast_ip = (255 << 24) | (255 << 16) | (255 << 8) | 255;
 
     // First resolve gateway MAC
     rtl8139_send_arp_request(&nic.ip_addr, &nic.gateway_ip);
