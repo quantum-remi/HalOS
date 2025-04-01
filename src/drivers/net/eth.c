@@ -58,7 +58,7 @@ void eth_init()
     uint32_t broadcast_ip = (255 << 24) | (255 << 16) | (255 << 8) | 255;
 
     // First resolve gateway MAC
-    // rtl8139_send_arp_request(&nic.ip_addr, &nic.gateway_ip);
+    rtl8139_send_arp_request(&nic.ip_addr, &nic.gateway_ip);
     
     // Wait for ARP reply before sending ICMP
     // for(volatile int i = 0; i < 2000000; i++) {

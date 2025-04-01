@@ -45,4 +45,8 @@ uint32_t inportl(uint16_t port);
  */
 void outportl(uint16_t port, uint32_t data);
 
+uint16_t inportd(uint16_t port);
+
+void outportd(uint16_t port, uint16_t data);
+
 #endif
