@@ -8,6 +8,7 @@
 #include "network.h"
 #include "ipv4.h"
 #include "icmp.h"
+#include "tcp.h"
 
 #include "arp.h"
 
@@ -59,7 +60,9 @@ void eth_init()
 
     // First resolve gateway MAC
     rtl8139_send_arp_request(&nic.ip_addr, &nic.gateway_ip);
-    
+
+    tcp_listen(8080);
+
     // Wait for ARP reply before sending ICMP
     // for(volatile int i = 0; i < 2000000; i++) {
     //     uint8_t mac[6];

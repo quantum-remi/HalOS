@@ -5,6 +5,7 @@
 #include "ipv4.h"
 #include "arp.h"
 #include "icmp.h"
+#include "tcp.h"
 
 void net_process_packet(uint8_t *data, uint16_t len)
 {
@@ -117,6 +118,13 @@ void net_process_packet(uint8_t *data, uint16_t len)
                          (dst_ip >> 24) & 0xFF, (dst_ip >> 16) & 0xFF,
                          (dst_ip >> 8) & 0xFF, dst_ip & 0xFF);
             break;
+        }
+
+        if (ip->protocol == IP_PROTO_TCP) {
+            uint16_t header_len = ihl * 4;
+            uint16_t tcp_len = total_length - header_len;
+            uint8_t *tcp_data = (uint8_t *)ip + header_len;
+            tcp_handle_packet(ip, tcp_data, tcp_len);
         }
 
         // Process ICMP
