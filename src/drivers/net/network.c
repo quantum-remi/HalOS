@@ -19,7 +19,8 @@ void net_process_packet(uint8_t *data, uint16_t len)
     uint16_t ethertype = ntohs(eth->ethertype);
 
     // Log unsupported packet types
-    if (ethertype != ETHERTYPE_IP && ethertype != ETHERTYPE_ARP) {
+    if (ethertype != ETHERTYPE_IP && ethertype != ETHERTYPE_ARP)
+    {
         serial_printf("NET: Unsupported ethertype 0x%04x\n", ethertype);
         return;
     }
@@ -27,6 +28,7 @@ void net_process_packet(uint8_t *data, uint16_t len)
     switch (ethertype)
     {
     case ETHERTYPE_ARP:
+    {
         struct arp_packet *arp = (struct arp_packet *)(data + sizeof(struct eth_header));
         uint16_t opcode = ntohs(arp->opcode);
 
@@ -70,14 +72,16 @@ void net_process_packet(uint8_t *data, uint16_t len)
 
                     eth_send_frame(arp->sender_mac, ETHERTYPE_ARP, (uint8_t *)&reply, sizeof(reply));
                 }
+                retry_pending_packets();
             }
-            retry_pending_packets();
+            break;
         }
         break;
-
+    }
     case ETHERTYPE_IP:
     {
-        if (len < sizeof(struct eth_header) + sizeof(ipv4_header_t)) {
+        if (len < sizeof(struct eth_header) + sizeof(ipv4_header_t))
+        {
             serial_printf("NET: IP packet too short\n");
             break;
         }
@@ -88,34 +92,39 @@ void net_process_packet(uint8_t *data, uint16_t len)
         uint16_t total_length = ntohs(ip->total_length);
 
         // Validate IP header
-        if (version != 4 || ihl < 5 || total_length < (ihl * 4)) {
+        if (version != 4 || ihl < 5 || total_length < (ihl * 4))
+        {
             serial_printf("NET: Invalid IP header\n");
             break;
         }
 
         // Verify packet fits in received frame
-        if (len < sizeof(struct eth_header) + total_length) {
+        if (len < sizeof(struct eth_header) + total_length)
+        {
             serial_printf("NET: IP packet truncated (len %d < %d)\n",
-                        len, sizeof(struct eth_header) + total_length);
+                          len, sizeof(struct eth_header) + total_length);
             break;
         }
 
         // Reject fragmented packets for ICMP
-        if ((ntohs(ip->frag_offset) & 0x1FFF) || (ntohs(ip->frag_offset) & 0x2000)) {
+        if ((ntohs(ip->frag_offset) & 0x1FFF) || (ntohs(ip->frag_offset) & 0x2000))
+        {
             serial_printf("NET: Fragmented packet, ignoring\n");
             break;
         }
 
         // Check if packet is for us
         uint32_t dst_ip = ntohl(ip->dst_ip);
-        if (dst_ip != nic.ip_addr && dst_ip != 0xFFFFFFFF) {
+        if (dst_ip != nic.ip_addr && dst_ip != 0xFFFFFFFF)
+        {
             serial_printf("NET: IP packet not for us (dst=%d.%d.%d.%d)\n",
-                         (dst_ip >> 24) & 0xFF, (dst_ip >> 16) & 0xFF,
-                         (dst_ip >> 8) & 0xFF, dst_ip & 0xFF);
+                          (dst_ip >> 24) & 0xFF, (dst_ip >> 16) & 0xFF,
+                          (dst_ip >> 8) & 0xFF, dst_ip & 0xFF);
             break;
         }
 
-        if (ip->protocol == IP_PROTO_TCP) {
+        if (ip->protocol == IP_PROTO_TCP)
+        {
             uint16_t header_len = ihl * 4;
             uint16_t tcp_len = total_length - header_len;
             uint8_t *tcp_data = (uint8_t *)ip + header_len;
@@ -123,11 +132,13 @@ void net_process_packet(uint8_t *data, uint16_t len)
         }
 
         // Process ICMP
-        if (ip->protocol == IP_PROTO_ICMP) {
+        if (ip->protocol == IP_PROTO_ICMP)
+        {
             uint16_t header_len = ihl * 4;
             uint16_t icmp_len = total_length - header_len;
-            
-            if (icmp_len < sizeof(icmp_header_t)) {
+
+            if (icmp_len < sizeof(icmp_header_t))
+            {
                 serial_printf("NET: ICMP packet too small (%d bytes)\n", icmp_len);
                 break;
             }
