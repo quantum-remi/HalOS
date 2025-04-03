@@ -11,7 +11,7 @@
 #define MAX_SYN_RETRIES 5
 #define DEFAULT_MSS 1460
 
-#define HTTP_PORT 80
+#define HTTP_PORT 8080
 #define HTTP_RESPONSE             \
     "HTTP/1.1 200 OK\r\n"         \
     "Content-Type: text/html\r\n" \
@@ -88,6 +88,14 @@ void cancel_retransmission_timer(tcp_connection_t *conn)
 void remove_connection(tcp_connection_t *conn)
 {
     cancel_retransmission_timer(conn);
+
+    // retransmit_entry_t *entry = conn->retransmit_queue;
+    // while (entry) {
+    //     retransmit_entry_t *next = entry->next;
+    //     free(entry->data);
+    //     free(entry);
+    //     entry = next;
+    // }
 
     tcp_connection_t **pp = &connection_list;
     while (*pp)
@@ -168,41 +176,42 @@ void start_retransmission_timer(tcp_connection_t *conn, uint32_t timeout_ms)
 
 void check_tcp_timers()
 {
-    tcp_timer_t **pp = &active_timers;
     uint32_t current_time = get_ticks();
+    tcp_connection_t *conn = connection_list;
 
-    while (*pp)
+    while (conn)
     {
-        tcp_timer_t *curr = *pp;
-        uint32_t elapsed = current_time - curr->start_time;
-
-        if (elapsed >= curr->timeout_ms)
+        retransmit_entry_t **pp = &conn->retransmit_queue;
+        while (*pp)
         {
-            tcp_connection_t *conn = curr->conn;
-
-            if (curr->retries < MAX_SYN_RETRIES)
+            retransmit_entry_t *entry = *pp;
+            if (current_time - entry->timeout_ms >= entry->timeout_ms)
             {
-                if (conn->state == TCP_SYN_SENT || conn->state == TCP_SYN_RECEIVED)
+                if (entry->retries < MAX_SYN_RETRIES)
                 {
-                    tcp_send_segment(conn, TCP_SYN | TCP_ACK, NULL, 0);
-                    curr->start_time = current_time;
-                    curr->retries++;
-                    curr->timeout_ms *= 2;
+                    // Retransmit the segment
+                    tcp_send_segment(conn, TCP_ACK, entry->data, entry->length);
+                    entry->timeout_ms *= 2; // Exponential backoff
+                    entry->retries++;
                     pp = &(*pp)->next;
+                }
+                else
+                {
+                    // Max retries reached: abort connection
+                    serial_printf("TCP: Retransmission failed for SEQ=%u\n", entry->seq);
+                    retransmit_entry_t *to_free = *pp;
+                    *pp = to_free->next;
+                    free(to_free->data);
+                    free(to_free);
+                    remove_connection(conn);
                 }
             }
             else
             {
-                serial_printf("TCP: Connection timed out after %d retries\n", MAX_SYN_RETRIES);
-                remove_connection(curr->conn);
-                *pp = curr->next;
-                free(curr);
+                pp = &(*pp)->next;
             }
         }
-        else
-        {
-            pp = &(*pp)->next;
-        }
+        conn = conn->next;
     }
 }
 
@@ -303,7 +312,19 @@ void tcp_send_segment(tcp_connection_t *conn, uint8_t flags, uint8_t *data, uint
     {
         conn->next_seq++;
     }
-
+    if (flags & (TCP_SYN | TCP_FIN) || data_len > 0)
+    {
+        retransmit_entry_t *entry = malloc(sizeof(retransmit_entry_t));
+        entry->seq = conn->next_seq - data_len; // Adjust for SYN/FIN
+        entry->length = data_len;
+        entry->data = malloc(data_len);
+        if (data_len > 0)
+            memcpy(entry->data, data, data_len);
+        entry->timeout_ms = 3000; // Initial timeout (adjustable)
+        entry->retries = 0;
+        entry->next = conn->retransmit_queue;
+        conn->retransmit_queue = entry;
+    }
     ipv4_header_t ip_dummy = {
         .src_ip = htonl(conn->local_ip),
         .dst_ip = htonl(conn->remote_ip)};
@@ -317,7 +338,7 @@ static void handle_http_request(tcp_connection_t *conn)
     tcp_send_segment(conn, TCP_PSH | TCP_ACK,
                      (uint8_t *)HTTP_RESPONSE, strlen(HTTP_RESPONSE));
     tcp_send_segment(conn, TCP_FIN | TCP_ACK, NULL, 0);
-    remove_connection(conn);
+    conn->state = TCP_LAST_ACK;
 }
 
 static int is_http_get_request(uint8_t *data, uint16_t len)
@@ -333,6 +354,24 @@ static void handle_established_state(tcp_connection_t *conn, tcp_header_t *tcp, 
     uint32_t seq = ntohl(tcp->seq);
     uint32_t ack = ntohl(tcp->ack);
     uint16_t data_len = len - (tcp->data_offset >> 4) * 4;
+
+    retransmit_entry_t **pp = &conn->retransmit_queue;
+    while (*pp)
+    {
+        retransmit_entry_t *entry = *pp;
+        if (ack >= entry->seq + entry->length)
+        {
+            // This segment has been acknowledged
+            retransmit_entry_t *to_free = *pp;
+            *pp = to_free->next;
+            free(to_free->data);
+            free(to_free);
+        }
+        else
+        {
+            pp = &(*pp)->next;
+        }
+    }
 
     if (seq != conn->expected_ack)
     {
@@ -418,13 +457,19 @@ void tcp_handle_packet(ipv4_header_t *ip, uint8_t *data, uint16_t len)
         }
         return;
     }
-
+    tcp_connection_t *conn = find_connection(ntohl(ip->src_ip), src_port,
+                                             ntohl(ip->dst_ip), dest_port);
+    if (conn->state == TCP_LAST_ACK && (tcp->flags & TCP_ACK))
+    {
+        serial_printf("TCP: FIN-ACK received, closing connection\n");
+        remove_connection(conn);
+    }
     if (flags & TCP_URG)
     {
         uint16_t urgent_ptr = ntohs(tcp->urgent_ptr);
         serial_printf("TCP: URG flag set, urgent pointer: %d\n", urgent_ptr);
     }
-
+    
     if (flags & TCP_SYN)
     {
         if (len < sizeof(tcp_header_t))
@@ -432,122 +477,122 @@ void tcp_handle_packet(ipv4_header_t *ip, uint8_t *data, uint16_t len)
             serial_printf("TCP: Dropped malformed SYN (too short)\n");
             return;
         }
-
+        
         uint32_t client_seq = ntohl(tcp->seq);
         serial_printf("TCP: SYN from %d.%d.%d.%d:%d (SEQ=%u)\n",
-                      (ntohl(ip->src_ip) >> 24) & 0xFF,
-                      (ntohl(ip->src_ip) >> 16) & 0xFF,
-                      (ntohl(ip->src_ip) >> 8) & 0xFF,
-                      ntohl(ip->src_ip) & 0xFF,
-                      src_port, client_seq);
-
-        tcp_connection_t *existing = find_connection(
-            ntohl(ip->src_ip), src_port,
-            ntohl(ip->dst_ip), dest_port);
-        if (existing)
-        {
-            if (existing->state == TCP_SYN_RECEIVED)
-            {
-                serial_printf("TCP: Retransmitted SYN detected, resending SYN-ACK\n");
-                tcp_send_segment(existing, TCP_SYN | TCP_ACK, NULL, 0);
-                return;
-            }
-            else
-            {
-                serial_printf("TCP: Unexpected SYN on existing connection (state=%d)\n",
-                              existing->state);
-                tcp_send_reset(ip, tcp);
-                return;
-            }
-        }
-
-        if (!is_listening_port(dest_port))
-        {
-            serial_printf("TCP: SYN to non-listening port %d\n", dest_port);
-            tcp_send_reset(ip, tcp);
-            return;
-        }
-
-        tcp_connection_t *conn = malloc(sizeof(tcp_connection_t));
-        if (!conn)
-        {
-            serial_printf("TCP: Memory error, dropping SYN\n");
-            return;
-        }
-
-        conn->local_ip = ntohl(ip->dst_ip);
-        conn->remote_ip = ntohl(ip->src_ip);
-        conn->local_port = dest_port;
-        conn->remote_port = src_port;
-        conn->next_seq = generate_secure_initial_seq();
-        conn->expected_ack = client_seq + 1;
-        conn->state = TCP_SYN_RECEIVED;
-
-        uint8_t options_len = (tcp->data_offset >> 4) * 4 - sizeof(tcp_header_t);
-        if (options_len > 0)
-        {
-            process_tcp_options(conn, (uint8_t *)(tcp + 1), options_len);
-        }
-
-        add_connection(conn);
-
-        serial_printf("TCP: Sending SYN-ACK (SEQ=%u, ACK=%u)\n",
-                      conn->next_seq, conn->expected_ack);
-        tcp_send_segment(conn, TCP_SYN | TCP_ACK, NULL, 0);
-        conn->next_seq++;
-        start_retransmission_timer(conn, TCP_SYN_RETRANSMIT_TIMEOUT);
-    }
-
-    tcp_connection_t *conn = find_connection(ntohl(ip->src_ip), src_port,
-                                             ntohl(ip->dst_ip), dest_port);
-
-    if (conn)
-    {
-        switch (conn->state)
-        {
-        case TCP_SYN_RECEIVED:
-            handle_syn_received(conn, tcp);
-            break;
-
-        case TCP_ESTABLISHED:
-            handle_established_state(conn, tcp, data, len);
-            break;
-
-        default:
-            break;
-        }
-    }
-
-    if (flags & TCP_ACK && conn && conn->state == TCP_SYN_RECEIVED)
-    {
-        if (ack == conn->next_seq)
-        {
-            conn->state = TCP_ESTABLISHED;
-            serial_printf("TCP: Connection established (SEQ=%u ACK=%u)\n",
-                          conn->next_seq, conn->expected_ack);
-            cancel_retransmission_timer(conn);
-        }
-        else
-        {
-            serial_printf("TCP: Invalid ACK %u (expected %u)\n",
-                          ack, conn->next_seq);
-            tcp_send_reset(ip, tcp);
-            remove_connection(conn);
-        }
-    }
-
-    if (flags & TCP_ACK && !(flags & TCP_SYN))
-    {
-        tcp_connection_t *conn = find_connection(ntohl(ip->src_ip), src_port,
-                                                 ntohl(ip->dst_ip), dest_port);
-
-        if (conn)
-        {
-            if (conn->state == TCP_SYN_SENT)
-            {
-                if (ack == conn->next_seq)
+            (ntohl(ip->src_ip) >> 24) & 0xFF,
+            (ntohl(ip->src_ip) >> 16) & 0xFF,
+            (ntohl(ip->src_ip) >> 8) & 0xFF,
+            ntohl(ip->src_ip) & 0xFF,
+            src_port, client_seq);
+            
+            tcp_connection_t *existing = find_connection(
+                ntohl(ip->src_ip), src_port,
+                ntohl(ip->dst_ip), dest_port);
+                if (existing)
                 {
-                    conn->state = TCP_ESTABLISHED;
+                    if (existing->state == TCP_SYN_RECEIVED)
+                    {
+                        serial_printf("TCP: Retransmitted SYN detected, resending SYN-ACK\n");
+                        tcp_send_segment(existing, TCP_SYN | TCP_ACK, NULL, 0);
+                        return;
+                    }
+                    else
+                    {
+                        serial_printf("TCP: Unexpected SYN on existing connection (state=%d)\n",
+                            existing->state);
+                            tcp_send_reset(ip, tcp);
+                            return;
+                        }
+                    }
+                    
+                    if (!is_listening_port(dest_port))
+                    {
+                        serial_printf("TCP: SYN to non-listening port %d\n", dest_port);
+                        tcp_send_reset(ip, tcp);
+                        return;
+                    }
+                    
+                    tcp_connection_t *conn = malloc(sizeof(tcp_connection_t));
+                    if (!conn)
+                    {
+                        serial_printf("TCP: Memory error, dropping SYN\n");
+                        return;
+                    }
+                    
+                    conn->local_ip = ntohl(ip->dst_ip);
+                    conn->remote_ip = ntohl(ip->src_ip);
+                    conn->local_port = dest_port;
+                    conn->remote_port = src_port;
+                    conn->next_seq = generate_secure_initial_seq();
+                    conn->expected_ack = client_seq + 1;
+                    conn->state = TCP_SYN_RECEIVED;
+                    
+                    uint8_t options_len = (tcp->data_offset >> 4) * 4 - sizeof(tcp_header_t);
+                    if (options_len > 0)
+                    {
+                        process_tcp_options(conn, (uint8_t *)(tcp + 1), options_len);
+                    }
+                    
+                    add_connection(conn);
+
+                    serial_printf("TCP: Sending SYN-ACK (SEQ=%u, ACK=%u)\n",
+                        conn->next_seq, conn->expected_ack);
+                        tcp_send_segment(conn, TCP_SYN | TCP_ACK, NULL, 0);
+                        conn->next_seq++;
+                        start_retransmission_timer(conn, TCP_SYN_RETRANSMIT_TIMEOUT);
+                    }
+                    
+                    // tcp_connection_t *conn = find_connection(ntohl(ip->src_ip), src_port,
+                    // ntohl(ip->dst_ip), dest_port);
+                    
+                    if (conn)
+                    {
+                        switch (conn->state)
+                        {
+                            case TCP_SYN_RECEIVED:
+                            handle_syn_received(conn, tcp);
+                            break;
+                            
+                            case TCP_ESTABLISHED:
+                            handle_established_state(conn, tcp, data, len);
+                            break;
+                            
+                            default:
+                            break;
+                        }
+                    }
+                    
+                    if (flags & TCP_ACK && conn && conn->state == TCP_SYN_RECEIVED)
+                    {
+                        if (ack == conn->next_seq)
+                        {
+                            conn->state = TCP_ESTABLISHED;
+                            serial_printf("TCP: Connection established (SEQ=%u ACK=%u)\n",
+                                conn->next_seq, conn->expected_ack);
+                                cancel_retransmission_timer(conn);
+                            }
+                            else
+                            {
+                                serial_printf("TCP: Invalid ACK %u (expected %u)\n",
+                          ack, conn->next_seq);
+                          tcp_send_reset(ip, tcp);
+                          remove_connection(conn);
+                        }
+                    }
+                    
+                    if (flags & TCP_ACK && !(flags & TCP_SYN))
+                    {
+                        tcp_connection_t *conn = find_connection(ntohl(ip->src_ip), src_port,
+                        ntohl(ip->dst_ip), dest_port);
+                        
+                        if (conn)
+                        {
+                            if (conn->state == TCP_SYN_SENT)
+                            {
+                                if (ack == conn->next_seq)
+                                {
+                                    conn->state = TCP_ESTABLISHED;
                     conn->expected_ack = seq + 1;
                     cancel_retransmission_timer(conn);
                     return;
@@ -560,28 +605,28 @@ void tcp_handle_packet(ipv4_header_t *ip, uint8_t *data, uint16_t len)
             }
         }
     }
-
+    
     if (flags & TCP_PSH)
     {
         tcp_connection_t *conn = find_connection(ntohl(ip->src_ip), src_port,
-                                                 ntohl(ip->dst_ip), dest_port);
+        ntohl(ip->dst_ip), dest_port);
         uint8_t *payload = data + (tcp->data_offset >> 4) * 4;
         uint16_t payload_len = len - (tcp->data_offset >> 4) * 4;
-
+        
         console_printf(payload);
         if (is_http_get_request(payload, payload_len))
         {
             serial_printf("HTTP: Received GET request\n");
             handle_http_request(conn);
         }
-
+        
         serial_printf("TCP: Received %d bytes of data\n", payload_len);
     }
-
+    
     if (flags & TCP_FIN)
     {
         tcp_connection_t *conn = find_connection(ntohl(ip->src_ip), src_port,
-                                                 ntohl(ip->dst_ip), dest_port);
+        ntohl(ip->dst_ip), dest_port);
         if (conn)
         {
             serial_printf("TCP: FIN received, closing connection\n");

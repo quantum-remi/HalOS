@@ -27,6 +27,15 @@ typedef enum {
     TCP_TIME_WAIT
 } tcp_state_t;
 
+typedef struct retransmit_entry {
+    uint32_t seq;           // Sequence number of the segment
+    uint8_t *data;          // Copy of the segment data
+    uint16_t length;        // Length of the data
+    uint32_t timeout_ms;    // Retransmission timeout
+    uint8_t retries;        // Number of retries attempted
+    struct retransmit_entry *next;
+} retransmit_entry_t;
+
 #pragma pack(push, 1)
 typedef struct {
     uint16_t src_port;
@@ -51,6 +60,7 @@ typedef struct tcp_connection {
     uint32_t next_seq;    // Next sequence number to send
     uint32_t expected_ack;// Last ACK received
     tcp_state_t state;
+    retransmit_entry_t *retransmit_queue;
     struct tcp_connection *next; // Linked list
 } tcp_connection_t;
 

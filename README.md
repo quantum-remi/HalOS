@@ -1,3 +1,6 @@
+![GitHub top language](https://img.shields.io/github/languages/top/:user/:repo)
+
+
 # HAL Operating System
 
 A minimalist, experimental operating system built from scratch with a focus on learning and education.
