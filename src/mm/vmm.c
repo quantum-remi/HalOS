@@ -17,9 +17,16 @@ static bool is_page_free(uint32_t page)
     uint32_t bit_idx = page % 8;
     return !(vmm_bitmap[byte_idx] & (1 << bit_idx));
 }
+
 static void vmm_bitmap_init()
 {
     uint32_t total_phys_mem = pmm_get_total_memory();
+    if (total_phys_mem == 0)
+    {
+        serial_printf("VMM: Total physical memory is zero!\n");
+        return;
+    }
+
     vmm_max_pages = total_phys_mem / PAGE_SIZE;
     uint32_t bitmap_size = (vmm_max_pages + 7) / 8; // Bytes needed
     uint32_t bitmap_pages = (bitmap_size + PAGE_SIZE - 1) / PAGE_SIZE;
@@ -28,7 +35,7 @@ static void vmm_bitmap_init()
     void *bitmap_phys = pmm_alloc_blocks(bitmap_pages);
     if (!bitmap_phys)
     {
-        serial_printf("VMM: Failed to allocate bitmap\n");
+        serial_printf("VMM: Failed to allocate bitmap physical memory\n");
         return;
     }
 
@@ -36,12 +43,13 @@ static void vmm_bitmap_init()
     vmm_bitmap = vmm_map_mmio((uintptr_t)bitmap_phys, bitmap_pages * PAGE_SIZE, PAGE_PRESENT | PAGE_WRITABLE);
     if (!vmm_bitmap)
     {
-        serial_printf("VMM: Failed to map bitmap\n");
+        serial_printf("VMM: Failed to map bitmap to virtual memory\n");
         pmm_free_blocks(bitmap_phys, bitmap_pages);
         return;
     }
 
     memset(vmm_bitmap, 0, bitmap_size);
+    serial_printf("VMM: Bitmap initialized with %u pages\n", vmm_max_pages);
 }
 
 static int find_free_page()
@@ -77,18 +85,6 @@ static int find_contiguous_free_pages(uint32_t pages_needed)
     return -1;
 }
 
-// static void set_page_used(uint32_t page) {
-//     uint32_t byte_idx = page / 8;
-//     uint32_t bit_idx = page % 8;
-//     vmm_bitmap[byte_idx] |= (1 << bit_idx);
-// }
-
-// static void set_page_free(uint32_t page) {
-//     uint32_t byte_idx = page / 8;
-//     uint32_t bit_idx = page % 8;
-//     vmm_bitmap[byte_idx] &= ~(1 << bit_idx);
-// }
-
 static void mark_page(uint32_t page, bool used)
 {
     uint32_t byte_idx = page / 8;
@@ -110,6 +106,7 @@ void list_available_pages(void)
         }
     }
 }
+
 void vmm_init()
 {
     // serial_printf("VMM: Initializing virtual memory manager\n");
@@ -190,10 +187,7 @@ void *vmm_alloc_page()
         serial_printf("VMM: No free virtual pages available\n");
         return NULL;
     }
-    mark_page(page_index, true);
-    uint32_t virt_addr = KERNEL_VMEM_START + page_index * PAGE_SIZE;
 
-    // Allocate a physical page for mapping
     void *phys_ptr = pmm_alloc_block();
     if (!phys_ptr)
     {
@@ -201,16 +195,21 @@ void *vmm_alloc_page()
         mark_page(page_index, false);
         return NULL;
     }
-    uint32_t phys_addr = (uint32_t)phys_ptr;
 
-    // Map the physical page to the virtual address
-    paging_map_page(phys_addr, virt_addr, PAGE_PRESENT | PAGE_WRITABLE);
+    uint32_t virt_addr = KERNEL_VMEM_START + page_index * PAGE_SIZE;
+    if (!paging_map_page((uint32_t)phys_ptr, virt_addr, PAGE_PRESENT | PAGE_WRITABLE))
+    {
+        serial_printf("VMM: Failed to map page\n");
+        pmm_free_block(phys_ptr);
+        mark_page(page_index, false);
+        return NULL;
+    }
+
     return (void *)virt_addr;
 }
 
 void vmm_free_page(void *addr)
 {
-    // Check for null pointer
     if (!addr)
     {
         serial_printf("VMM: Attempted to free NULL address\n");
@@ -219,43 +218,37 @@ void vmm_free_page(void *addr)
 
     uint32_t virt_addr = (uint32_t)addr;
 
-    // Check if address is page-aligned
     if (virt_addr & (PAGE_SIZE - 1))
     {
         serial_printf("VMM: Address 0x%x is not page-aligned\n", virt_addr);
         return;
     }
 
-    // Check if address is in valid kernel virtual memory range
     if (virt_addr < KERNEL_VMEM_START)
     {
         serial_printf("VMM: Invalid virtual address 0x%x\n", virt_addr);
         return;
     }
 
-    // Calculate page index
     uint32_t page_index = (virt_addr - KERNEL_VMEM_START) / PAGE_SIZE;
 
-    // Check if page index is within bounds
     if (page_index >= vmm_max_pages)
     {
         serial_printf("VMM: Page index %u out of bounds\n", page_index);
         return;
     }
 
-    // Free the physical memory
     uint32_t phys_addr = virt_to_phys(addr);
-    if (phys_addr != 0)
+    if (phys_addr == UINT32_MAX)
     {
-        pmm_free_block((void *)phys_addr);
+        serial_printf("VMM: Failed to resolve physical address for 0x%x\n", virt_addr);
+        return;
     }
 
-    // Unmap the page
+    pmm_free_block((void *)phys_addr);
     paging_unmap_page(virt_addr);
-    pmm_mark_unused_region(phys_addr, PAGE_SIZE);
-
-    // Mark the virtual page as free
     mark_page(page_index, false);
+    // serial_printf("VMM: Freed page at V:0x%x P:0x%x\n", virt_addr, phys_addr);
 }
 
 void *vmm_map_mmio(uintptr_t phys_addr, size_t size, uint32_t flags)
@@ -316,45 +309,43 @@ void *vmm_alloc_contiguous(size_t pages)
         return NULL;
     }
 
-    // Find contiguous virtual pages
     int start_index = find_contiguous_free_pages(pages);
     if (start_index == -1)
     {
-        serial_printf("VMM: No %d contiguous VIRTUAL pages available\n", pages);
+        serial_printf("VMM: No %d contiguous virtual pages available\n", pages);
         return NULL;
     }
 
-    // Reserve virtual address space first
     for (uint32_t i = start_index; i < (uint32_t)(start_index + pages); i++)
     {
         mark_page(i, true);
     }
 
-    // Allocate contiguous PHYSICAL memory
     void *phys_start = pmm_alloc_blocks(pages);
     if (!phys_start)
     {
-        // Rollback virtual reservation
         for (uint32_t i = start_index; i < (uint32_t)(start_index + pages); i++)
         {
             mark_page(i, false);
         }
-        serial_printf("VMM: PMM failed\n");
+        serial_printf("VMM: Failed to allocate contiguous physical memory\n");
         return NULL;
-        // ... error handling ...
     }
 
-    // Map contiguous physical to contiguous virtual
     uint32_t virt_start = KERNEL_VMEM_START + start_index * PAGE_SIZE;
     for (uint32_t i = 0; i < pages; i++)
     {
         uint32_t phys_addr = (uint32_t)phys_start + (i * PAGE_SIZE);
         uint32_t virt_addr = virt_start + (i * PAGE_SIZE);
-        paging_map_page(phys_addr, virt_addr, PAGE_PRESENT | PAGE_WRITABLE);
+        if (!paging_map_page(phys_addr, virt_addr, PAGE_PRESENT | PAGE_WRITABLE))
+        {
+            serial_printf("VMM: Failed to map page %d\n", i);
+            vmm_free_contiguous((void *)virt_start, i);
+            return NULL;
+        }
     }
 
-    serial_printf("VMM: Allocated %d pages V:0x%x P:0x%x\n",
-                  pages, virt_start, phys_start);
+    serial_printf("VMM: Allocated %d contiguous pages V:0x%x P:0x%x\n", pages, virt_start, phys_start);
     return (void *)virt_start;
 }
 
@@ -454,40 +445,56 @@ void dma_free(void *addr, size_t size)
     vmm_free_contiguous(addr, pages);
 }
 
-bool vmm_map_userspace(uint32_t virt_addr, uint32_t phys_addr, uint32_t flags) {
-    // Validate userspace address - compare with KERNEL_VMEM_START only
-    if (virt_addr >= KERNEL_VMEM_START) {
-        serial_printf("VMM: Invalid userspace address 0x%x\n", virt_addr);
-        return false;
+/**
+ * Allocates a large contiguous region of virtual memory with specific flags
+ */
+void* vmm_alloc_region(size_t size, uint32_t flags) {
+    uint32_t pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
+    
+    // Find contiguous virtual pages
+    int start_page = find_contiguous_free_pages(pages);
+    if (start_page < 0) {
+        serial_printf("VMM: Failed to find %u contiguous pages\n", pages);
+        return NULL;
     }
 
-    // Ensure we have PRESENT flag
-    flags |= PAGE_PRESENT;
-    
-    // Set user-accessible flag
-    flags |= PAGE_USER;
+    // Mark pages as used
+    for (uint32_t i = 0; i < pages; i++) {
+        mark_page(start_page + i, true);
+    }
 
-    return paging_map_page(phys_addr, virt_addr, flags) == 1;
-}
+    // Calculate virtual address
+    uint32_t virt_addr = KERNEL_VMEM_START + start_page * PAGE_SIZE;
 
-void* vmm_alloc_userspace_pages(size_t pages) {
-    uint32_t virt_addr = USER_SPACE_END - pages * PAGE_SIZE;
-    void* phys = pmm_alloc_blocks(pages);
-    if(!phys) return NULL;
-
-    for(uint32_t i = 0; i < pages; i++) {
-        if (!paging_map_page(
-            (uint32_t)phys + i * PAGE_SIZE,
-            virt_addr + i * PAGE_SIZE,
-            PAGE_PRESENT | PAGE_WRITABLE | PAGE_USER
-        )) {
-            // Cleanup if mapping fails
+    // Allocate and map each page
+    for (uint32_t i = 0; i < pages; i++) {
+        void* phys = pmm_alloc_block();
+        if (!phys) {
+            // Cleanup on failure
+            serial_printf("VMM: Failed to allocate physical memory for page %u\n", i);
             for (uint32_t j = 0; j < i; j++) {
-                paging_unmap_page(virt_addr + j * PAGE_SIZE);
+                uint32_t addr = virt_addr + j * PAGE_SIZE;
+                pmm_free_block((void*)virt_to_phys((void*)addr));
+                paging_unmap_page(addr);
+                mark_page(start_page + j, false);
             }
-            pmm_free_blocks(phys, pages);
+            return NULL;
+        }
+
+        if (!paging_map_page((uint32_t)phys, virt_addr + i * PAGE_SIZE, flags)) {
+            // Cleanup on mapping failure
+            serial_printf("VMM: Failed to map page %u\n", i);
+            pmm_free_block(phys);
+            for (uint32_t j = 0; j < i; j++) {
+                uint32_t addr = virt_addr + j * PAGE_SIZE;
+                pmm_free_block((void*)virt_to_phys((void*)addr));
+                paging_unmap_page(addr);
+                mark_page(start_page + j, false);
+            }
             return NULL;
         }
     }
+
+    serial_printf("VMM: Allocated region of %u pages at 0x%x\n", pages, virt_addr);
     return (void*)virt_addr;
 }

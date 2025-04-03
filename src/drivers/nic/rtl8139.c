@@ -121,7 +121,7 @@ void rtl8139_send_packet(uint8_t *data, uint16_t len)
 
     nic.tx_current = (nic.tx_current + 1) % NUM_TX_BUFFERS;
 
-    serial_printf("RTL8139: TX packet send\n");
+    // serial_printf("RTL8139: TX packet send\n");
 
 }
 
@@ -142,7 +142,7 @@ void rtl8139_receive_packet() {
 
         if ((packet_len == 0) || (packet_len > 1514)) {
             serial_printf("RTL8139: Invalid packet length %d\n", packet_len);
-            break;
+            return;
         }
 
 
@@ -164,13 +164,13 @@ void rtl8139_receive_packet() {
 void rtl8139_irq_handler(REGISTERS *r)
 {
     (void)r;
-    serial_printf("RTL8139: IRQ %d\n", nic.irq);
+    // serial_printf("RTL8139: IRQ %d\n", nic.irq);
     uint16_t status = inportw(nic.iobase + 0x3E);
     outportw(nic.iobase + 0x3E, 0x05);
 
     if (status & 0x01)
     {
-        serial_printf("RTL8139: Receive OK\n");
+        // serial_printf("RTL8139: Receive OK\n");
 
         rtl8139_receive_packet();
     }
@@ -180,7 +180,7 @@ void rtl8139_irq_handler(REGISTERS *r)
         for (int i = 0; i < NUM_TX_BUFFERS; i++)
         {
             uint32_t tsd = inportl(nic.iobase + REG_TXSTATUS0 + (i * 4));
-            serial_printf("RTL8139: TX%d TSD=0x%x\n", i, tsd); 
+            // serial_printf("RTL8139: TX%d TSD=0x%x\n", i, tsd); 
         }
     }
 

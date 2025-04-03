@@ -9,25 +9,20 @@
 
 void net_process_packet(uint8_t *data, uint16_t len)
 {
-    if (!data || len < sizeof(struct eth_header)) {
+    if (!data || len < sizeof(struct eth_header))
+    {
+        serial_printf("NET: Dropping invalid packet with length %d\n", len);
         return;
     }
-    serial_printf("NET: Processing packet of length %d\n", len);
 
     struct eth_header *eth = (struct eth_header *)data;
     uint16_t ethertype = ntohs(eth->ethertype);
 
-    // Only process IP and ARP packets
-    // if (ethertype != ETHERTYPE_IP && ethertype != ETHERTYPE_ARP) {
-    //     return;
-    // }
-
-    // Log first 16 bytes for debug
-    serial_printf("NET: Packet type=0x%04x len=%d data: ", ethertype, len);
-    for (int i = 0; i < 16 && i < len; i++) {
-        serial_printf("%02x ", data[i]);
+    // Log unsupported packet types
+    if (ethertype != ETHERTYPE_IP && ethertype != ETHERTYPE_ARP) {
+        serial_printf("NET: Unsupported ethertype 0x%04x\n", ethertype);
+        return;
     }
-    serial_printf("\n");
 
     switch (ethertype)
     {

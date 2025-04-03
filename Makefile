@@ -53,7 +53,7 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o $(ASM_OBJ)/load_tss.o \
 		$(OBJ)/tss.o $(OBJ)/liballoc.o $(OBJ)/liballoc_hook.o \
 		$(OBJ)/pci.o $(OBJ)/ide.o $(OBJ)/fat.o $(OBJ)/font.o \
 		$(OBJ)/rtl8139.o $(OBJ)/arp.o $(OBJ)/eth.o $(OBJ)/network.o $(OBJ)/ipv4.o $(OBJ)/icmp.o \
-		$(OBJ)/math.o $(OBJ)/elf.o $(OBJ)/pong.o $(OBJ)/ne2k.o $(OBJ)/tcp.o $(OBJ)/e1000 \
+		$(OBJ)/math.o $(OBJ)/elf.o $(OBJ)/pong.o $(OBJ)/ne2k.o $(OBJ)/tcp.o $(OBJ)/e1000.o \
 		$(OBJ)/kernel.o
 
 .PHONY: all	

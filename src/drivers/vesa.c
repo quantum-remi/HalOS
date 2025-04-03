@@ -93,74 +93,81 @@ int vesa_init(uint32_t *framebuffer, uint32_t width, uint32_t height, uint32_t p
     
     uint32_t buffer_size = height * pitch;
     
-    // Validate buffer size isn't unreasonably large
-    if (buffer_size > (1024 * 1024 * 32)) { // 32MB max
-        serial_printf("VESA: Requested buffer size too large: %d bytes\n", buffer_size);
+    g_back_buffer = (uint32_t*)vmm_alloc_region(buffer_size, PAGE_PRESENT | PAGE_WRITABLE | PAGE_UNCACHED);
+    if (!g_back_buffer) {
+        serial_printf("VESA: Failed to allocate back buffer\n");
         return -1;
     }
+    memset(g_back_buffer, 0, buffer_size);
 
-    uint32_t aligned_size = (buffer_size + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
-    uint32_t pages_needed = aligned_size / PAGE_SIZE;
+    // // Validate buffer size isn't unreasonably large
+    // if (buffer_size > (1024 * 1024 * 32)) { // 32MB max
+    //     serial_printf("VESA: Requested buffer size too large: %d bytes\n", buffer_size);
+    //     return -1;
+    // }
+
+    // uint32_t aligned_size = (buffer_size + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
+    // uint32_t pages_needed = aligned_size / PAGE_SIZE;
     
-    serial_printf("VESA: Allocating %d pages (%d bytes) for back buffer\n", 
-                 pages_needed, aligned_size);
+    // serial_printf("VESA: Allocating %d pages (%d bytes) for back buffer\n", 
+    //              pages_needed, aligned_size);
 
-    // Allocate the back buffer in smaller chunks to avoid large contiguous allocations
-    const uint32_t CHUNK_SIZE = 32; // Allocate 32 pages at a time
-    uint32_t remaining_pages = pages_needed;
-    uint32_t current_offset = 0;
+    // // Allocate the back buffer in smaller chunks to avoid large contiguous allocations
+    // const uint32_t CHUNK_SIZE = 32; // Allocate 32 pages at a time
+    // uint32_t remaining_pages = pages_needed;
+    // uint32_t current_offset = 0;
 
-    // Create a temporary array to store physical addresses
-    void **phys_chunks = malloc(sizeof(void*) * ((pages_needed + CHUNK_SIZE - 1) / CHUNK_SIZE));
-    if (!phys_chunks) {
-        serial_printf("VESA: Failed to allocate chunk tracking array\n");
-        return -1;
-    }
-    int chunk_count = 0;
+    // // Create a temporary array to store physical addresses
+    // void **phys_chunks = malloc(sizeof(void*) * ((pages_needed + CHUNK_SIZE - 1) / CHUNK_SIZE));
+    // if (!phys_chunks) {
+    //     serial_printf("VESA: Failed to allocate chunk tracking array\n");
+    //     return -1;
+    // }
+    // int chunk_count = 0;
 
-    while (remaining_pages > 0) {
-        uint32_t chunk_pages = (remaining_pages > CHUNK_SIZE) ? CHUNK_SIZE : remaining_pages;
-        void *phys_chunk = pmm_alloc_blocks(chunk_pages);
+    // while (remaining_pages > 0) {
+    //     uint32_t chunk_pages = (remaining_pages > CHUNK_SIZE) ? CHUNK_SIZE : remaining_pages;
+    //     void *phys_chunk = pmm_alloc_blocks(chunk_pages);
         
-        if (!phys_chunk) {
-            serial_printf("VESA: Failed to allocate chunk of %d pages\n", chunk_pages);
-            // Clean up previously allocated chunks
-            for (int i = 0; i < chunk_count; i++) {
-                pmm_free_blocks(phys_chunks[i], CHUNK_SIZE);
-            }
-            free(phys_chunks);
-            return -1;
-        }
+    //     if (!phys_chunk) {
+    //         serial_printf("VESA: Failed to allocate chunk of %d pages\n", chunk_pages);
+    //         // Clean up previously allocated chunks
+    //         for (int i = 0; i < chunk_count; i++) {
+    //             pmm_free_blocks(phys_chunks[i], CHUNK_SIZE);
+    //         }
+    //         free(phys_chunks);
+    //         return -1;
+    //     }
         
-        phys_chunks[chunk_count++] = phys_chunk;
+    //     phys_chunks[chunk_count++] = phys_chunk;
         
-        void *virt_chunk = vmm_map_mmio((uintptr_t)phys_chunk, 
-                                       chunk_pages * PAGE_SIZE,
-                                       PAGE_PRESENT | PAGE_WRITABLE | PAGE_UNCACHED);
+    //     void *virt_chunk = vmm_map_mmio((uintptr_t)phys_chunk, 
+    //                                    chunk_pages * PAGE_SIZE,
+    //                                    PAGE_PRESENT | PAGE_WRITABLE | PAGE_UNCACHED);
         
-        if (!virt_chunk) {
-            serial_printf("VESA: Failed to map chunk\n");
-            // Clean up
-            for (int i = 0; i < chunk_count; i++) {
-                pmm_free_blocks(phys_chunks[i], CHUNK_SIZE);
-            }
-            free(phys_chunks);
-            return -1;
-        }
+    //     if (!virt_chunk) {
+    //         serial_printf("VESA: Failed to map chunk\n");
+    //         // Clean up
+    //         for (int i = 0; i < chunk_count; i++) {
+    //             pmm_free_blocks(phys_chunks[i], CHUNK_SIZE);
+    //         }
+    //         free(phys_chunks);
+    //         return -1;
+    //     }
 
-        // For first chunk, store the base address
-        if (current_offset == 0) {
-            g_back_buffer = (uint32_t*)virt_chunk;
-        }
+    //     // For first chunk, store the base address
+    //     if (current_offset == 0) {
+    //         g_back_buffer = (uint32_t*)virt_chunk;
+    //     }
 
-        // Zero-initialize this chunk
-        memset(virt_chunk, 0, chunk_pages * PAGE_SIZE);
+    //     // Zero-initialize this chunk
+    //     memset(virt_chunk, 0, chunk_pages * PAGE_SIZE);
         
-        remaining_pages -= chunk_pages;
-        current_offset += chunk_pages * PAGE_SIZE;
-    }
+    //     remaining_pages -= chunk_pages;
+    //     current_offset += chunk_pages * PAGE_SIZE;
+    // }
 
-    free(phys_chunks);
+    // free(phys_chunks);
     
     // Check for VSync support by testing VGA status register
     g_vsync_supported = true;

@@ -3,10 +3,16 @@
 #include "string.h"
 #include <stdbool.h>
 
+#define PMM_DEBUG 1
+#define PMM_ERROR(msg, ...) serial_printf("PMM ERROR: " msg "\n", ##__VA_ARGS__)
+#define PMM_LOG(msg, ...) if(PMM_DEBUG) serial_printf("PMM: " msg "\n", ##__VA_ARGS__)
+
 static uint32_t pmm_memory_size = 0;
 uint32_t pmm_used_blocks = 0;
 static uint32_t pmm_max_blocks = 0;
 static uint8_t *pmm_memory_map = 0; // changed type from uint32_t* to uint8_t*
+static bool pmm_initialized = false;
+static uint32_t pmm_last_alloc = 0;  // For better allocation distribution
 
 // Spinlock for thread safety (if multi-threaded)
 // static spinlock_t pmm_lock = SPINLOCK_INIT;
@@ -49,6 +55,8 @@ void pmm_init(size_t mem_size, uint8_t *bitmap)
     serial_printf("PMM: Used blocks: %d\n", pmm_used_blocks);
     serial_printf("PMM: Bitmap at 0x%x\n", (uint32_t)bitmap);
     serial_printf("PMM: Free blocks: %d\n", pmm_max_blocks - pmm_used_blocks);
+
+    pmm_initialized = true;
 }
 
 uint32_t pmm_get_total_memory()
@@ -136,6 +144,22 @@ void *pmm_alloc_block()
     return NULL;
 }
 
+static bool validate_allocation_request(size_t blocks) {
+    if (!pmm_initialized) {
+        PMM_ERROR("PMM not initialized");
+        return false;
+    }
+    if (blocks == 0 || blocks > pmm_max_blocks) {
+        PMM_ERROR("Invalid block count: %d", blocks);
+        return false;
+    }
+    if (pmm_used_blocks + blocks > pmm_max_blocks) {
+        PMM_ERROR("Out of memory: requested %d blocks", blocks);
+        return false;
+    }
+    return true;
+}
+
 /**
  * Allocates a specified number of contiguous 4KB blocks.
  *
@@ -144,41 +168,46 @@ void *pmm_alloc_block()
  */
 void *pmm_alloc_blocks(uint32_t num_blocks)
 {
-    if (num_blocks == 0)
+    if (!validate_allocation_request(num_blocks)) {
         return NULL;
+    }
 
     uint32_t consecutive = 0;
     uint32_t start_block = 0;
 
-    for (uint32_t block = 0; block < pmm_max_blocks; block++)
-    {
-        uint32_t byte_idx = block / PMM_BLOCKS_PER_BYTE;
-        uint32_t bit_idx = block % PMM_BLOCKS_PER_BYTE;
+    uint32_t start = pmm_last_alloc;
+    uint32_t tries = 0;
+    const uint32_t max_tries = 2;  // Try wrapping around once
 
-        if (!(pmm_memory_map[byte_idx] & (1 << bit_idx)))
-        {
-            if (consecutive == 0)
-                start_block = block;
-            consecutive++;
-            if (consecutive == num_blocks)
-            {
-                // Mark blocks as used
-                for (uint32_t i = start_block; i < start_block + num_blocks; i++)
-                {
-                    uint32_t b_idx = i / PMM_BLOCKS_PER_BYTE;
-                    uint32_t bit = i % PMM_BLOCKS_PER_BYTE;
-                    pmm_memory_map[b_idx] |= (1 << bit);
-                    pmm_used_blocks++;
+    while (tries < max_tries) {
+        for (uint32_t block = start; block < pmm_max_blocks; block++) {
+            uint32_t byte_idx = block / PMM_BLOCKS_PER_BYTE;
+            uint32_t bit_idx = block % PMM_BLOCKS_PER_BYTE;
+
+            if (!(pmm_memory_map[byte_idx] & (1 << bit_idx))) {
+                if (consecutive == 0)
+                    start_block = block;
+                consecutive++;
+                if (consecutive == num_blocks) {
+                    // Mark blocks as used
+                    for (uint32_t i = start_block; i < start_block + num_blocks; i++) {
+                        uint32_t b_idx = i / PMM_BLOCKS_PER_BYTE;
+                        uint32_t bit = i % PMM_BLOCKS_PER_BYTE;
+                        pmm_memory_map[b_idx] |= (1 << bit);
+                        pmm_used_blocks++;
+                    }
+                    pmm_last_alloc = (start_block + num_blocks) % pmm_max_blocks;
+                    return (void *)(start_block * PMM_BLOCK_SIZE);
                 }
-                return (void *)(start_block * PMM_BLOCK_SIZE);
+            } else {
+                consecutive = 0; // Reset counter if a block is used
             }
         }
-        else
-        {
-            consecutive = 0; // Reset counter if a block is used
-        }
+        start = 0;  // Wrap around
+        tries++;
     }
-    serial_printf("PMM: No contiguous blocks for %d pages\n", num_blocks);
+
+    PMM_ERROR("Failed to find %d contiguous blocks", num_blocks);
     return NULL;
 }
 

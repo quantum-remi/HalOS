@@ -43,14 +43,14 @@ void *liballoc_alloc(int num_blocks)
             virt_addr = page;
     }
 
-    serial_printf("liballoc: Allocated %d pages at virtual address 0x%lx\n",
-                  num_blocks, (uintptr_t)virt_addr);
+    // serial_printf("liballoc: Allocated %d pages at virtual address 0x%lx\n",
+                //   num_blocks, (uintptr_t)virt_addr);
     return virt_addr;
 }
 
 int liballoc_free(void *ptr, int num_blocks)
 {
-    serial_printf("liballoc: Request to free %d blocks at address 0x%lx\n", num_blocks, (uintptr_t)ptr);
+    // serial_printf("liballoc: Request to free %d blocks at address 0x%lx\n", num_blocks, (uintptr_t)ptr);
 
     if (!ptr)
     {
@@ -63,6 +63,6 @@ int liballoc_free(void *ptr, int num_blocks)
         vmm_free_page((char *)ptr + (i * PAGE_SIZE));
     }
 
-    serial_printf("liballoc: Successfully freed %d blocks at address 0x%lx\n", num_blocks, (uintptr_t)ptr);
+    // serial_printf("liballoc: Successfully freed %d blocks at address 0x%lx\n", num_blocks, (uintptr_t)ptr);
     return 0;
 }

@@ -142,6 +142,10 @@ void queue_packet(uint32_t dst_ip, uint8_t protocol, uint8_t *payload, uint16_t 
     pkt->dst_ip = dst_ip;
     pkt->protocol = protocol;
     pkt->payload = malloc(payload_len);
+    if (!pkt->payload) {
+        serial_printf("ARP: Memory allocation failed for packet\n");
+        return;
+    }
     memcpy(pkt->payload, payload, payload_len);
     pkt->payload_len = payload_len;
     pkt->timestamp = get_ticks();
@@ -158,8 +162,9 @@ void retry_pending_packets()
         {
             // Rebuild the IPv4 packet with current source IP
             net_send_ipv4_packet(pkt->dst_ip, pkt->protocol, pkt->payload, pkt->payload_len);
-            free(pkt->payload);
+            free(pkt->payload); // Free allocated payload
             pkt->payload = NULL;
+
             if (i != pending_count - 1)
             {
                 struct pending_packet temp = pending_queue[i];

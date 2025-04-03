@@ -24,4 +24,6 @@ void paging_unmap_page(uint32_t virt_addr);
 // Get the current page directory address
 uint32_t *get_page_directory(void);
 
+bool paging_set_kernel_stack_guard();
+
 #endif

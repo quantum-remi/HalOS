@@ -75,11 +75,11 @@ void net_send_ipv4_packet(uint32_t dst_ip, uint8_t protocol, uint8_t *payload, u
         next_hop = nic.gateway_ip;
     }
 
-    serial_printf("IPv4: Routing to %d.%d.%d.%d via %d.%d.%d.%d\n",
-                 (dst_ip >> 24) & 0xFF, (dst_ip >> 16) & 0xFF,
-                 (dst_ip >> 8) & 0xFF, dst_ip & 0xFF,
-                 (next_hop >> 24) & 0xFF, (next_hop >> 16) & 0xFF,
-                 (next_hop >> 8) & 0xFF, next_hop & 0xFF);
+    // serial_printf("IPv4: Routing to %d.%d.%d.%d via %d.%d.%d.%d\n",
+    //              (dst_ip >> 24) & 0xFF, (dst_ip >> 16) & 0xFF,
+    //              (dst_ip >> 8) & 0xFF, dst_ip & 0xFF,
+    //              (next_hop >> 24) & 0xFF, (next_hop >> 16) & 0xFF,
+    //              (next_hop >> 8) & 0xFF, next_hop & 0xFF);
 
     if (!arp_lookup(next_hop, dst_mac)) {
         queue_packet(dst_ip, protocol, payload, payload_len);

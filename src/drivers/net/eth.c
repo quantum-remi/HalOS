@@ -37,10 +37,10 @@ void eth_send_frame(uint8_t *dest_mac, uint16_t ethertype, uint8_t *data, uint16
     // Copy payload
     memcpy(frame + sizeof(struct eth_header), data, len);
 
-    serial_printf("ETH: Sending frame to %02x:%02x:%02x:%02x:%02x:%02x type=0x%04x len=%d\n",
-                 dest_mac[0], dest_mac[1], dest_mac[2],
-                 dest_mac[3], dest_mac[4], dest_mac[5],
-                 ethertype, total_len);
+    // serial_printf("ETH: Sending frame to %02x:%02x:%02x:%02x:%02x:%02x type=0x%04x len=%d\n",
+    //              dest_mac[0], dest_mac[1], dest_mac[2],
+    //              dest_mac[3], dest_mac[4], dest_mac[5],
+    //              ethertype, total_len);
 
     rtl8139_send_packet(frame, total_len);
 }

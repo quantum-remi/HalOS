@@ -152,17 +152,18 @@ void kmain(unsigned long magic, unsigned long addr)
     {
         paging_map_page(fb_phys + (i * PAGE_SIZE),
                         fb_virt + (i * PAGE_SIZE),
-                        PAGE_PRESENT | PAGE_WRITABLE);
+                        PAGE_PRESENT | PAGE_WRITABLE | PAGE_UNCACHED);
     }
 
     // Update framebuffer pointer to virtual address
     framebuffer = (uint32_t *)fb_virt;
+    memset(framebuffer, 0, fb_size);
     serial_printf("[VESA] Framebuffer mapped to virtual address 0x%x\n", fb_virt);
 
     // Initialize VESA graphics
     if (vesa_init(framebuffer, width, height, pitch, bpp) < 0)
     {
-        serial_printf("VESA initialization failed!\n");
+        panic("VESA initialization failed!\n");
         // Handle error
     }
     else
