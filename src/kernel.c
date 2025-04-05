@@ -53,14 +53,14 @@ int get_kernel_memory_map(KERNEL_MEMORY_MAP *kmap, multiboot_info_t *mboot_info)
 
 void display_kernel_memory_map(KERNEL_MEMORY_MAP *kmap)
 {
-    console_printf("kernel:\n");
-    console_printf("  kernel-start: 0x%x, kernel-end: 0x%x, TOTAL: %zu bytes\n",
+    serial_printf("kernel:\n");
+    serial_printf("  kernel-start: 0x%x, kernel-end: 0x%x, TOTAL: %zu bytes\n",
                    kmap->kernel.k_start_addr, kmap->kernel.k_end_addr, kmap->kernel.k_len);
-    console_printf("  text-start: 0x%x, text-end: 0x%x, TOTAL: %zu bytes\n",
+    serial_printf("  text-start: 0x%x, text-end: 0x%x, TOTAL: %zu bytes\n",
                    kmap->kernel.text_start_addr, kmap->kernel.text_end_addr, kmap->kernel.text_len);
-    console_printf("  data-start: 0x%x, data-end: 0x%x, TOTAL: %zu bytes\n",
+    serial_printf("  data-start: 0x%x, data-end: 0x%x, TOTAL: %zu bytes\n",
                    kmap->kernel.data_start_addr, kmap->kernel.data_end_addr, kmap->kernel.data_len);
-    console_printf("  bss-start: 0x%x, bss-end: 0x%x, TOTAL: %zu bytes\n",
+    serial_printf("  bss-start: 0x%x, bss-end: 0x%x, TOTAL: %zu bytes\n",
                    kmap->kernel.bss_start_addr, kmap->kernel.bss_end_addr, kmap->kernel.bss_len);
 }
 
@@ -145,7 +145,7 @@ void kmain(unsigned long magic, unsigned long addr)
     uint32_t fb_size = height * pitch;
     uint32_t fb_pages = (fb_size + PAGE_SIZE - 1) / PAGE_SIZE;
     uint32_t fb_phys = (uint32_t)framebuffer;
-    uint32_t fb_virt = KERNEL_VMEM_START + 0x2000000; // Map 16MB after kernel start
+    uint32_t fb_virt = KERNEL_VMEM_START + 0x3000000;
 
     // Map each page of the framebuffer
     for (uint32_t i = 0; i < fb_pages; i++)
@@ -231,6 +231,10 @@ void kmain(unsigned long magic, unsigned long addr)
 
     serial_printf("System initialized successfully\n");
     console_printf("System initialized successfully\n");
+
+    // serial print kernel memory map
+    display_kernel_memory_map(&g_kmap);
+    serial_printf("Kernel memory map displayed\n");
 
     // Start shell
     shell();

@@ -4,6 +4,8 @@
 #include "serial.h"
 #include "vmm.h"
 #include <stdbool.h>
+#include "isr.h"
+#include "8259_pic.h"
 
 extern uint32_t __kernel_physical_start;
 extern uint32_t __kernel_physical_end;
@@ -34,7 +36,6 @@ void paging_init()
     // Clear first page table
     memset(first_page_table, 0, PAGE_SIZE);
 
-    for (uint32_t i = 0; i < 1024; i++)
     for (uint32_t i = 0; i < 2048; i++)
     {
         first_page_table[i] = (i * PAGE_SIZE) | PAGE_PRESENT | PAGE_WRITABLE;
@@ -45,6 +46,8 @@ void paging_init()
 
     // Also map first 4MB to higher half (0xC0000000)
     page_directory[768] = ((uint32_t)first_page_table) | PAGE_PRESENT | PAGE_WRITABLE;
+
+    // serial_printf("Paging: Page directory initialized at 0x%x\n", (uint32_t)page_directory);
 }
 
 static inline void load_page_directory(uint32_t pd_addr)
@@ -84,26 +87,40 @@ void paging_enable(uint32_t page_directory_addr)
         "1:\n");
 
     paging_active = true;
+    page_directory = (uint32_t*)(0xC0000000 + (uint32_t)page_directory);
     serial_printf("Paging: Enabled successfully\n");
 }
 
-bool paging_map_page(uint32_t phys_addr, uint32_t virt_addr, uint32_t flags) {
+bool paging_map_page(uint32_t phys_addr, uint32_t virt_addr, uint32_t flags)
+{
     uint32_t pd_index = virt_addr >> 22;
     uint32_t pt_index = (virt_addr >> 12) & 0x3FF;
 
-    if (!(page_directory[pd_index] & PAGE_PRESENT)) {
+    // Check if the PDE is present; allocate a new page table if not
+    if (!(page_directory[pd_index] & PAGE_PRESENT))
+    {
         uint32_t *new_table = pmm_alloc_block();
-        memset(new_table, 0, PAGE_SIZE);
-        
-        // Set PDE flags for userspace
-        uint32_t pde_flags = PAGE_PRESENT | PAGE_WRITABLE;
-        if (virt_addr < KERNEL_VMEM_START) {
-            pde_flags |= PAGE_USER; // <-- Critical for user access
+        if (!new_table)
+        {
+            serial_printf("Paging: Failed to allocate page table for PDE %d\n", pd_index);
+            return false;
         }
+        memset(new_table, 0, PAGE_SIZE);
+
+        // Set PDE flags (ensure kernel-space PDEs are writable)
+        uint32_t pde_flags = PAGE_PRESENT | PAGE_WRITABLE;
         page_directory[pd_index] = (uint32_t)new_table | pde_flags;
     }
 
-    uint32_t *page_table = (uint32_t*)(page_directory[pd_index] & ~0xFFF);
+    // Get the page table (convert to virtual address if paging is active)
+    uint32_t *page_table = (uint32_t *)(page_directory[pd_index] & ~0xFFF);
+    if (paging_active)
+    {
+        // Access page tables via higher-half address after paging is enabled
+        page_table = (uint32_t *)(0xC0000000 + (uint32_t)page_table);
+    }
+
+    // Map the entry
     page_table[pt_index] = (phys_addr & ~0xFFF) | flags | PAGE_PRESENT;
     return true;
 }

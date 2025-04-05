@@ -296,12 +296,17 @@ void *vmm_map_mmio(uintptr_t phys_addr, size_t size, uint32_t flags)
 
     // Map physical to virtual
     uint32_t virt_start = KERNEL_VMEM_START + start_index * PAGE_SIZE;
-    for (uint32_t i = 0; i < pages_needed; i++)
-    {
+    for (uint32_t i = 0; i < pages_needed; i++) {
         uintptr_t curr_phys = phys_addr + (i * PAGE_SIZE);
         uintptr_t curr_virt = virt_start + (i * PAGE_SIZE);
-        paging_map_page(curr_phys, curr_virt, flags | PAGE_PRESENT | PAGE_WRITABLE);
+        
+        if (!paging_map_page(curr_phys, curr_virt, flags | PAGE_PRESENT | PAGE_WRITABLE)) {
+            serial_printf("VMM: Failed to map MMIO page at V:0x%x P:0x%x\n", curr_virt, curr_phys);
+            // Unmap previously mapped pages
+            return NULL;
+        }
     }
+    // serial_printf("VMM: Mapped MMIO: V:0x%x P:0x%x Size:0x%x\n", virt_start, phys_addr, size);
 
     return (void *)virt_start;
 }

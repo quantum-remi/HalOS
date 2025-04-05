@@ -5,6 +5,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#include "isr.h"
+
 #define PAGE_SIZE     4096
 #define PAGE_PRESENT  0x1
 #define PAGE_WRITABLE 0x2
