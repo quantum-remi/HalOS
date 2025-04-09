@@ -35,10 +35,12 @@ static void draw_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t c
 }
 
 static void draw_game() {
-    console_clear();
+    // Clear screen
+    draw_rect(0, 0, g_width, g_height, 0x000000);
     draw_rect(10, left_paddle_y, PADDLE_WIDTH, PADDLE_HEIGHT, 0xFFFFFF);
     draw_rect(g_width - 10 - PADDLE_WIDTH, right_paddle_y, PADDLE_WIDTH, PADDLE_HEIGHT, 0xFFFFFF);
     draw_rect(ball.x, ball.y, BALL_SIZE, BALL_SIZE, 0xFFFFFF);
+    // sleep();
     vesa_swap_buffers();
 }
 
@@ -59,6 +61,7 @@ void pong_game() {
             } else if (c == 's' && left_paddle_y < g_height - PADDLE_HEIGHT) {
                 left_paddle_y += PADDLE_SPEED;
             } else if (c == 'q') {
+                console_clear();
                 running = 0;
             }
         }

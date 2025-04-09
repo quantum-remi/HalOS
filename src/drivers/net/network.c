@@ -39,7 +39,7 @@ void net_process_packet(uint8_t *data, uint16_t len)
             uint32_t sender_ip = ntohl(*(uint32_t *)arp->sender_ip);
 
             arp_cache_update(sender_ip, arp->sender_mac);
-            retry_pending_packets(); // Retry queued packets now that MAC is resolved
+            // retry_pending_packets(); // Retry queued packets now that MAC is resolved
         }
         // Handle ARP requests
         else if (opcode == ARP_REQUEST)
@@ -69,10 +69,11 @@ void net_process_packet(uint8_t *data, uint16_t len)
                     memcpy(reply.target_ip, arp->sender_ip, 4);
                     memcpy(reply.sender_mac, nic.mac, 6);
                     memcpy(reply.sender_ip, arp->target_ip, 4);
-
+                
                     eth_send_frame(arp->sender_mac, ETHERTYPE_ARP, (uint8_t *)&reply, sizeof(reply));
+                
+                    // retry_pending_packets();
                 }
-                retry_pending_packets();
             }
             break;
         }
@@ -144,7 +145,7 @@ void net_process_packet(uint8_t *data, uint16_t len)
             }
 
             uint8_t *icmp_data = (uint8_t *)ip + header_len;
-            serial_printf("NET: Processing ICMP packet len=%d\n", icmp_len);
+            // serial_printf("NET: Processing ICMP packet len=%d\n", icmp_len);
             icmp_handle_packet(ip, icmp_data, icmp_len);
         }
         break;

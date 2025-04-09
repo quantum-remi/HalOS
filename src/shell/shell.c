@@ -573,7 +573,7 @@ void shell()
 
     console_clear();
     // console_printf("DEBUG: Console initialized\n");  // Check if this appears
-    console_printf("Hal OS v0.14.2\n");
+    console_printf("Hal OS v0.15.0\n");
     console_printf("Type 'help' for a list of commands\n");
 
     // Initialize the global FAT volume once
@@ -608,7 +608,8 @@ void shell()
             console_printf("===============================================\n");
             console_printf("|  Available Commands:                        |\n");
             console_printf("|   * arp - Display ARP cache                 |\n");
-            console_printf("|   * cd - Change directory                   |\n");
+            console_printf("|   * cat - Display file content              |\n");
+            console_printf("|   * cd <path> - Change directory            |\n");
             console_printf("|   * clear - Clear the console screen        |\n");
             console_printf("|   * cpuid - Display CPU information         |\n");
             console_printf("|   * echo - Echo a message to the console    |\n");
@@ -636,6 +637,34 @@ void shell()
         else if (strcmp(buffer, "help /f") == 0)
         {
             console_printf("arp, cd, clear, cpuid, echo, fireworks, haiku, help, hwinfo, ls, lspci, malloc, memory, ping, pong, pwd, reboot, shutdown, snake, timer, vesa, version\n");
+        }
+        else if(strcmp(buffer, "cat") == 0)
+        {
+            console_printf("cat: No file specified\n");
+        }
+        else if (strncmp(buffer, "cat ", 4) == 0)
+        {
+            char *filename = buffer + 4;
+            FAT32_File file;
+            if (fat32_find_file(&fat_volume, filename, &file))
+            {
+                char *file_buffer = malloc(file.size + 1);
+                if (file_buffer)
+                {
+                    fat32_read_file(&fat_volume, &file, 0, file_buffer, file.size);
+                    file_buffer[file.size] = '\0';
+                    console_printf("%s\n", file_buffer);
+                    free(file_buffer);
+                }
+                else
+                {
+                    console_printf("Error: Memory allocation failed\n");
+                }
+            }
+            else
+            {
+                console_printf("Error: File not found: %s\n", filename);
+            }
         }
         else if (strncmp(buffer, "cd ", 3) == 0)
         {
@@ -716,7 +745,7 @@ void shell()
         else if (strcmp(buffer, "version") == 0)
         {
             console_printf("--------------------------------------------------------------\n");
-            console_printf("Hal OS v0.14.2\n");
+            console_printf("Hal OS v0.15.0\n");
             console_printf("Built on: %s %s\n", __DATE__, __TIME__);
             console_printf("Built with: GCC %s\n", __VERSION__);
             console_printf("--------------------------------------------------------------\n");

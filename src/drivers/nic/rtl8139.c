@@ -147,6 +147,7 @@ void rtl8139_receive_packet() {
 
 
         uint8_t *packet_data = nic.rx_buffer + buffer_pos + 4;
+        serial_printf("RTL8139: Received packet of length %d\n", packet_len);
         net_process_packet(packet_data, packet_len);
 
 
@@ -154,8 +155,13 @@ void rtl8139_receive_packet() {
 
         if (rx_offset >= RX_BUFFER_SIZE)
             rx_offset -= RX_BUFFER_SIZE;
-    }
 
+    }
+    uint16_t rx_status = *(uint16_t*)(nic.rx_buffer + (rx_offset % RX_BUFFER_SIZE));
+    if (rx_status & 0x8000) {
+        serial_printf("RTL8139: RX buffer overflow\n");
+        return;
+    }
 
     nic.rx_ptr = rx_offset;
     outportw(nic.iobase + REG_CAPR, (nic.rx_ptr - 16) % RX_BUFFER_SIZE);
@@ -164,17 +170,17 @@ void rtl8139_receive_packet() {
 void rtl8139_irq_handler(REGISTERS *r)
 {
     (void)r;
-    // serial_printf("RTL8139: IRQ %d\n", nic.irq);
+    serial_printf("RTL8139: IRQ %d\n", nic.irq);
     uint16_t status = inportw(nic.iobase + 0x3E);
     outportw(nic.iobase + 0x3E, 0x05);
-
+    
     if (status & 0x01)
     {
         // serial_printf("RTL8139: Receive OK\n");
-
+        
         rtl8139_receive_packet();
     }
-
+    
     if (status & 0x04)
     {
         for (int i = 0; i < NUM_TX_BUFFERS; i++)
@@ -183,7 +189,7 @@ void rtl8139_irq_handler(REGISTERS *r)
             // serial_printf("RTL8139: TX%d TSD=0x%x\n", i, tsd); 
         }
     }
-
+    
     if (status & 0x10)
     {
         serial_printf("RTL8139: Rx Buffer Overflow - Resetting RX\n");
@@ -194,7 +200,7 @@ void rtl8139_irq_handler(REGISTERS *r)
         outportl(nic.iobase + REG_RXBUF, nic.rx_phys);
         outportb(nic.iobase + REG_CMD, cmd | 0x08);
     }
-
+    
     if (status & 0x08)
     {
         serial_printf("RTL8139: Transmit Error\n");

@@ -5,6 +5,8 @@
 #include "string.h"
 #include "timer.h"
 #include "console.h"
+#include "fat.h"
+#include "printf.h"
 
 #define DEFAULT_WINDOW_SIZE 5840
 #define TCP_SYN_RETRANSMIT_TIMEOUT 3000
@@ -12,23 +14,25 @@
 #define MAX_SYN_RETRIES 5
 #define DEFAULT_MSS 1460
 
+extern FAT32_Volume fat_volume;
+
 #define HTTP_PORT 8080
-#define HTTP_RESPONSE             \
-    "HTTP/1.1 200 OK\r\n"         \
-    "Content-Type: text/html\r\n" \
-    "Content-Length: 348\r\n"     \
-    "Connection: close\r\n"       \
-    "\r\n"                        \
-    "<html><head><style>\r\n"     \
-    "body { font-family: Arial; background: #f0f0f0; margin: 40px; }\r\n" \
-    "h1 { color: #333; text-align: center; }\r\n" \
-    "p { color: #666; text-align: center; }\r\n" \
-    "</style></head>\r\n"         \
-    "<body>\r\n"                  \
-    "<h1>Welcome to HalOS!</h1>\r\n" \
-    "<p>This is a minimal operating system with TCP/IP networking.</p>\r\n" \
-    "<p>Server is up and running successfully.</p>\r\n" \
-    "</body></html>"
+// #define HTTP_RESPONSE             \
+//     "HTTP/1.1 200 OK\r\n"         \
+//     "Content-Type: text/html\r\n" \
+//     "Content-Length: 348\r\n"     \
+//     "Connection: close\r\n"       \
+//     "\r\n"                        \
+    // "<html><head><style>\r\n"     \
+    // "body { font-family: Arial; background: #f0f0f0; margin: 40px; }\r\n" \
+    // "h1 { color: #333; text-align: center; }\r\n" \
+    // "p { color: #666; text-align: center; }\r\n" \
+    // "</style></head>\r\n"         \
+    // "<body>\r\n"                  \
+    // "<h1>Welcome to HalOS!</h1>\r\n" \
+    // "<p>This is a minimal operating system with TCP/IP networking.</p>\r\n" \
+    // "<p>Server is up and running successfully.</p>\r\n" \
+    // "</body></html>"
 
 static tcp_connection_t *connection_list = NULL;
 
@@ -173,9 +177,7 @@ void process_tcp_options(tcp_connection_t *conn, uint8_t *options, uint8_t optio
         if (length < 2)
             break;
 
-        if (kind == 2 && length == 4 && remaining >= 2)
-        {
-            // MSS option
+        if (kind == 2 && length == 4) {
             uint16_t mss = (ptr[0] << 8) | ptr[1];
             conn->mss = (mss < DEFAULT_MSS) ? mss : DEFAULT_MSS;
             ptr += 2;
@@ -211,37 +213,70 @@ void start_retransmission_timer(tcp_connection_t *conn, uint32_t timeout_ms)
 
 void check_tcp_timers(void)
 {
-    tcp_timer_t **pp = &active_timers;
     uint32_t current_time = get_ticks();
+    tcp_connection_t *conn = connection_list;
 
-    while (*pp)
+    while (conn)
     {
-        tcp_timer_t *timer = *pp;
+        retransmit_entry_t **pp = &conn->retransmit_queue;
+        while (*pp)
+        {
+            retransmit_entry_t *entry = *pp;
+            if (current_time - entry->start_time >= entry->timeout_ms)
+            {
+                if (entry->retries < MAX_SYN_RETRIES)
+                {
+                    // Retransmit the segment
+                    tcp_send_segment(conn, TCP_ACK, entry->data, entry->length);
+                    entry->start_time = current_time;
+                    entry->timeout_ms *= 2;
+                    entry->retries++;
+                    pp = &(*pp)->next;
+                }
+                else
+                {
+                    // Max retries reached: abort connection
+                    remove_connection(conn);
+                    *pp = entry->next;
+                    free(entry->data);
+                    free(entry);
+                    break;
+                }
+            }
+            else
+            {
+                pp = &(*pp)->next;
+            }
+        }
+        conn = conn->next;
+    }
+
+    // Existing SYN retransmission handling
+    tcp_timer_t **pp_syn = &active_timers;
+    while (*pp_syn)
+    {
+        tcp_timer_t *timer = *pp_syn;
         if (current_time - timer->start_time >= timer->timeout_ms)
         {
             if (timer->retries < MAX_SYN_RETRIES)
             {
-                // Retransmit the segment
-                serial_printf("TCP: Retransmitting SEQ=%u\n", timer->conn->next_seq);
-                tcp_send_segment(timer->conn, TCP_ACK, NULL, 0);
+                tcp_send_segment(timer->conn, TCP_SYN | TCP_ACK, NULL, 0);
                 timer->start_time = current_time;
                 timer->timeout_ms *= 2;
                 timer->retries++;
-                pp = &(*pp)->next;
+                pp_syn = &(*pp_syn)->next;
             }
             else
             {
-                // Max retries reached: abort connection
-                serial_printf("TCP: Retransmission failed, closing connection\n");
                 remove_connection(timer->conn);
-                tcp_timer_t *to_free = *pp;
-                *pp = to_free->next;
+                tcp_timer_t *to_free = *pp_syn;
+                *pp_syn = to_free->next;
                 free(to_free);
             }
         }
         else
         {
-            pp = &(*pp)->next;
+            pp_syn = &(*pp_syn)->next;
         }
     }
 }
@@ -391,7 +426,89 @@ void tcp_send_segment(tcp_connection_t *conn, uint8_t flags, uint8_t *data, uint
 static void handle_http_request(tcp_connection_t *conn)
 {
     serial_printf("HTTP: Handling GET request\n");
-    tcp_send_segment(conn, TCP_PSH | TCP_ACK, (uint8_t *)HTTP_RESPONSE, strlen(HTTP_RESPONSE));
+    char *filename = "index.html";
+    FAT32_File file;
+
+    if (fat32_find_file(&fat_volume, filename, &file))
+    {
+        char *file_buffer = malloc(file.size);
+        if (file_buffer)
+        {
+            fat32_read_file(&fat_volume, &file, 0, file_buffer, file.size);
+
+            // Calculate Content-Length digits
+            int clen_digits = 1;
+            for (int n = file.size; n > 9; n /= 10)
+                clen_digits++;
+
+            // Header template
+            const char *header_template =
+                "HTTP/1.1 200 OK\r\n"
+                "Content-Type: text/html\r\n"
+                "Content-Length: %d\r\n"
+                "Connection: close\r\n\r\n";
+
+            // Allocate sufficient buffer for the header
+            int header_len = snprintf(NULL, 0, header_template, file.size) + 1; // +1 for null terminator
+            char *http_header = malloc(header_len);
+            if (!http_header)
+            {
+                // Handle error
+            }
+            snprintf(http_header, header_len, header_template, file.size);
+
+            int written = sprintf(http_header, header_template, file.size);
+            if (written < 0)
+            {
+                console_printf("Error formatting HTTP header\n");
+                free(http_header);
+                free(file_buffer);
+                return;
+            }
+
+            // Determine actual header length
+            size_t actual_header_len = strlen(http_header);
+
+            // Combine header and file content
+            char *http_response = malloc(actual_header_len + file.size);
+            if (http_response)
+            {
+                memcpy(http_response, http_header, actual_header_len);
+                memcpy(http_response + actual_header_len, file_buffer, file.size);
+                // After building http_response
+                uint32_t total_len = actual_header_len + file.size;
+                uint32_t offset = 0;
+                uint16_t mss = conn->mss;
+
+                while (offset < total_len) {
+                    uint16_t chunk_size = (total_len - offset) > mss ? mss : (total_len - offset);
+                    tcp_send_segment(conn, TCP_PSH | TCP_ACK, (uint8_t *)(http_response + offset), chunk_size);
+                    offset += chunk_size;
+                }
+                free(http_response); // Free after all chunks are sent
+            }
+            else
+            {
+                console_printf("Error: Response allocation failed\n");
+            }
+
+            free(http_header);
+            free(file_buffer);
+        }
+        else
+        {
+            console_printf("Error: File buffer allocation failed\n");
+        }
+    }
+    else
+    {
+        // 404 response
+        const char *response =
+            "HTTP/1.1 404 Not Found\r\n"
+            "Content-Length: 0\r\n"
+            "Connection: close\r\n\r\n";
+        tcp_send_segment(conn, TCP_PSH | TCP_ACK, (uint8_t *)response, strlen(response));
+    }
 }
 
 static int is_http_get_request(uint8_t *data, uint16_t len)
@@ -411,13 +528,16 @@ static void handle_established_state(tcp_connection_t *conn, tcp_header_t *tcp, 
         conn->dup_ack_count++;
         if (conn->dup_ack_count == 3)
         {
-            retransmit_entry_t *entry = conn->retransmit_queue;
-            if (entry && entry->seq == conn->next_seq - entry->length)
-            {
-                serial_printf("TCP: Fast retransmit triggered for SEQ=%u\n", entry->seq);
-                tcp_send_segment(conn, TCP_ACK, entry->data, entry->length);
-                entry->start_time = get_ticks();
-                entry->retries++;
+            retransmit_entry_t **pp = &conn->retransmit_queue;
+            while (*pp) {
+                retransmit_entry_t *entry = *pp;
+                if (ack >= entry->seq + entry->length) {
+                    *pp = entry->next;
+                    free(entry->data);
+                    free(entry);
+                } else {
+                    pp = &(*pp)->next;
+                }
             }
         }
     }
@@ -428,24 +548,21 @@ static void handle_established_state(tcp_connection_t *conn, tcp_header_t *tcp, 
 
     // Process ACKs and retransmission queue
     retransmit_entry_t **pp = &conn->retransmit_queue;
-    while (*pp)
-    {
+    while (*pp) {
         retransmit_entry_t *entry = *pp;
-        if (ack >= entry->seq + entry->length)
-        {
+        if (ack >= entry->seq + entry->length) {
             *pp = entry->next;
             free(entry->data);
             free(entry);
-        }
-        else
-        {
+        } else {
             pp = &(*pp)->next;
         }
     }
 
-    if (seq != conn->expected_ack)
-    {
-        tcp_send_segment(conn, TCP_ACK, NULL, 0);
+    if (seq != conn->expected_ack) {
+        tcp_send_segment(conn, TCP_ACK, NULL, 0); // Uncomment this line
+        serial_printf("TCP: Out of order segment (expected %u, got %u)\n", conn->expected_ack, seq);
+        conn->dup_ack_count++;
         return;
     }
 
@@ -456,6 +573,8 @@ static void handle_established_state(tcp_connection_t *conn, tcp_header_t *tcp, 
         uint8_t *payload = data + (tcp->data_offset >> 4) * 4;
         if (is_http_get_request(payload, data_len))
         {
+            serial_printf("TCP: HTTP GET request received\n");
+            tcp_send_segment(conn, TCP_ACK, NULL, 0);
             handle_http_request(conn);
             conn->state = TCP_WAIT_FOR_ACK;
         }
@@ -472,27 +591,26 @@ static void handle_established_state(tcp_connection_t *conn, tcp_header_t *tcp, 
     }
 }
 
-static void handle_wait_for_ack_state(tcp_connection_t *conn, tcp_header_t *tcp)
-{
+void handle_wait_for_ack_state(tcp_connection_t *conn, tcp_header_t *tcp) {
     uint32_t ack = ntohl(tcp->ack);
-
-    if (ack < conn->next_seq)
-    {
+    
+    if (ack == conn->next_seq) {
+        // Valid ACK received; close connection
+        cancel_retransmission_timer(conn);
+        remove_connection(conn);
+        serial_printf("TCP: HTTP response ACKed, closing connection\n");
+    } else if (ack < conn->next_seq) {
         conn->dup_ack_count++;
-        if (conn->dup_ack_count == 3)
-        {
-            serial_printf("TCP: Fast retransmit for HTTP response\n");
-            tcp_send_segment(conn, TCP_PSH | TCP_ACK, (uint8_t *)HTTP_RESPONSE, strlen(HTTP_RESPONSE));
+        if (conn->dup_ack_count >= 3) {
+            // Fast retransmit
+            retransmit_entry_t *entry = conn->retransmit_queue;
+            if (entry) {
+                tcp_send_segment(conn, TCP_PSH | TCP_ACK, entry->data, entry->length);
+                entry->start_time = get_ticks();
+                entry->retries++;
+            }
             conn->dup_ack_count = 0;
         }
-        return;
-    }
-
-    if (ack >= conn->next_seq)
-    {
-        cancel_retransmission_timer(conn);
-        conn->state = TCP_LAST_ACK;
-        tcp_send_segment(conn, TCP_FIN | TCP_ACK, NULL, 0);
     }
 }
 

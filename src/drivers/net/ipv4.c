@@ -82,6 +82,9 @@ void net_send_ipv4_packet(uint32_t dst_ip, uint8_t protocol, uint8_t *payload, u
     //              (next_hop >> 8) & 0xFF, next_hop & 0xFF);
 
     if (!arp_lookup(next_hop, dst_mac)) {
+        serial_printf("IPv4: ARP lookup failed for %d.%d.%d.%d\n",
+                     (next_hop >> 24) & 0xFF, (next_hop >> 16) & 0xFF,
+                     (next_hop >> 8) & 0xFF, next_hop & 0xFF);
         queue_packet(dst_ip, protocol, payload, payload_len);
         rtl8139_send_arp_request(&nic.ip_addr, &next_hop);
         return;
