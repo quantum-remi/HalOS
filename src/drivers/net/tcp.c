@@ -406,8 +406,20 @@ static void handle_http_request(tcp_connection_t *conn)
     const char *path = "/index.html";
 
     // Find and read file (error handling omitted for brevity)
-    fat32_find_file(&fat_volume, path, &file);
+    if(!fat32_find_file(&fat_volume, path, &file))
+    {
+        const char *resp = "HTTP/1.1 404 Not Found\r\n...";
+        tcp_send_segment(conn, TCP_PSH | TCP_ACK, (uint8_t *)resp, strlen(resp));
+        serial_printf("HTTP: File not found: %s\n", path);
+        conn->state = TCP_CLOSE_WAIT;
+        return;
+    }
     uint8_t *buffer = malloc(file.size);
+    if (!buffer) {
+        serial_printf("HTTP: Buffer allocation failed\n");
+        conn->state = TCP_CLOSE_WAIT;
+        return;
+    }
     fat32_read_file(&fat_volume, &file, 0, buffer, file.size);
 
     if (file.size > 0 && buffer[file.size - 1] == 0x0A) {
