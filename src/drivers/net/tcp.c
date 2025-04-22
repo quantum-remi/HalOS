@@ -223,33 +223,55 @@ void check_tcp_timers(void)
         tcp_timer_t *timer = *pp;
         tcp_connection_t *conn = timer->conn;
 
-        // if (conn->state == TCP_ESTABLISHED && (current_time - conn->last_activity) > 30000) {
-        //     serial_printf("TCP: Aborting stale connection\n");
-        //     remove_connection(conn);
-        // }
-
         if (current_time - timer->start_time >= timer->timeout_ms)
         {
             if (conn->state == TCP_WAIT_FOR_ACK)
             {
-                // Force close the connection after timeout
-                serial_printf("TCP: WAIT_FOR_ACK timeout, closing\n");
-                tcp_send_segment(conn, TCP_FIN | TCP_ACK, NULL, 0);
-                remove_connection(conn);
+                // Handle data retransmission
+                retransmit_entry_t *entry = conn->retransmit_queue;
+                if (entry && entry->retries < MAX_SYN_RETRIES)
+                {
+                    // Retransmit the segment
+                    tcp_send_segment(conn, TCP_ACK, entry->data, entry->length);
+                    entry->start_time = get_ticks();
+                    entry->retries++;
+                    timer->start_time = get_ticks(); // Reset timer
+                    serial_printf("TCP: Retransmitting SEQ=%u (attempt %u)\n",
+                                  entry->seq, entry->retries);
+                    pp = &(*pp)->next; // Keep timer active
+                }
+                else
+                {
+                    // Max retries reached
+                    serial_printf("TCP: Max retries reached, closing connection\n");
+                    remove_connection(conn);
+                    tcp_timer_t *to_free = *pp;
+                    *pp = to_free->next;
+                    free(to_free);
+                }
             }
             else
             {
-                // Max retries reached: abort connection
-                serial_printf("TCP: Retransmission failed, closing connection\n");
-                remove_connection(timer->conn);
-                tcp_timer_t *to_free = *pp;
-                *pp = to_free->next;
-                free(to_free);
+                // Handle SYN/FIN retransmission
+                if (timer->retries < MAX_SYN_RETRIES)
+                {
+                    tcp_send_segment(conn, timer->conn->state == TCP_SYN_SENT ? TCP_SYN : TCP_FIN,
+                                     NULL, 0);
+                    timer->retries++;
+                    timer->start_time = get_ticks();
+                    serial_printf("TCP: Retransmitting control packet (attempt %u)\n",
+                                  timer->retries);
+                    pp = &(*pp)->next;
+                }
+                else
+                {
+                    serial_printf("TCP: Max control retries reached, closing\n");
+                    remove_connection(conn);
+                    tcp_timer_t *to_free = *pp;
+                    *pp = to_free->next;
+                    free(to_free);
+                }
             }
-            // Remove the timer
-            tcp_timer_t *to_free = *pp;
-            *pp = to_free->next;
-            free(to_free);
         }
         else
         {
@@ -357,13 +379,20 @@ void tcp_send_segment(tcp_connection_t *conn, uint8_t flags, uint8_t *data, uint
         conn->next_seq++;
     }
 
+    uint16_t free_space = sizeof(conn->recv_buffer) - conn->recv_buffer_len;
+    tcp->window = htons(free_space);
+
     // Compute checksum
     ipv4_header_t ip_dummy = {
         .src_ip = htonl(conn->local_ip),
         .dst_ip = htonl(conn->remote_ip)};
     tcp->checksum = tcp_checksum(&ip_dummy, tcp, header_len + data_len);
 
-    // Send the packet
+    if (flags == TCP_ACK && data_len == 0)
+    {
+        net_send_ipv4_packet(conn->remote_ip, IP_PROTO_TCP, packet, header_len + data_len);
+        return;
+    }
     net_send_ipv4_packet(conn->remote_ip, IP_PROTO_TCP, packet, header_len + data_len);
 
     // Add to retransmit queue if needed
@@ -392,9 +421,8 @@ void tcp_send_segment(tcp_connection_t *conn, uint8_t flags, uint8_t *data, uint
             memcpy(entry->data, data, data_len);
         }
 
-        entry->timeout_ms = TCP_DATA_RETRANSMIT_TIMEOUT;
-        entry->retries = 0;
-        entry->start_time = get_ticks();
+        entry->flags = flags;
+        entry->retries = 0; // Initialize retry counter
         entry->next = conn->retransmit_queue;
         conn->retransmit_queue = entry;
     }
@@ -406,7 +434,7 @@ static void handle_http_request(tcp_connection_t *conn)
     const char *path = "/index.html";
 
     // Find and read file (error handling omitted for brevity)
-    if(!fat32_find_file(&fat_volume, path, &file))
+    if (!fat32_find_file(&fat_volume, path, &file))
     {
         const char *resp = "HTTP/1.1 404 Not Found\r\n...";
         tcp_send_segment(conn, TCP_PSH | TCP_ACK, (uint8_t *)resp, strlen(resp));
@@ -415,14 +443,16 @@ static void handle_http_request(tcp_connection_t *conn)
         return;
     }
     uint8_t *buffer = malloc(file.size);
-    if (!buffer) {
+    if (!buffer)
+    {
         serial_printf("HTTP: Buffer allocation failed\n");
         conn->state = TCP_CLOSE_WAIT;
         return;
     }
     fat32_read_file(&fat_volume, &file, 0, buffer, file.size);
 
-    if (file.size > 0 && buffer[file.size - 1] == 0x0A) {
+    if (file.size > 0 && buffer[file.size - 1] == 0x0A)
+    {
         file.size--; // Trim trailing newline
         serial_printf("HTTP: Trimmed trailing newline\n");
     }
@@ -434,8 +464,7 @@ static void handle_http_request(tcp_connection_t *conn)
         "Content-Type: text/html\r\n"
         "Content-Length: %u\r\n"
         "Connection: close\r\n\r\n",
-        file.size
-    );
+        file.size);
     tcp_send_segment(conn, TCP_PSH | TCP_ACK, (uint8_t *)headers, headers_len);
 
     // Send data
@@ -462,25 +491,46 @@ static void handle_established_state(tcp_connection_t *conn, tcp_header_t *tcp, 
     uint32_t ack = ntohl(tcp->ack);
     uint16_t data_len = len - (tcp->data_offset >> 4) * 4;
 
+    serial_printf("TCP: SEQ=%u ACK=%u DATA_LEN=%u\n", seq, ack, data_len);
+
+    check_tcp_timers();
+    if (conn->state == TCP_SYN_SENT)
+    {
+        conn->state = TCP_ESTABLISHED;
+        conn->next_seq = seq + 1;
+        conn->expected_ack = ack + 1;
+        conn->dup_ack_count = 0;
+        serial_printf("TCP: Connection established\n");
+    }
+    else if (conn->state == TCP_CLOSE_WAIT)
+    {
+        conn->state = TCP_ESTABLISHED;
+        conn->next_seq = seq + 1;
+        conn->expected_ack = ack + 1;
+        conn->dup_ack_count = 0;
+        serial_printf("TCP: Connection re-established\n");
+    }
+
     // Handle duplicate ACKs
-    if (ack < conn->next_seq)
+    if (ack == conn->last_ack)
     {
         conn->dup_ack_count++;
         if (conn->dup_ack_count == 3)
         {
+            serial_printf("TCP: Fast retransmit triggered\n");
+            // Retransmit oldest unacked segment
             retransmit_entry_t *entry = conn->retransmit_queue;
-            if (entry && entry->seq == conn->next_seq - entry->length)
+            if (entry)
             {
-                serial_printf("TCP: Fast retransmit triggered for SEQ=%u\n", entry->seq);
                 tcp_send_segment(conn, TCP_ACK, entry->data, entry->length);
-                entry->start_time = get_ticks();
-                entry->retries++;
             }
         }
     }
-    else
+    conn->expected_ack = seq + data_len;
+    if (ack > conn->next_seq)
     {
-        conn->dup_ack_count = 0;
+        conn->next_seq = ack;
+        serial_printf("TCP: Updated next_seq to %u\n", conn->next_seq);
     }
 
     // Process ACKs and retransmission queue
@@ -490,6 +540,8 @@ static void handle_established_state(tcp_connection_t *conn, tcp_header_t *tcp, 
         retransmit_entry_t *entry = *pp;
         if (ack >= entry->seq + entry->length)
         {
+            // Remove acknowledged entries
+            serial_printf("TCP: Acknowledged SEQ=%u\n", entry->seq);
             *pp = entry->next;
             free(entry->data);
             free(entry);
@@ -503,18 +555,32 @@ static void handle_established_state(tcp_connection_t *conn, tcp_header_t *tcp, 
     if (seq != conn->expected_ack)
     {
         tcp_send_segment(conn, TCP_ACK, NULL, 0);
-        return;
+        // return;
     }
+    serial_printf("TCP: SEQ matches expected ACK\n");
 
     if (data_len > 0)
     {
         conn->expected_ack = seq + data_len;
-        tcp_send_segment(conn, TCP_ACK, NULL, 0);
         uint8_t *payload = data + (tcp->data_offset >> 4) * 4;
         if (is_http_get_request(payload, data_len))
         {
             handle_http_request(conn);
             conn->state = TCP_WAIT_FOR_ACK;
+        }
+        else
+        {
+            serial_printf("TCP: Received data: %.*s\n", data_len, payload);
+            memcpy(conn->recv_buffer + conn->recv_buffer_len, payload, data_len);
+            conn->recv_buffer_len += data_len;
+            conn->expected_ack = seq + data_len;
+            serial_printf("TCP: Received data: %.*s\n", data_len, payload);
+            for (uint16_t i = 0; i < data_len; i++)
+            {
+                console_putchar(payload[i]); // Print each character individually
+            }
+            console_flush();
+            tcp_send_segment(conn, TCP_ACK, NULL, 0);
         }
     }
 
@@ -529,27 +595,43 @@ static void handle_established_state(tcp_connection_t *conn, tcp_header_t *tcp, 
     }
 }
 
-static void handle_wait_for_ack_state(tcp_connection_t *conn, tcp_header_t *tcp)
-{
+static void handle_wait_for_ack_state(tcp_connection_t *conn, tcp_header_t *tcp) {
     uint32_t ack = ntohl(tcp->ack);
+    retransmit_entry_t *entry = conn->retransmit_queue;
 
-    if (ack < conn->next_seq)
-    {
-        conn->dup_ack_count++;
-        if (conn->dup_ack_count == 3)
-        {
-            serial_printf("TCP: Fast retransmit for HTTP response\n");
-            // tcp_send_segment(conn, TCP_PSH | TCP_ACK, (uint8_t *)HTTP_RESPONSE, strlen(HTTP_RESPONSE));
-            conn->dup_ack_count = 0;
+    if (entry) {
+        // Calculate expected ACK including control flags
+        uint32_t expected_ack = entry->seq + entry->length;
+        if (entry->flags & (TCP_SYN | TCP_FIN)) {
+            expected_ack += 1;
         }
-        return;
-    }
 
-    if (ack >= conn->next_seq)
-    {
-        cancel_retransmission_timer(conn);
-        conn->state = TCP_LAST_ACK;
-        tcp_send_segment(conn, TCP_FIN | TCP_ACK, NULL, 0);
+
+        if (ack >= expected_ack) {
+            // Full ACK received, clean up
+            serial_printf("TCP: Complete ACK %u >= %u\n", ack, expected_ack);
+            conn->retransmit_queue = entry->next;
+            free(entry->data);
+            free(entry);
+            
+            if (!conn->retransmit_queue) {
+                remove_connection(conn);
+            }
+        } else if (ack > conn->last_ack) {
+            // Partial ACK - update tracking
+            
+            conn->last_ack = ack;
+            entry->retries = 0;  // Reset counter on progress
+            serial_printf("TCP: Partial ACK %u, reset retries\n", ack);
+        } else {
+            // Duplicate ACK handling
+            if (++conn->dup_ack_count >= 3) {
+                serial_printf("TCP: Fast retransmit at %u dup ACKs\n",
+                            conn->dup_ack_count);
+                tcp_send_segment(conn, entry->flags, entry->data, entry->length);
+                conn->dup_ack_count = 0;
+            }
+        }
     }
 }
 
@@ -579,11 +661,11 @@ void tcp_handle_packet(ipv4_header_t *ip, uint8_t *data, uint16_t len)
     uint16_t received_checksum = tcp->checksum;
     tcp->checksum = 0;
     uint16_t calculated_checksum = tcp_checksum(ip, tcp, len);
-    if (received_checksum != calculated_checksum)
-    {
-        serial_printf("TCP: Invalid checksum (got 0x%04x, expected 0x%04x)\n", received_checksum, calculated_checksum);
-        return;
-    }
+    // if (received_checksum != calculated_checksum)
+    // {
+    //     serial_printf("TCP: Invalid checksum (got 0x%04x, expected 0x%04x)\n", received_checksum, calculated_checksum);
+    //     return;
+    // }
     tcp->checksum = received_checksum;
 
     uint16_t src_port = ntohs(tcp->src_port);
@@ -648,6 +730,25 @@ void tcp_handle_packet(ipv4_header_t *ip, uint8_t *data, uint16_t len)
 
     switch (conn->state)
     {
+    case TCP_SYN_SENT:
+        if ((flags & (TCP_SYN | TCP_ACK)) == (TCP_SYN | TCP_ACK))
+        {
+            // Validate SYN-ACK
+            if (ntohl(tcp->ack) == conn->next_seq)
+            {
+                conn->expected_ack = ntohl(tcp->seq) + 1;
+                conn->state = TCP_ESTABLISHED;
+                tcp_send_segment(conn, TCP_ACK, NULL, 0);
+                serial_printf("TCP: Connection established to %d.%d.%d.%d:%d\n",
+                              (conn->remote_ip >> 24) & 0xFF,
+                              (conn->remote_ip >> 16) & 0xFF,
+                              (conn->remote_ip >> 8) & 0xFF,
+                              conn->remote_ip & 0xFF,
+                              conn->remote_port);
+                cancel_retransmission_timer(conn);
+            }
+        }
+        break;
     case TCP_SYN_RECEIVED:
         if (flags & TCP_ACK && ntohl(tcp->ack) == conn->next_seq)
         {
@@ -672,4 +773,25 @@ void tcp_handle_packet(ipv4_header_t *ip, uint8_t *data, uint16_t len)
     default:
         break;
     }
+}
+
+tcp_connection_t *tcp_connect(uint32_t remote_ip, uint16_t remote_port)
+{
+    tcp_connection_t *conn = malloc(sizeof(tcp_connection_t));
+    if (!conn)
+        return NULL;
+
+    // Assign local IP and ephemeral port (e.g., 50000-65535)
+    conn->local_ip = nic.ip_addr;
+    conn->local_port = 50000 + (generate_secure_initial_seq() % 15536); // Random port
+    conn->remote_ip = remote_ip;
+    conn->remote_port = remote_port;
+    conn->state = TCP_SYN_SENT;
+    conn->next_seq = generate_secure_initial_seq();
+    conn->expected_ack = 0;
+
+    // Send SYN
+    tcp_send_segment(conn, TCP_SYN, NULL, 0);
+    add_connection(conn);
+    return conn;
 }

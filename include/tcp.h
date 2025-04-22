@@ -31,12 +31,12 @@ typedef enum
 
 typedef struct retransmit_entry
 {
-    uint32_t seq;        // Sequence number of the segment
-    uint8_t *data;       // Copy of the segment data
-    uint16_t length;     // Length of the data
-    uint32_t timeout_ms; // Retransmission timeout
-    uint8_t retries;     // Number of retries attempted
+    uint32_t seq;
+    uint16_t length;
+    uint8_t *data;
     uint32_t start_time;
+    uint8_t flags;
+    uint8_t retries; // Track retry attempts
     struct retransmit_entry *next;
 } retransmit_entry_t;
 
@@ -68,7 +68,13 @@ typedef struct tcp_connection
     uint8_t dup_ack_count; // Track duplicate ACKs
     tcp_state_t state;
     retransmit_entry_t *retransmit_queue;
-    struct tcp_connection *next; // Linked list
+    uint8_t recv_buffer[4096]; // Buffer for incoming data
+    uint16_t recv_buffer_len;  // Current data length in buffer
+    uint8_t send_buffer[4096]; // Buffer for outgoing data
+    uint16_t send_buffer_len;
+    uint16_t window_size;
+    uint32_t last_ack;
+    struct tcp_connection *next;
 } tcp_connection_t;
 
 void tcp_handle_packet(ipv4_header_t *ip, uint8_t *data, uint16_t len);
@@ -76,5 +82,7 @@ uint16_t tcp_checksum(ipv4_header_t *ip, tcp_header_t *tcp, uint16_t tcp_len);
 void tcp_send_segment(tcp_connection_t *conn, uint8_t flags, uint8_t *data, uint16_t data_len);
 void tcp_listen(uint16_t port);
 void check_tcp_timers(void);
+tcp_connection_t *tcp_connect(uint32_t remote_ip, uint16_t remote_port);
+void remove_connection(tcp_connection_t *conn);
 
 #endif

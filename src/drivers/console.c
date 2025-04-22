@@ -166,6 +166,10 @@ void console_scroll(int lines)
 
 void console_putchar(char c)
 {
+
+    if ((c < 0x20 || c > 0x7E) && c != '\n')
+    return;
+    
     if (c == '\n')
     {
         console.cursor_x = 0;

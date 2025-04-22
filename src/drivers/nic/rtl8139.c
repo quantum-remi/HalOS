@@ -4,6 +4,7 @@
 #include "network.h"
 #include "kernel.h"
 #include "8259_pic.h"
+#include "eth.h"
 
 #define TX_TIMEOUT_MS 2000
 #define TX_BUFFER_TIMEOUT 1000
@@ -130,7 +131,11 @@ void rtl8139_receive_packet() {
     uint16_t rx_offset = nic.rx_ptr;
 
     cbr = inportw(nic.iobase + 0x3A) << 8;
-
+    cbr |= inportw(nic.iobase + 0x3C) & 0xFF;
+    cbr = (cbr - 16) % RX_BUFFER_SIZE;
+    if (cbr == rx_offset) {
+        return; // No new packets
+    }
 
     while (rx_offset != cbr) {
      
@@ -139,6 +144,12 @@ void rtl8139_receive_packet() {
         uint32_t rx_status = *(uint32_t*)(nic.rx_buffer + buffer_pos);
         uint16_t packet_len = rx_status >> 16;
 
+        struct eth_header *eth = (struct eth_header *)(nic.rx_buffer + buffer_pos + 4);
+
+        if (memcmp(eth->src_mac, nic.mac, 6) == 0) {
+            serial_printf("RTL8139: Dropping loopback packet\n");
+            return;
+        }
 
         if ((packet_len == 0) || (packet_len > 1514)) {
             serial_printf("RTL8139: Invalid packet length %d\n", packet_len);

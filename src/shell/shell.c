@@ -23,6 +23,7 @@
 #include "network.h"
 #include "icmp.h"
 #include "ipv4.h"  
+#include "tcp.h"
 
 #define INADDR_NONE 0xFFFFFFFF
 #define BRAND_QEMU 1
@@ -567,6 +568,96 @@ void show_ip_info()
                    nic.mac[3], nic.mac[4], nic.mac[5]);
     console_printf("-----------------------------------------------\n");
 }
+
+// Telnet Commands
+#define TELNET_IAC   0xFF  // Interpret As Command
+#define TELNET_WILL  0xFB
+#define TELNET_WONT  0xFC
+#define TELNET_DO    0xFD
+#define TELNET_DONT  0xFE
+#define TELNET_SB    0xFA  // Subnegotiation Begin
+#define TELNET_SE    0xF0  // Subnegotiation End
+
+// Telnet Options
+#define TELOPT_ECHO   0x01
+#define TELOPT_SGA    0x03  // Suppress Go Ahead
+#define TELOPT_TTYPE  0x18  // Terminal Type
+
+void telnet_command(char *args) {
+    char *ip_str = strtok(args, " ");
+    char *port_str = strtok(NULL, " ");
+    uint16_t port = port_str ? atoi(port_str) : 23; // Default to port 23
+
+    uint32_t remote_ip = inet_addr(ip_str);
+    if (remote_ip == INADDR_NONE) {
+        console_printf("Invalid IP address\n");
+        return;
+    }
+
+    tcp_connection_t *conn = tcp_connect(remote_ip, port);
+    if (!conn) {
+        console_printf("Failed to initiate connection\n");
+        return;
+    }
+
+    // Wait for connection to establish with timeout
+    uint32_t timeout = get_ticks() + 5000; // 5-second timeout
+    while (conn->state != TCP_ESTABLISHED && get_ticks() < timeout) {
+        check_tcp_timers(); // Allow retransmissions and state updates
+    }
+
+    if (conn->state != TCP_ESTABLISHED) {
+        console_printf("Connection timed out\n");
+        remove_connection(conn);
+        return;
+    }
+
+    console_printf("Connected to %s:%d\n", ip_str, port);
+
+    // Enter data exchange loop
+    while (1) {
+        check_tcp_timers(); // Process retransmissions and state changes
+
+        // Handle incoming data
+        if (conn->recv_buffer_len > 0) {
+            // Copy data to a temporary buffer and null-terminate
+            char temp_buf[sizeof(conn->recv_buffer) + 1];
+            memcpy(temp_buf, conn->recv_buffer, conn->recv_buffer_len);
+            temp_buf[conn->recv_buffer_len] = '\0';
+            // console_printf("%c", temp_buf);
+            conn->recv_buffer_len = 0; // Reset buffer after consumption
+        }
+
+        // Handle keyboard input (non-blocking if kbhit is non-blocking)
+        if (kbhit()) {
+            char c = kb_getchar();
+            if (c == '\r' || c == '\n') {
+                // Send Telnet-compliant CR+LF
+                uint8_t crlf[] = {'\r', '\n'};
+                tcp_send_segment(conn, TCP_PSH | TCP_ACK, crlf, 2);
+                conn->state = TCP_WAIT_FOR_ACK;
+            } else if (c == 0xFF) { // Escape IAC
+                uint8_t escaped[] = {0xFF, 0xFF};
+                tcp_send_segment(conn, TCP_PSH | TCP_ACK, escaped, 2);
+                conn->state = TCP_WAIT_FOR_ACK;
+            } else {
+                tcp_send_segment(conn, TCP_PSH | TCP_ACK, (uint8_t *)&c, 1);
+                conn->state = TCP_WAIT_FOR_ACK;
+            }
+            console_putchar(c); // Local echo
+            console_flush();
+        }
+
+        // Exit loop if connection is closing
+        if (conn->state == TCP_CLOSE_WAIT || conn->state == TCP_LAST_ACK) {
+            break;
+        }
+    }
+
+    console_printf("\nConnection closed\n");
+    remove_connection(conn);
+}
+
 void shell()
 {
     serial_printf("[SHELL] Starting shell...\n");
@@ -637,6 +728,10 @@ void shell()
         else if (strcmp(buffer, "help /f") == 0)
         {
             console_printf("arp, cd, clear, cpuid, echo, fireworks, haiku, help, hwinfo, ls, lspci, malloc, memory, ping, pong, pwd, reboot, shutdown, snake, timer, vesa, version\n");
+        }
+        else if(strncmp(buffer, "telnet", 6) == 0)
+        {
+            telnet_command(buffer + 7);
         }
         else if(strcmp(buffer, "cat") == 0)
         {
