@@ -309,7 +309,7 @@ qemu:
 	qemu-system-i386 -m 4G -vga virtio -boot d -cdrom $(TARGET_ISO) \
 	-serial stdio -drive id=disk,if=none,format=raw,file=disk.img \
 	-device ide-hd,drive=disk -cpu qemu64,+fpu,+sse,+sse2 \
-	-netdev user,id=net0,hostfwd=tcp::8080-:8080 -device rtl8139,netdev=net0 \
+	-netdev user,id=net0,hostfwd=tcp::8080-:8080 -device ne2k_pci,netdev=net0 \
 	-object filter-dump,id=f1,netdev=net0,file=network.pcap
 
 disk:

@@ -65,9 +65,24 @@ void rtl8139_send_arp_request(uint32_t *src_ip, uint32_t *target_ip)
         return;
     }
 
+    if (!eth_send_packet_func) {
+        serial_printf("ARP: eth_send_packet_func is NULL!\n");
+        return;
+    }
+
     uint8_t arp_packet[60] = {0}; // Zero-initialize to 60 bytes
     create_arp_packet(arp_packet, nic.mac, src_ip, target_ip);
-    rtl8139_send_packet(arp_packet, 60); // Send 60 bytes (NIC pads to 64)
+
+    // Debug: Print ARP packet contents
+    serial_printf("ARP: Dumping ARP packet before send:\n");
+    for (int i = 0; i < 60; i += 16) {
+        serial_printf("%04x: ", i);
+        for (int j = 0; j < 16 && i + j < 60; ++j)
+            serial_printf("%02x ", arp_packet[i + j]);
+        serial_printf("\n");
+    }
+
+    eth_send_packet_func(arp_packet, 60); // Send 60 bytes (NIC pads to 64)
 }
 
 bool arp_lookup(uint32_t ip, uint8_t *mac)

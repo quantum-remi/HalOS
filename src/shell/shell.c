@@ -583,6 +583,37 @@ void show_ip_info()
 #define TELOPT_SGA    0x03  // Suppress Go Ahead
 #define TELOPT_TTYPE  0x18  // Terminal Type
 
+// Helper: process incoming Telnet commands (very basic, ignore/skip for now)
+static int telnet_filter(uint8_t *data, int len, char *out, int outsz) {
+    int i = 0, o = 0;
+    while (i < len && o < outsz - 1) {
+        if ((uint8_t)data[i] == TELNET_IAC) {
+            // Skip IAC command sequence
+            if (i + 1 < len) {
+                uint8_t cmd = data[i + 1];
+                if (cmd == TELNET_IAC) {
+                    out[o++] = TELNET_IAC;
+                    i += 2;
+                } else if (cmd == TELNET_SB) {
+                    // Skip subnegotiation
+                    i += 2;
+                    while (i < len && (uint8_t)data[i] != TELNET_IAC) i++;
+                    if (i + 1 < len && (uint8_t)data[i + 1] == TELNET_SE) i += 2;
+                } else {
+                    // Skip 3-byte command
+                    i += 3;
+                }
+            } else {
+                i++;
+            }
+        } else {
+            out[o++] = data[i++];
+        }
+    }
+    out[o] = 0;
+    return o;
+}
+
 void telnet_command(char *args) {
     char *ip_str = strtok(args, " ");
     char *port_str = strtok(NULL, " ");
@@ -601,9 +632,9 @@ void telnet_command(char *args) {
     }
 
     // Wait for connection to establish with timeout
-    uint32_t timeout = get_ticks() + 5000; // 5-second timeout
-    while (conn->state != TCP_ESTABLISHED && get_ticks() < timeout) {
-        check_tcp_timers(); // Allow retransmissions and state updates
+    uint32_t start = get_ticks();
+    while (conn->state != TCP_ESTABLISHED && get_ticks() - start < 500) {
+        check_tcp_timers();
     }
 
     if (conn->state != TCP_ESTABLISHED) {
@@ -614,44 +645,50 @@ void telnet_command(char *args) {
 
     console_printf("Connected to %s:%d\n", ip_str, port);
 
-    // Enter data exchange loop
-    while (1) {
-        check_tcp_timers(); // Process retransmissions and state changes
+    // Optionally negotiate SGA/ECHO (minimal, ignore failures)
+    uint8_t will_sga[] = {TELNET_IAC, TELNET_WILL, TELOPT_SGA};
+    tcp_send_segment(conn, TCP_PSH | TCP_ACK, will_sga, 3);
+
+    // Main loop
+    while (conn->state == TCP_ESTABLISHED) {
+        check_tcp_timers();
 
         // Handle incoming data
         if (conn->recv_buffer_len > 0) {
-            // Copy data to a temporary buffer and null-terminate
-            char temp_buf[sizeof(conn->recv_buffer) + 1];
-            memcpy(temp_buf, conn->recv_buffer, conn->recv_buffer_len);
-            temp_buf[conn->recv_buffer_len] = '\0';
-            // console_printf("%c", temp_buf);
-            conn->recv_buffer_len = 0; // Reset buffer after consumption
+            char filtered[sizeof(conn->recv_buffer) + 1];
+            int outlen = telnet_filter((uint8_t*)conn->recv_buffer, conn->recv_buffer_len, filtered, sizeof(filtered));
+            if (outlen > 0) {
+                for (int i = 0; i < outlen; ++i)
+                    console_putchar(filtered[i]);
+                console_flush();
+            }
+            conn->recv_buffer_len = 0;
         }
 
-        // Handle keyboard input (non-blocking if kbhit is non-blocking)
+        // Handle keyboard input
         if (kbhit()) {
             char c = kb_getchar();
+            if (c == 0x03) { // Ctrl-C to exit
+                break;
+            }
             if (c == '\r' || c == '\n') {
-                // Send Telnet-compliant CR+LF
                 uint8_t crlf[] = {'\r', '\n'};
                 tcp_send_segment(conn, TCP_PSH | TCP_ACK, crlf, 2);
-                conn->state = TCP_WAIT_FOR_ACK;
-            } else if (c == 0xFF) { // Escape IAC
-                uint8_t escaped[] = {0xFF, 0xFF};
+            } else if ((uint8_t)c == TELNET_IAC) {
+                uint8_t escaped[] = {TELNET_IAC, TELNET_IAC};
                 tcp_send_segment(conn, TCP_PSH | TCP_ACK, escaped, 2);
-                conn->state = TCP_WAIT_FOR_ACK;
             } else {
                 tcp_send_segment(conn, TCP_PSH | TCP_ACK, (uint8_t *)&c, 1);
-                conn->state = TCP_WAIT_FOR_ACK;
             }
-            console_putchar(c); // Local echo
+            // Local echo for user
+            if (c != 0x03)
+                console_putchar(c);
             console_flush();
         }
 
-        // Exit loop if connection is closing
-        if (conn->state == TCP_CLOSE_WAIT || conn->state == TCP_LAST_ACK) {
+        // Check for connection close
+        if (conn->state == TCP_CLOSE_WAIT || conn->state == TCP_LAST_ACK || conn->state == TCP_CLOSED)
             break;
-        }
     }
 
     console_printf("\nConnection closed\n");

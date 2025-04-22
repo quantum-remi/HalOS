@@ -570,16 +570,16 @@ static void handle_established_state(tcp_connection_t *conn, tcp_header_t *tcp, 
         }
         else
         {
-            serial_printf("TCP: Received data: %.*s\n", data_len, payload);
+            // serial_printf("TCP: Received data: %.*s\n", data_len, payload);
             memcpy(conn->recv_buffer + conn->recv_buffer_len, payload, data_len);
             conn->recv_buffer_len += data_len;
             conn->expected_ack = seq + data_len;
-            serial_printf("TCP: Received data: %.*s\n", data_len, payload);
-            for (uint16_t i = 0; i < data_len; i++)
-            {
-                console_putchar(payload[i]); // Print each character individually
-            }
-            console_flush();
+            // serial_printf("TCP: Received data: %.*s\n", data_len, payload);
+            // for (uint16_t i = 0; i < data_len; i++)
+            // {
+            //     console_putchar(payload[i]); // Print each character individually
+            // }
+            // console_flush();
             tcp_send_segment(conn, TCP_ACK, NULL, 0);
         }
     }

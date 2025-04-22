@@ -11,6 +11,7 @@
 
 struct rtl8139_dev nic = {0};
 uint16_t rx_offset = 0;
+int rtl8139_present = 0; // Add this global
 
 static void read_mac_address()
 {
@@ -27,8 +28,10 @@ void rtl8139_init()
     if (dev.bits == dev_zero.bits)
     {
         serial_printf("RTL8139: Device not found\n");
+        rtl8139_present = 0;
         return;
     }
+    rtl8139_present = 1;
 
     // Correct: Enabling Bus Mastering and I/O Space access
     uint32_t pci_cmd = pci_read(dev, PCI_COMMAND);
@@ -121,8 +124,6 @@ void rtl8139_send_packet(uint8_t *data, uint16_t len)
     outportl(nic.iobase + REG_TXSTATUS0 + (nic.tx_current *4), len);
 
     nic.tx_current = (nic.tx_current + 1) % NUM_TX_BUFFERS;
-
-    // serial_printf("RTL8139: TX packet send\n");
 
 }
 
