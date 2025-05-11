@@ -53,7 +53,7 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o $(ASM_OBJ)/load_tss.o \
 		$(OBJ)/tss.o $(OBJ)/liballoc.o $(OBJ)/liballoc_hook.o \
 		$(OBJ)/pci.o $(OBJ)/ide.o $(OBJ)/fat.o $(OBJ)/font.o \
 		$(OBJ)/rtl8139.o $(OBJ)/arp.o $(OBJ)/eth.o $(OBJ)/network.o $(OBJ)/ipv4.o $(OBJ)/icmp.o \
-		$(OBJ)/math.o $(OBJ)/elf.o $(OBJ)/pong.o $(OBJ)/ne2k.o $(OBJ)/tcp.o $(OBJ)/e1000.o \
+		$(OBJ)/math.o $(OBJ)/elf.o $(OBJ)/pong.o $(OBJ)/ne2k.o $(OBJ)/tcp.o\
 		$(OBJ)/kernel.o
 
 .PHONY: all	
@@ -258,11 +258,6 @@ $(OBJ)/rtl8139.o : $(SRC)/drivers/nic/rtl8139.c
 $(OBJ)/ne2k.o : $(SRC)/drivers/nic/ne2k.c
 	@printf "[ $(SRC)/drivers/nic/ne2k.c ]\n"
 	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/nic/ne2k.c -o $(OBJ)/ne2k.o
-	@printf "\n"
-
-$(OBJ)/e1000.o : $(SRC)/drivers/nic/e1000.c
-	@printf "[ $(SRC)/drivers/nic/e1000.c ]\n"
-	$(CC) $(CC_FLAGS) -c $(SRC)/drivers/nic/e1000.c -o $(OBJ)/e1000.o
 	@printf "\n"
 
 $(OBJ)/eth.o : $(SRC)/drivers/net/eth.c

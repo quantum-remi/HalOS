@@ -268,13 +268,12 @@ void getstr(char *buffer, uint32_t max_size)
             return;
         }
         else if (c >= 32 && c <= 126)
-        { // Printable ASCII only
+        {
             buffer[i++] = c;
             console_putchar(c);
             console_flush();
         }
 
-        // Prevent overflow
         if (console.cursor_x >= console.cols)
         {
             console_putchar('\n');
@@ -290,7 +289,6 @@ void getstr_bound(char *buffer, uint8_t bound)
         return;
     uint8_t idx = 0;
 
-    // Draw initial state
     console_flush();
 
     while (idx < bound - 1)
@@ -301,7 +299,7 @@ void getstr_bound(char *buffer, uint8_t bound)
         {
             console_putchar('\n');
             buffer[idx] = 0;
-            console_flush(); // Update screen on enter
+            console_flush();
             return;
         }
 
@@ -310,25 +308,25 @@ void getstr_bound(char *buffer, uint8_t bound)
             idx--;
             buffer[idx] = 0;
             console_ungetchar();
-            console_flush(); // Update screen after backspace
+            console_flush();
             continue;
         }
 
         if (c >= 32 && c <= 126)
-        { // Printable ASCII only
+        {
             buffer[idx++] = c;
             console_putchar(c);
-            console_flush(); // Update screen after each character
+            console_flush();
         }
 
         if (console.cursor_x >= console.cols)
         {
             console_putchar('\n');
-            console_flush(); // Update screen after newline
+            console_flush();
         }
     }
     buffer[idx] = 0;
-    console_flush(); // Final screen update
+    console_flush();
 }
 
 static void format_number(char *buf, unsigned int val, int base,
@@ -337,7 +335,6 @@ static void format_number(char *buf, unsigned int val, int base,
     const char *digits = uppercase ? "0123456789ABCDEF" : "0123456789abcdef";
     int i = 0;
 
-    // Handle zero explicitly
     if (val == 0)
     {
         buf[i++] = '0';
@@ -351,13 +348,11 @@ static void format_number(char *buf, unsigned int val, int base,
         }
     }
 
-    // Apply padding
     while (i < width)
     {
         buf[i++] = pad_zero ? '0' : ' ';
     }
 
-    // Reverse digits
     for (int j = 0; j < i / 2; j++)
     {
         char temp = buf[j];
@@ -382,18 +377,15 @@ void console_vprintf(const char *format, va_list args)
             continue;
         }
 
-        // Parse format specifier
         pad_zero = 0;
         width = 0;
 
-        // Check for padding flag
         if (*format == '0')
         {
             pad_zero = 1;
             format++;
         }
 
-        // Parse width
         while (*format >= '0' && *format <= '9')
         {
             width = width * 10 + (*format++ - '0');
