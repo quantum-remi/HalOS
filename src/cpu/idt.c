@@ -1,7 +1,3 @@
-/**
- * Interrupt Descriptor Table(IDT)
- */
-
 #include <stdint.h>
 #include <stddef.h>
 

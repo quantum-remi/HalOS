@@ -73,11 +73,9 @@ void panic(char *msg)
 
 void kmain(unsigned long magic, unsigned long addr)
 {
-    // Initialize serial port
     serial_init();
     serial_printf("\n=== Boot Sequence Started ===\n");
 
-    // Initialize core subsystems with detailed logging
     serial_printf("Initializing GDT...\n");
     gdt_init();
 
@@ -96,7 +94,6 @@ void kmain(unsigned long magic, unsigned long addr)
         panic("Invalid multiboot magic number");
     }
 
-    // Validate framebuffer info
     if (!(mboot_info->flags & MULTIBOOT_INFO_FRAMEBUFFER_INFO))
     {
         panic("No framebuffer info from GRUB");
@@ -114,26 +111,22 @@ void kmain(unsigned long magic, unsigned long addr)
     serial_printf("  BPP: %d\n", mboot_info->framebuffer_bpp);
     serial_printf("  Framebuffer addr: 0x%x\n", framebuffer);
 
-    // Initialize kernel memory map
     if (get_kernel_memory_map(&g_kmap, mboot_info) < 0)
     {
         panic("Failed to get kernel memory map");
         return;
     }
 
-    // Initialize PMM with proper size calculation
     uint32_t total_memory_kb = mboot_info->mem_lower + mboot_info->mem_upper;
     uint32_t total_memory_bytes = total_memory_kb * 1024;
 
     serial_printf("Memory: Lower: %dKB, Upper: %dKB, Total: %dKB\n",
                   mboot_info->mem_lower, mboot_info->mem_upper, total_memory_kb);
 
-// Fixed bitmap size for up to 4GB of memory (4GB / 4KB / 8 = 128KB)
 #define PMM_BITMAP_SIZE (128 * 1024) // 128KB bitmap can handle 4GB
     static uint8_t pmm_bitmap[PMM_BITMAP_SIZE] __attribute__((aligned(4096)));
     pmm_init(total_memory_bytes, pmm_bitmap);
 
-    // Initialize virtual memory manager for paging support
     serial_printf("Initializing paging and VMM...\n");
     vmm_init();
 
@@ -141,13 +134,11 @@ void kmain(unsigned long magic, unsigned long addr)
     // serial_printf("Initializing BIOS32...\n");
     // bios32_init();
 
-    // Map framebuffer to virtual memory
-    uint32_t fb_size = height * pitch; // Use detected height/pitch
+    uint32_t fb_size = height * pitch; 
     uint32_t fb_pages = (fb_size + PAGE_SIZE - 1) / PAGE_SIZE;
     uint32_t fb_phys = (uint32_t)framebuffer;
     uint32_t fb_virt = KERNEL_VMEM_START + 0x3000000;
 
-    // Map each page of the framebuffer
     for (uint32_t i = 0; i < fb_pages; i++)
     {
         paging_map_page(fb_phys + (i * PAGE_SIZE),
@@ -155,16 +146,13 @@ void kmain(unsigned long magic, unsigned long addr)
                         PAGE_PRESENT | PAGE_WRITABLE | PAGE_UNCACHED);
     }
 
-    // Update framebuffer pointer to virtual address
     framebuffer = (uint32_t *)fb_virt;
     memset(framebuffer, 0, fb_size);
     serial_printf("[VESA] Framebuffer mapped to virtual address 0x%x\n", fb_virt);
 
-    // Initialize VESA graphics
     if (vesa_init(framebuffer, width, height, pitch, bpp) < 0)
     {
         panic("VESA initialization failed!\n");
-        // Handle error
     }
     else
     {
@@ -173,11 +161,9 @@ void kmain(unsigned long magic, unsigned long addr)
         serial_printf("VESA initialized\n");
     }
 
-    // Initialize console
     console_init(VESA_COLOR_WHITE, VESA_COLOR_BLACK);
     serial_printf("Console initialized\n");
 
-    // Initialize remaining subsystems
     serial_printf("Initializing timer...\n");
     timer_init();
 
@@ -232,11 +218,9 @@ void kmain(unsigned long magic, unsigned long addr)
     serial_printf("System initialized successfully\n");
     console_printf("System initialized successfully\n");
 
-    // serial print kernel memory map
     display_kernel_memory_map(&g_kmap);
     serial_printf("Kernel memory map displayed\n");
 
-    // Start shell
     shell();
 
     console_printf("you should not be here\n");

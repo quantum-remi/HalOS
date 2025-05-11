@@ -16,3 +16,9 @@ HalOS is a i686 "Operating System" made in C. Runs entirely in ring 0, maybe its
     - pong
     - snake
 - shell to interact with all of that
+
+## Resources / Other great projects
+- one and greatest https://osdev.wiki/wiki/Expanded_Main_Page
+- https://github.com/malwarepad/cavOS
+- https://github.com/pritamzope/OS
+- https://github.com/mit-pdos/xv6-public

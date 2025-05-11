@@ -371,7 +371,7 @@ static void format_number(char *buf, unsigned int val, int base,
 void console_vprintf(const char *format, va_list args)
 {
     char buf[32];
-    int n, width, pad_zero;  // Removed unused variable 'i'
+    int n, width, pad_zero;
     unsigned int uval;
 
     while ((n = *format++) != 0)

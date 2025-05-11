@@ -32,7 +32,6 @@ void *liballoc_alloc(int num_blocks)
         {
             serial_printf("liballoc: Failed to allocate page %d of %d\n", i, num_blocks);
 
-            // Free all previously allocated pages
             for (int j = 0; j < i; j++)
             {
                 vmm_free_page((char *)virt_addr + (j * PAGE_SIZE));

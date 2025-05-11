@@ -40,7 +40,7 @@ TARGET_ISO=$(OUT)/os.iso
 ISO_DIR=$(OUT)/isodir
 
 OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o $(ASM_OBJ)/load_tss.o \
-		$(ASM_OBJ)/load_idt.o $(ASM_OBJ)/exception.o $(ASM_OBJ)/irq.o $(ASM_OBJ)/bios32_call.o $(ASM_OBJ)/tasks.o \
+		$(ASM_OBJ)/load_idt.o $(ASM_OBJ)/exception.o $(ASM_OBJ)/irq.o $(ASM_OBJ)/tasks.o \
 		$(OBJ)/io.o \
 		$(OBJ)/string.o $(OBJ)/console.o\
 		$(OBJ)/gdt.o $(OBJ)/idt.o $(OBJ)/isr.o $(OBJ)/8259_pic.o\
@@ -48,7 +48,7 @@ OBJECTS = $(ASM_OBJ)/entry.o $(ASM_OBJ)/load_gdt.o $(ASM_OBJ)/load_tss.o \
 		$(OBJ)/pmm.o $(OBJ)/vmm.o \
 		$(OBJ)/paging.o  $(OBJ)/snake.o \
 		$(OBJ)/vesa.o $(OBJ)/fpu.o \
-		$(OBJ)/bios32.o $(OBJ)/shell.o \
+		$(OBJ)/shell.o \
 		$(OBJ)/serial.o $(OBJ)/printf.o \
 		$(OBJ)/tss.o $(OBJ)/liballoc.o $(OBJ)/liballoc_hook.o \
 		$(OBJ)/pci.o $(OBJ)/ide.o $(OBJ)/fat.o $(OBJ)/font.o \
@@ -104,11 +104,6 @@ $(ASM_OBJ)/exception.o : $(ASM_SRC)/exception.asm
 $(ASM_OBJ)/irq.o : $(ASM_SRC)/irq.asm
 	@printf "[ $(ASM_SRC)/irq.asm ]\n"
 	$(ASM) $(ASM_FLAGS) $(ASM_SRC)/irq.asm -o $(ASM_OBJ)/irq.o
-	@printf "\n"
-
-$(ASM_OBJ)/bios32_call.o : $(ASM_SRC)/bios32_call.asm
-	@printf "[ $(ASM_SRC)/bios32_call.asm ]\n"
-	$(ASM) $(ASM_FLAGS) $(ASM_SRC)/bios32_call.asm -o $(ASM_OBJ)/bios32_call.o
 	@printf "\n"
 
 $(ASM_OBJ)/tasks.o : $(ASM_SRC)/tasks.asm
@@ -188,11 +183,6 @@ $(OBJ)/snake.o : $(SRC)/shell/snake.c
 $(OBJ)/pong.o : $(SRC)/shell/pong.c
 	@printf "[ $(SRC)/shell/pong.c ]\n"
 	$(CC) $(CC_FLAGS) -c $(SRC)/shell/pong.c -o $(OBJ)/pong.o
-	@printf "\n"
-
-$(OBJ)/bios32.o : $(SRC)/cpu/bios32.c
-	@printf "[ $(SRC)/cpu/bios32.c ]\n"
-	$(CC) $(CC_FLAGS) -c $(SRC)/cpu/bios32.c -o $(OBJ)/bios32.o
 	@printf "\n"
 
 $(OBJ)/vesa.o : $(SRC)/drivers/vesa.c

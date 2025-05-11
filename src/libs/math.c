@@ -171,26 +171,26 @@ static double normalize_angle(double x) {
 }
 
 double sin(double x) {
-    x = normalize_angle(x); // Reduce angle first
-    double term = x;         // First term: x
+    x = normalize_angle(x); 
+    double term = x;
     double result = term;
     double x_squared = x * x;
 
     for (int n = 1; n < 10; n++) {
-        term *= -x_squared / ((2 * n) * (2 * n + 1)); // Update term
+        term *= -x_squared / ((2 * n) * (2 * n + 1)); 
         result += term;
     }
     return result;
 }
 
 double cos(double x) {
-    x = normalize_angle(x); // Reduce angle first
-    double term = 1.0;       // First term: 1
+    x = normalize_angle(x); 
+    double term = 1.0;
     double result = term;
     double x_squared = x * x;
 
     for (int n = 1; n < 10; n++) {
-        term *= -x_squared / ((2 * n - 1) * (2 * n)); // Update term
+        term *= -x_squared / ((2 * n - 1) * (2 * n));
         result += term;
     }
     return result;

@@ -617,7 +617,7 @@ static int telnet_filter(uint8_t *data, int len, char *out, int outsz) {
 void telnet_command(char *args) {
     char *ip_str = strtok(args, " ");
     char *port_str = strtok(NULL, " ");
-    uint16_t port = port_str ? atoi(port_str) : 23; // Default to port 23
+    uint16_t port = port_str ? atoi(port_str) : 23;
 
     uint32_t remote_ip = inet_addr(ip_str);
     if (remote_ip == INADDR_NONE) {
@@ -631,7 +631,6 @@ void telnet_command(char *args) {
         return;
     }
 
-    // Wait for connection to establish with timeout
     uint32_t start = get_ticks();
     while (conn->state != TCP_ESTABLISHED && get_ticks() - start < 500) {
         check_tcp_timers();
@@ -645,15 +644,12 @@ void telnet_command(char *args) {
 
     console_printf("Connected to %s:%d\n", ip_str, port);
 
-    // Optionally negotiate SGA/ECHO (minimal, ignore failures)
     uint8_t will_sga[] = {TELNET_IAC, TELNET_WILL, TELOPT_SGA};
     tcp_send_segment(conn, TCP_PSH | TCP_ACK, will_sga, 3);
 
-    // Main loop
     while (conn->state == TCP_ESTABLISHED) {
         check_tcp_timers();
 
-        // Handle incoming data
         if (conn->recv_buffer_len > 0) {
             char filtered[sizeof(conn->recv_buffer) + 1];
             int outlen = telnet_filter((uint8_t*)conn->recv_buffer, conn->recv_buffer_len, filtered, sizeof(filtered));
@@ -665,10 +661,9 @@ void telnet_command(char *args) {
             conn->recv_buffer_len = 0;
         }
 
-        // Handle keyboard input
         if (kbhit()) {
             char c = kb_getchar();
-            if (c == 0x03) { // Ctrl-C to exit
+            if (c == 0x03) {
                 break;
             }
             if (c == '\r' || c == '\n') {
@@ -680,13 +675,11 @@ void telnet_command(char *args) {
             } else {
                 tcp_send_segment(conn, TCP_PSH | TCP_ACK, (uint8_t *)&c, 1);
             }
-            // Local echo for user
             if (c != 0x03)
                 console_putchar(c);
             console_flush();
         }
 
-        // Check for connection close
         if (conn->state == TCP_CLOSE_WAIT || conn->state == TCP_LAST_ACK || conn->state == TCP_CLOSED)
             break;
     }
@@ -704,13 +697,11 @@ void shell()
     console_printf("Hal OS v0.15.0\n");
     console_printf("Type 'help' for a list of commands\n");
 
-    // Initialize the global FAT volume once
     fat32_init_volume(&fat_volume);
 
     char buffer[255];
     const char *shell = "kernel> ";
 
-    // Set fat_root to the root directory of the FAT volume.
     fat32_find_file(&fat_volume, "/", &fat_root);
 
     while (1)
