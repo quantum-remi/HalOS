@@ -1,5 +1,8 @@
 # HalOS
 HalOS is a i686 "Operating System" made in C. Runs entirely in ring 0, maybe its badly written but its mine and that whats counts.
+![image](https://github.com/user-attachments/assets/1d7ec807-59c4-49d5-b4e1-97ff4d48eb2a)
+![image](https://github.com/user-attachments/assets/44dac752-8826-4d81-9817-846391f39592)
+![image](https://github.com/user-attachments/assets/5748dbde-f9bc-45bd-b0b1-db7db469e447)
 
 ## Features
 - vesa graphics with 32bit colour and psf2 font
