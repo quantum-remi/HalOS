@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 #define PMM_BLOCK_SIZE 4096   // 4KB blocks
 #define PMM_BLOCKS_PER_BYTE 8 // 8 blocks per byte (1 bit per block)
@@ -11,6 +12,7 @@ extern uint32_t pmm_used_blocks;
 
 uint32_t pmm_get_total_memory();
 
+bool pmm_is_block_free(uint32_t block);
 void pmm_init(size_t mem_size, uint8_t *bitmap); // changed type from uint32_t* to uint8_t*
 void pmm_mark_used_region(uint32_t base, uint32_t size);
 void pmm_mark_unused_region(uint32_t base, uint32_t size);

@@ -36,7 +36,7 @@ extern uint32_t *g_vbe_buffer;
 extern uint32_t *g_back_buffer; // Added declaration for back buffer
 
 // font data
-extern char _binary___config_ter_powerline_v20b_psf_start;
+extern char _binary___config_output_psf_start;
 
 int console_scrolling = 0;
 
@@ -46,7 +46,7 @@ static inline char *buffer_at(uint32_t x, uint32_t y)  // Changed parameters to 
 }
 void console_init(uint32_t fg, uint32_t bg)
 {
-    console.font = (PSF2_Header *)&_binary___config_ter_powerline_v20b_psf_start;
+    console.font = (PSF2_Header *)&_binary___config_output_psf_start;
     if (console.font->magic != PSF2_FONT_MAGIC)
     {
         panic("Invalid font magic number");

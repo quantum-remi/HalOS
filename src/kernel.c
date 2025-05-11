@@ -142,7 +142,7 @@ void kmain(unsigned long magic, unsigned long addr)
     // bios32_init();
 
     // Map framebuffer to virtual memory
-    uint32_t fb_size = height * pitch;
+    uint32_t fb_size = height * pitch; // Use detected height/pitch
     uint32_t fb_pages = (fb_size + PAGE_SIZE - 1) / PAGE_SIZE;
     uint32_t fb_phys = (uint32_t)framebuffer;
     uint32_t fb_virt = KERNEL_VMEM_START + 0x3000000;
