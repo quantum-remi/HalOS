@@ -28,4 +28,6 @@ uint32_t *get_page_directory(void);
 
 bool paging_set_kernel_stack_guard();
 
+extern bool paging_active;
+
 #endif

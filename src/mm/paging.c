@@ -11,7 +11,7 @@ extern uint32_t __kernel_physical_start;
 extern uint32_t __kernel_physical_end;
 
 static uint32_t *page_directory __attribute__((aligned(4096))) = NULL;
-static bool paging_active = false; // Track if paging is enabled
+bool paging_active = false; // Track if paging is enabled
 
 void paging_init()
 {
@@ -92,25 +92,47 @@ bool paging_map_page(uint32_t phys_addr, uint32_t virt_addr, uint32_t flags)
 
     if (!(page_directory[pd_index] & PAGE_PRESENT))
     {
-        uint32_t *new_table = pmm_alloc_block();
-        if (!new_table)
+        // 1. Allocate physical memory for the new page table
+        void *phys_table = pmm_alloc_block();
+        if (!phys_table)
         {
-            serial_printf("Paging: Failed to allocate page table for PDE %d\n", pd_index);
+            serial_printf("PAGING: Failed to allocate page table for PDE %d\n", pd_index);
             return false;
         }
-        memset(new_table, 0, PAGE_SIZE);
+        
+        // 2. CORRECT WAY: Convert to virtual address BEFORE using as pointer
+        uint32_t *virt_table;
+        if (paging_active) {
+            virt_table = (uint32_t *)(0xC0000000 + (uint32_t)phys_table);
+        } else {
+            virt_table = (uint32_t *)phys_table;
+        }
+        
+        // 3. Now we can safely zero the page table
+        memset(virt_table, 0, PAGE_SIZE);
 
+        // 4. Store PHYSICAL address in page directory
         uint32_t pde_flags = PAGE_PRESENT | PAGE_WRITABLE;
-        page_directory[pd_index] = (uint32_t)new_table | pde_flags;
+        page_directory[pd_index] = (uint32_t)phys_table | pde_flags;
     }
 
-    uint32_t *page_table = (uint32_t *)(page_directory[pd_index] & ~0xFFF);
-    if (paging_active)
-    {
-        page_table = (uint32_t *)(0xC0000000 + (uint32_t)page_table);
+    // Get the physical address of the page table from PDE
+    uint32_t pt_phys = page_directory[pd_index] & ~0xFFF;
+    
+    // Convert to virtual address if needed
+    uint32_t *page_table;
+    if (paging_active) {
+        page_table = (uint32_t *)(0xC0000000 + pt_phys);
+    } else {
+        page_table = (uint32_t *)pt_phys;
     }
 
+    // Set up the page table entry
     page_table[pt_index] = (phys_addr & ~0xFFF) | flags | PAGE_PRESENT;
+    
+    // CRITICAL: Flush TLB to make the mapping active immediately
+    __asm__ volatile("invlpg (%0)" : : "r"(virt_addr) : "memory");
+
     return true;
 }
 

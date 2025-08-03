@@ -27,7 +27,8 @@ void pmm_init(size_t mem_size, uint8_t *bitmap)
     pmm_max_blocks = (mem_size + PMM_BLOCK_SIZE - 1) / PMM_BLOCK_SIZE;
     pmm_used_blocks = 0;
 
-    memset(pmm_memory_map, 0x00, pmm_max_blocks / PMM_BLOCKS_PER_BYTE);
+    size_t bitmap_size = (pmm_max_blocks + PMM_BLOCKS_PER_BYTE - 1) / PMM_BLOCKS_PER_BYTE;
+    memset(pmm_memory_map, 0x00, bitmap_size);
 
     pmm_mark_used_region(0, 0x100000);
 
@@ -131,6 +132,83 @@ void *pmm_alloc_block()
     return NULL;
 }
 
+static int find_contiguous_free_blocks(uint32_t num_blocks)
+{
+    for (uint32_t i = 0; i < pmm_max_blocks; i++) {
+        if (pmm_is_block_free(i)) {
+            uint32_t j;
+            for (j = 0; j < num_blocks; j++) {
+                if (i + j >= pmm_max_blocks || !pmm_is_block_free(i + j))
+                    break;
+            }
+            if (j == num_blocks)
+                return i;
+        }
+    }
+    return -1;
+}
+
+static void mark_block_used(uint32_t block)
+{
+    uint32_t byte_idx = block / PMM_BLOCKS_PER_BYTE;
+    uint32_t bit_idx = block % PMM_BLOCKS_PER_BYTE;
+    
+    pmm_memory_map[byte_idx] |= (1 << bit_idx);
+    pmm_used_blocks++;
+}
+
+void *pmm_alloc_contiguous(uint32_t num_blocks)
+{
+    if (num_blocks == 0 || num_blocks > pmm_max_blocks) {
+        PMM_ERROR("Invalid block count: %d", num_blocks);
+        return NULL;
+    }
+    
+    int start_block = find_contiguous_free_blocks(num_blocks);
+    if (start_block < 0) {
+        PMM_ERROR("No %d contiguous blocks available", num_blocks);
+        return NULL;
+    }
+    
+    for (uint32_t i = 0; i < num_blocks; i++) {
+        mark_block_used(start_block + i);
+    }
+    
+    PMM_LOG("Allocated %d contiguous blocks starting at %d", num_blocks, start_block);
+    return (void *)(start_block * PMM_BLOCK_SIZE);
+}
+
+void pmm_free_contiguous(void *ptr, uint32_t num_blocks)
+{
+    if (!ptr || num_blocks == 0) {
+        PMM_ERROR("Invalid parameters to pmm_free_contiguous");
+        return;
+    }
+    
+    uint32_t block = (uint32_t)ptr / PMM_BLOCK_SIZE;
+    if (block + num_blocks > pmm_max_blocks) {
+        PMM_ERROR("Block range out of bounds");
+        return;
+    }
+    
+    for (uint32_t i = 0; i < num_blocks; i++) {
+        if (pmm_is_block_free(block + i)) {
+            PMM_ERROR("Double-free of block %d", block + i);
+            return;
+        }
+    }
+    
+    for (uint32_t i = 0; i < num_blocks; i++) {
+        uint32_t byte_idx = (block + i) / PMM_BLOCKS_PER_BYTE;
+        uint32_t bit_idx = (block + i) % PMM_BLOCKS_PER_BYTE;
+        
+        pmm_memory_map[byte_idx] &= ~(1 << bit_idx);
+        pmm_used_blocks--;
+    }
+    
+    PMM_LOG("Freed %d contiguous blocks starting at %d", num_blocks, block);
+}
+
 static bool validate_allocation_request(size_t blocks) {
     if (!pmm_initialized) {
         PMM_ERROR("PMM not initialized");
@@ -195,7 +273,7 @@ void pmm_free_block(void *p)
 {
     if (p == NULL)
         serial_printf("PMM: Invalid free address (NULL)\n");
-    return;
+        return;
 
     uint32_t addr = (uint32_t)p;
     if (addr % PMM_BLOCK_SIZE != 0)
@@ -266,21 +344,39 @@ void *pmm_alloc_blocks_in_range(uint32_t num_blocks, uint32_t start_addr, uint32
         return NULL;
     }
 
-    uint32_t block_size = PMM_BLOCK_SIZE;
-    uint32_t start_block = start_addr / block_size;
-    uint32_t end_block = end_addr / block_size;
+    // Align addresses to block boundaries
+    start_addr = (start_addr + PMM_BLOCK_SIZE - 1) & ~(PMM_BLOCK_SIZE - 1);
+    end_addr &= ~(PMM_BLOCK_SIZE - 1);
+
+    uint32_t start_block = start_addr / PMM_BLOCK_SIZE;
+    uint32_t end_block = end_addr / PMM_BLOCK_SIZE;
+
+    // Debug output
+    serial_printf("PMM: Searching for %d blocks between blocks %d-%d\n", 
+                 num_blocks, start_block, end_block);
 
     uint32_t consecutive = 0;
+    uint32_t first_block = 0;
+
     for (uint32_t block = start_block; block < end_block; block++)
     {
         if (pmm_is_block_free(block))
         {
+            if (consecutive == 0)
+                first_block = block;
             consecutive++;
             if (consecutive == num_blocks)
             {
-                uint32_t first_block = block - num_blocks + 1;
-                pmm_mark_used_region(first_block * block_size, num_blocks * block_size);
-                return (void *)(first_block * block_size);
+                // Mark the blocks as used
+                for (uint32_t i = 0; i < num_blocks; i++)
+                {
+                    uint32_t curr_block = first_block + i;
+                    uint32_t byte_idx = curr_block / PMM_BLOCKS_PER_BYTE;
+                    uint32_t bit_idx = curr_block % PMM_BLOCKS_PER_BYTE;
+                    pmm_memory_map[byte_idx] |= (1 << bit_idx);
+                }
+                pmm_used_blocks += num_blocks;
+                return (void *)(first_block * PMM_BLOCK_SIZE);
             }
         }
         else
@@ -288,6 +384,8 @@ void *pmm_alloc_blocks_in_range(uint32_t num_blocks, uint32_t start_addr, uint32
             consecutive = 0;
         }
     }
-    serial_printf("PMM: No contiguous blocks available in range 0x%x - 0x%x for %d blocks\n", start_addr, end_addr, num_blocks);
+
+    serial_printf("PMM: No %d contiguous blocks available in range 0x%x - 0x%x\n",
+                 num_blocks, start_addr, end_addr);
     return NULL;
 }

@@ -21,6 +21,8 @@ void *pmm_alloc_blocks(uint32_t num_blocks);
 void pmm_free_block(void *p);
 void pmm_free_blocks(void *p, int num_blocks);
 void *pmm_alloc_blocks_in_range(uint32_t num_blocks, uint32_t start_addr, uint32_t end_addr);
+void *pmm_alloc_contiguous(uint32_t num_blocks);
+void pmm_free_contiguous(void *ptr, uint32_t num_blocks);
 extern uint32_t __kernel_physical_start; // Defined in linker script
 extern uint32_t __kernel_physical_end;
 

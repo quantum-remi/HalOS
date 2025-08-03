@@ -175,6 +175,15 @@ void fat32_init_volume(FAT32_Volume *volume)
 
     memset(volume, 0, sizeof(FAT32_Volume));
     uint8_t *sector_buffer = dma_alloc(SECTOR_SIZE);
+    if (!sector_buffer) {
+        // Fallback to regular allocation if DMA fails
+        serial_printf("[FAT32] DMA allocation failed, trying regular allocation\n");
+        sector_buffer = vmm_alloc_page();
+        if (!sector_buffer) {
+            serial_printf("[FAT32] Failed to allocate sector buffer\n");
+            return;
+        }
+    }
 
     g_fat32_drive = 0;
     while (g_fat32_drive < MAXIMUM_IDE_DEVICES)
